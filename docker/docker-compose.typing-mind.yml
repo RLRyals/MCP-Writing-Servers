@@ -1,6 +1,10 @@
-# Typing Mind Web Client (Optional)
-# Web-based UI for accessing MCP servers
-# Requires: mcp-connector to be running
+# Typing Mind Web UI (Optional Add-on)
+# Web-based UI from https://github.com/typingMind/typingmind
+# REQUIRES: docker-compose.core.yml to be running first
+#
+# Usage:
+#   docker-compose -f docker-compose.core.yml up -d
+#   docker-compose -f docker-compose.typing-mind.yml up -d
 
 services:
   # ========================================

@@ -1,6 +1,9 @@
-# Core MCP Writing System
-# PostgreSQL Database + MCP Servers
-# This is the foundation - always required
+# Core MCP Writing System - MVP
+# PostgreSQL Database + MCP Servers (with HTTP connector bundled)
+# Supports BOTH:
+# - Claude Desktop (stdio mode)
+# - Typing Mind (HTTP mode on port 50880)
+# Does NOT include: Typing Mind web UI (that's optional, see docker-compose.typing-mind.yml)
 
 services:
   # ========================================
@@ -33,20 +36,19 @@ services:
       start_period: 10s
 
   # ========================================
-  # MCP Servers (Core System)
+  # MCP Servers with Connector (Bundled)
   # ========================================
-  # All 9 MCP servers for writing/planning
-  # Can be accessed via:
-  # - MCP Connector (HTTP)
-  # - Claude Desktop (stdio)
-  # - Custom clients (stdio/HTTP)
-  mcp-servers:
+  # Runs MCP servers via @typingmind/mcp connector
+  # Accessible via:
+  # - Claude Desktop (stdio mode via docker exec)
+  # - Typing Mind (HTTP mode on port 50880)
+  mcp-connector:
     build:
       context: ..
       dockerfile: docker/Dockerfile.mcp-connector
     image: mcp-writing-servers:latest
     pull_policy: build  # Always build from source, never pull from Docker Hub
-    container_name: ${MCP_SERVERS_CONTAINER_NAME:-mcp-servers}
+    container_name: ${MCP_CONNECTOR_CONTAINER_NAME:-mcp-connector}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -63,14 +65,20 @@ services:
       # MCP server configuration
       NODE_ENV: ${NODE_ENV:-development}
       INCLUDE_AUTHOR_SERVER: ${INCLUDE_AUTHOR_SERVER:-true}
-      MCP_STDIO_MODE: ${MCP_STDIO_MODE:-true}
+      MCP_STDIO_MODE: ${MCP_STDIO_MODE:-false}
+
+      # HTTP mode configuration (for Typing Mind access)
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+      PORT: ${MCP_CONNECTOR_PORT:-50880}
+    ports:
+      - "${MCP_CONNECTOR_PORT:-50880}:${MCP_CONNECTOR_PORT:-50880}"
     volumes:
       # Preserve node_modules in container
       - /app/node_modules
     networks:
       - mcp-network
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'node' > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "nc -z $$(hostname -i) $${PORT:-50880} || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3

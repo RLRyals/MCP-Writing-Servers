@@ -1,6 +1,8 @@
-# MCP Connector Dockerfile
-# Builds a container that runs the Typing Mind MCP Connector
-# with all MCP writing servers
+# MCP Connector + Writing Servers Dockerfile
+# Bundles @typingmind/mcp npm package with your custom MCP servers
+# Can run in two modes:
+# - Stdio mode (MCP_STDIO_MODE=true) for Claude Desktop
+# - HTTP mode (MCP_STDIO_MODE=false) for web clients like Typing Mind
 
 FROM node:18-alpine
 
@@ -13,9 +15,6 @@ RUN apk add --no-cache \
 
 # Set working directory
 WORKDIR /app
-
-# Install Typing Mind MCP Connector globally
-RUN npm install -g @typingmind/mcp@latest
 
 # Copy package.json and install MCP server dependencies
 COPY package.json package-lock.json* ./
