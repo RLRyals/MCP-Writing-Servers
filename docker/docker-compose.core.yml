@@ -45,6 +45,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.mcp-connector
     image: mcp-writing-servers:latest
+    pull_policy: build  # Always build from source, never pull from Docker Hub
     container_name: ${MCP_SERVERS_CONTAINER_NAME:-mcp-servers}
     restart: unless-stopped
     depends_on:
