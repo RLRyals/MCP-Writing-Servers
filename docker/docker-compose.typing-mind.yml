@@ -17,7 +17,7 @@ services:
     container_name: ${TYPING_MIND_CONTAINER_NAME:-typing-mind-web}
     restart: unless-stopped
     depends_on:
-      - mcp-connector
+      - mcp-writing-system
     ports:
       - "${TYPING_MIND_PORT:-3000}:80"
     volumes:
