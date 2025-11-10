@@ -278,7 +278,7 @@ cd distribution
 ```bash
 # Build MCP Connector image
 cd distribution/docker
-docker-compose build mcp-connector
+docker-compose build mcp-writing-system
 
 # Export images for bundling
 docker save mcp-writing-connector:latest postgres:15 nginx:alpine | \
@@ -393,7 +393,7 @@ POSTGRES_CONTAINER_NAME=mcp-writing-db
 
 # MCP Connector Configuration
 MCP_CONNECTOR_PORT=50880
-MCP_CONNECTOR_CONTAINER_NAME=mcp-connector
+MCP_CONNECTOR_CONTAINER_NAME=mcp-writing-system
 MCP_AUTH_TOKEN=${crypto.randomBytes(32).toString('hex')}
 
 # Typing Mind Configuration

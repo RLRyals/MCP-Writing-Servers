@@ -43,16 +43,22 @@ services:
       retries: 5
       start_period: 10s
 
+   # ========================================
+  # MCP Writing System (Connector + Servers)
   # ========================================
-  # MCP Connector (HTTP Mode)
-  # ========================================
-  # Runs MCP servers via @typingmind/mcp npm package in HTTP mode
-  mcp-connector:
+  # Combined container running:
+  # - @typingmind/mcp connector
+  # - All MCP writing servers (author, series, book, timeline, metadata, trope)
+  # Accessible via:
+  # - Claude Desktop (stdio mode via docker exec)
+  # - Typing Mind (HTTP mode on port 50880)
+  mcp-writing-system:
     build:
       context: ..
       dockerfile: docker/Dockerfile.mcp-connector
-    image: mcp-writing-servers:latest
-    container_name: ${MCP_CONNECTOR_CONTAINER_NAME:-mcp-connector}
+    image: mcp-writing-system:latest
+    pull_policy: build  # Always build from source, never pull from Docker Hub
+    container_name: ${MCP_WRITING_SYSTEM_CONTAINER_NAME:-mcp-writing-system}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -97,7 +103,7 @@ services:
     container_name: ${TYPING_MIND_CONTAINER_NAME:-typing-mind-web}
     restart: unless-stopped
     depends_on:
-      - mcp-connector
+      - mcp-writing-system
     ports:
       - "${TYPING_MIND_PORT:-3000}:80"
     volumes:

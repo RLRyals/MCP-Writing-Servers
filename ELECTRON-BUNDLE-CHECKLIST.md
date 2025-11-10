@@ -115,7 +115,7 @@ C:\Users\<User>\AppData\Roaming\YourApp\
 │   ├── .env                             # Generated on install
 │   ├── docker/
 │   │   ├── docker-compose.core.yml
-│   │   ├── docker-compose.mcp-connector.yml
+│   │   ├── docker-compose.yml
 │   │   ├── docker-compose.typing-mind.yml
 │   │   ├── nginx.conf
 │   │   └── init.sql
