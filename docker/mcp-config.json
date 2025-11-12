@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "book-planning": {
+      "url": "http://localhost:3000/book-planning"
+    },
+    "series-planning": {
+      "url": "http://localhost:3000/series-planning"
+    },
+    "chapter-planning": {
+      "url": "http://localhost:3000/chapter-planning"
+    },
+    "character-planning": {
+      "url": "http://localhost:3000/character-planning"
+    },
+    "scene": {
+      "url": "http://localhost:3000/scene"
+    },
+    "core-continuity": {
+      "url": "http://localhost:3000/core-continuity"
+    },
+    "review": {
+      "url": "http://localhost:3000/review"
+    },
+    "reporting": {
+      "url": "http://localhost:3000/reporting"
+    }
+  }
+}
