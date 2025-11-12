@@ -26,7 +26,7 @@ docker-compose -f docker-compose.connector-http-sse.yml up -d
 
 Then in TypingMind:
 1. Connect to: `http://localhost:50880` (with your `MCP_AUTH_TOKEN` from `.env`)
-2. Configure servers with URLs: `http://localhost:3000/book-planning`, etc.
+2. Configure servers with URLs: `http://localhost:3001/book-planning`, etc.
 
 **See: [`TYPINGMIND-SETUP-FINAL.md`](TYPINGMIND-SETUP-FINAL.md) for complete instructions.**
 
@@ -36,11 +36,11 @@ Then in TypingMind:
 
 ```
 TypingMind → @typingmind/mcp Connector → HTTP/SSE Server → MCP Servers → PostgreSQL
-             Port 50880 (HTTP API)        Port 3000 (SSE)
+             Port 50880 (HTTP API)        Port 3001 (SSE)
 ```
 
 **How it works:**
-1. **HTTP/SSE Server** runs all 8 MCP servers with SSE endpoints (internal port 3000)
+1. **HTTP/SSE Server** runs all 8 MCP servers with SSE endpoints (internal port 3001)
 2. **Connector** bridges TypingMind to SSE endpoints (exposed port 50880)
 3. **TypingMind** connects to connector and configures servers using URLs
 
@@ -52,14 +52,14 @@ Once running, you have 8 MCP servers:
 
 | Server | URL (for TypingMind config) |
 |--------|------------------------------|
-| Book Planning | `http://localhost:3000/book-planning` |
-| Series Planning | `http://localhost:3000/series-planning` |
-| Chapter Planning | `http://localhost:3000/chapter-planning` |
-| Character Planning | `http://localhost:3000/character-planning` |
-| Scene | `http://localhost:3000/scene` |
-| Core Continuity | `http://localhost:3000/core-continuity` |
-| Review | `http://localhost:3000/review` |
-| Reporting | `http://localhost:3000/reporting` |
+| Book Planning | `http://localhost:3001/book-planning` |
+| Series Planning | `http://localhost:3001/series-planning` |
+| Chapter Planning | `http://localhost:3001/chapter-planning` |
+| Character Planning | `http://localhost:3001/character-planning` |
+| Scene | `http://localhost:3001/scene` |
+| Core Continuity | `http://localhost:3001/core-continuity` |
+| Review | `http://localhost:3001/review` |
+| Reporting | `http://localhost:3001/reporting` |
 
 ---
 
@@ -95,7 +95,7 @@ docker ps
 docker logs mcp-writing-system -f
 
 # Test endpoints
-docker exec mcp-writing-system curl http://localhost:3000/health
+docker exec mcp-writing-system curl http://localhost:3001/health
 curl http://localhost:50880/health
 ```
 
@@ -106,7 +106,7 @@ See [`TYPINGMIND-SETUP-FINAL.md`](TYPINGMIND-SETUP-FINAL.md) for detailed instru
 **Quick version:**
 - Connector URL: `http://localhost:50880`
 - Auth Token: (from your `.env` file)
-- Server configs: Use URLs like `http://localhost:3000/book-planning`
+- Server configs: Use URLs like `http://localhost:3001/book-planning`
 
 ---
 
@@ -167,9 +167,9 @@ docker-compose -f docker-compose.connector-http-sse.yml down -v
 
 ```bash
 # Test HTTP/SSE server (inside container)
-docker exec mcp-writing-system curl http://localhost:3000/
-docker exec mcp-writing-system curl http://localhost:3000/health
-docker exec mcp-writing-system curl http://localhost:3000/book-planning/info
+docker exec mcp-writing-system curl http://localhost:3001/
+docker exec mcp-writing-system curl http://localhost:3001/health
+docker exec mcp-writing-system curl http://localhost:3001/book-planning/info
 
 # Test connector (from host)
 curl http://localhost:50880/health
@@ -213,7 +213,7 @@ docker exec mcp-writing-system env | grep -E "(DATABASE|POSTGRES)"
 
 **No tools showing in TypingMind:**
 - Check logs: `docker logs mcp-writing-system -f`
-- Verify HTTP/SSE endpoints: `docker exec mcp-writing-system curl http://localhost:3000/`
+- Verify HTTP/SSE endpoints: `docker exec mcp-writing-system curl http://localhost:3001/`
 - Check server configuration in TypingMind (must use URLs, not commands)
 
 See [`TYPINGMIND-SETUP-FINAL.md`](TYPINGMIND-SETUP-FINAL.md) for detailed troubleshooting.

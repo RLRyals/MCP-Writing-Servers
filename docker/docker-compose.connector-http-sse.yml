@@ -36,13 +36,13 @@ services:
   # MCP Writing System (Connector + HTTP/SSE)
   # ========================================
   # Combined container running:
-  # 1. HTTP/SSE Server (port 3000) - SSE endpoints for each MCP server
+  # 1. HTTP/SSE Server (port 3001) - SSE endpoints for each MCP server
   # 2. @typingmind/mcp Connector (port 50880) - TypingMind integration
   #
   # TypingMind connects to: http://localhost:50880
   # Configure servers in TypingMind with URLs like:
-  #   http://localhost:3000/book-planning
-  #   http://localhost:3000/series-planning
+  #   http://localhost:3001/book-planning
+  #   http://localhost:3001/series-planning
   #   etc.
   mcp-writing-system:
     build:
@@ -65,7 +65,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
       # HTTP/SSE server configuration
-      HTTP_SSE_PORT: ${HTTP_SSE_PORT:-3000}
+      HTTP_SSE_PORT: ${HTTP_SSE_PORT:-3001}
 
       # Connector configuration
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
@@ -78,7 +78,7 @@ services:
     ports:
       # Expose both connector port and HTTP/SSE server port
       - "${MCP_CONNECTOR_PORT:-50880}:${MCP_CONNECTOR_PORT:-50880}"
-      - "${HTTP_SSE_PORT:-3000}:${HTTP_SSE_PORT:-3000}"
+      - "${HTTP_SSE_PORT:-3001}:${HTTP_SSE_PORT:-3001}"
     volumes:
       # Preserve node_modules in container
       - /app/node_modules
