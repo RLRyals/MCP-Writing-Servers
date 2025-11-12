@@ -1,0 +1,117 @@
+# MCP Writing System - Config File Mode
+# Complete setup for TypingMind with mcp-config.json support
+# Architecture: TypingMind → Connector (port 50880) → HTTP/SSE Server (port 3000) → MCP Servers
+#
+# Features:
+# - Supports mcp-config.json for server auto-discovery
+# - Graceful fallback to manual configuration if config file is missing
+# - URL-based server definitions for Docker-optimized architecture
+# - Backward compatible with existing setups
+
+services:
+  # ========================================
+  # PostgreSQL Database
+  # ========================================
+  postgres:
+    image: postgres:15
+    container_name: ${POSTGRES_CONTAINER_NAME:-mcp-writing-db}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mcp_writing_db}
+      POSTGRES_USER: ${POSTGRES_USER:-writer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-256MB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-1GB}
+      POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-128MB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-writer} -d ${POSTGRES_DB:-mcp_writing_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ========================================
+  # MCP Writing System (Config Mode)
+  # ========================================
+  # Combined container running:
+  # 1. HTTP/SSE Server (port 3000) - SSE endpoints for each MCP server
+  # 2. @typingmind/mcp Connector (port 50880) - TypingMind integration with config support
+  #
+  # Config File Support:
+  # - Mount mcp-config.json using MCP_CONFIG_FILE_PATH environment variable
+  # - Default location: ./mcp-config.json (relative to this file)
+  # - Falls back to manual configuration if file is missing
+  #
+  # TypingMind connects to: http://localhost:50880
+  #
+  # Two modes:
+  # 1. With config file: Servers auto-discovered from mcp-config.json
+  # 2. Without config file: Configure servers manually in TypingMind UI with URLs like:
+  #    http://localhost:3000/book-planning
+  #    http://localhost:3000/series-planning
+  #    etc.
+  mcp-writing-system:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.connector-config
+    image: mcp-writing-system-config:latest
+    pull_policy: build
+    container_name: ${MCP_WRITING_SYSTEM_CONTAINER_NAME:-mcp-writing-system}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database connection
+      DATABASE_URL: postgresql://${POSTGRES_USER:-writer}:${POSTGRES_PASSWORD}@${POSTGRES_CONTAINER_NAME:-mcp-writing-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-mcp_writing_db}
+      POSTGRES_HOST: ${POSTGRES_CONTAINER_NAME:-mcp-writing-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-mcp_writing_db}
+      POSTGRES_USER: ${POSTGRES_USER:-writer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # HTTP/SSE server configuration
+      HTTP_SSE_PORT: ${HTTP_SSE_PORT:-3000}
+
+      # Connector configuration
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+      MCP_CONNECTOR_PORT: ${MCP_CONNECTOR_PORT:-50880}
+      PORT: ${MCP_CONNECTOR_PORT:-50880}
+
+      # Server mode
+      NODE_ENV: ${NODE_ENV:-production}
+      MCP_STDIO_MODE: "false"
+    ports:
+      # Only expose connector port (HTTP/SSE server is internal)
+      - "${MCP_CONNECTOR_PORT:-50880}:${MCP_CONNECTOR_PORT:-50880}"
+    volumes:
+      # Preserve node_modules in container
+      - /app/node_modules
+      # Mount config file (optional - will fall back if missing)
+      # Set MCP_CONFIG_FILE_PATH to override default location
+      - ${MCP_CONFIG_FILE_PATH:-./mcp-config.json}:/app/mcp-config.json:ro
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost ${MCP_CONNECTOR_PORT:-50880} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres-data:
+    name: ${POSTGRES_VOLUME_NAME:-mcp-writing-data}
+
+networks:
+  mcp-network:
+    name: ${MCP_NETWORK_NAME:-mcp-network}
+    driver: bridge

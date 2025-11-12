@@ -2,6 +2,22 @@
 
 ## Quick Start for TypingMind
 
+### Option 1: Config File Mode (Recommended - Auto-Discovery)
+
+**With mcp-config.json for server auto-discovery:**
+```bash
+cd docker
+docker-compose -f docker-compose.connector-config.yml up -d
+```
+
+Then in TypingMind:
+1. Connect to: `http://localhost:50880` (with your `MCP_AUTH_TOKEN` from `.env`)
+2. Servers auto-discovered from mcp-config.json ✨
+
+**See: [`CONFIG-MODE-SETUP.md`](CONFIG-MODE-SETUP.md) for complete instructions.**
+
+### Option 2: Manual Configuration Mode
+
 **TL;DR:**
 ```bash
 cd docker
@@ -96,11 +112,19 @@ See [`TYPINGMIND-SETUP-FINAL.md`](TYPINGMIND-SETUP-FINAL.md) for detailed instru
 
 ## Files
 
-**Use these:**
-- ✅ `docker-compose.connector-http-sse.yml` - Main Docker Compose file (RECOMMENDED)
+**Use these (Config Mode - Recommended):**
+- ✅ `docker-compose.connector-config.yml` - Docker Compose with config file support
+- ✅ `Dockerfile.connector-config` - Dockerfile for config mode
+- ✅ `connector-config-entrypoint.sh` - Config-aware startup script
+- ✅ `mcp-config.json` - Server configuration file (auto-discovery)
+- ✅ `CONFIG-MODE-SETUP.md` - **Complete setup guide for config mode**
+- ✅ `.env` - Environment configuration
+
+**Use these (Manual Configuration):**
+- ✅ `docker-compose.connector-http-sse.yml` - Docker Compose file
 - ✅ `Dockerfile.connector-http-sse` - Dockerfile for connector + HTTP/SSE
 - ✅ `connector-http-sse-entrypoint.sh` - Startup script
-- ✅ `TYPINGMIND-SETUP-FINAL.md` - **Complete setup guide (START HERE)**
+- ✅ `TYPINGMIND-SETUP-FINAL.md` - **Complete setup guide**
 - ✅ `.env` - Environment configuration
 
 **Reference/Alternative:**
