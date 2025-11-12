@@ -76,8 +76,9 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       MCP_STDIO_MODE: "false"
     ports:
-      # Only expose connector port (HTTP/SSE server is internal)
+      # Expose both connector port and HTTP/SSE server port
       - "${MCP_CONNECTOR_PORT:-50880}:${MCP_CONNECTOR_PORT:-50880}"
+      - "${HTTP_SSE_PORT:-3000}:${HTTP_SSE_PORT:-3000}"
     volumes:
       # Preserve node_modules in container
       - /app/node_modules

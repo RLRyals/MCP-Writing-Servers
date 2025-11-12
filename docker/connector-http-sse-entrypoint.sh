@@ -67,9 +67,9 @@ start_mcp_connector() {
     echo "   etc."
     echo ""
 
-    # Start the MCP Connector
+    # Start the MCP Connector with mcp-config.json
     # It will forward TypingMind requests to our HTTP/SSE endpoints
-    exec npx @typingmind/mcp@latest "$MCP_AUTH_TOKEN"
+    exec npx @typingmind/mcp@latest "$MCP_AUTH_TOKEN" /app/mcp-config.json
 }
 
 # Main execution
