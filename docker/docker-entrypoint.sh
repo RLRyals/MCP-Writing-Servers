@@ -67,9 +67,9 @@ start_mcp_connector() {
     echo "   Database: $POSTGRES_DB @ $POSTGRES_HOST"
     echo ""
 
-    # Start the MCP Connector with the auth token
+    # Start the MCP Connector with the auth token and config file
     # The connector will discover and run all MCP servers
-    exec npx @typingmind/mcp@latest "$MCP_AUTH_TOKEN"
+    exec npx @typingmind/mcp@latest "$MCP_AUTH_TOKEN" /app/mcp-config.json
 }
 
 # Main execution
