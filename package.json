@@ -8,9 +8,10 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/stdio-server.js",
+    "start": "node src/http-sse-server.js",
     "start:stdio": "node src/stdio-server.js",
     "start:http": "node src/http-server.js",
+    "start:http-sse": "node src/http-sse-server.js",
     "start:author": "node src/mcps/author-server.js --stdio",
     "start:author:http": "node src/mcps/author-server.js --http --port 3002",
     "start:series": "node src/mcps/series-server.js --stdio",
