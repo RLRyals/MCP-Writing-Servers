@@ -94,6 +94,15 @@ start_mcp_connector() {
     echo "   Auth Token: ${MCP_AUTH_TOKEN:0:8}****"
     echo "   HTTP/SSE Backend: http://localhost:${HTTP_SSE_PORT:-3000}"
 
+    # Export all necessary environment variables for child processes
+    export DATABASE_URL
+    export POSTGRES_HOST
+    export POSTGRES_PORT
+    export POSTGRES_DB
+    export POSTGRES_USER
+    export POSTGRES_PASSWORD
+    export NODE_ENV
+
     if [ "$config_mode" = "true" ]; then
         echo "   Config Mode: ENABLED (using mcp-config.json)"
         echo ""
