@@ -1,19 +1,41 @@
 #!/usr/bin/env node
 // src/http-sse-server.js
-// HTTP/SSE server for all MCP Writing Servers
-// Provides direct HTTP/SSE endpoints for web clients like TypingMind
+// Multi-Port HTTP/SSE server for all MCP Writing Servers
+// Each server runs on its own dedicated port (3001-3009) with SSE session management
 
 import express from 'express';
 import cors from 'cors';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import dotenv from 'dotenv';
+import { randomUUID } from 'crypto';
 
 // Load environment variables
 dotenv.config();
 
+// Active SSE transports Map - tracks sessions by sessionId
+const activeTransports = new Map();
+
 // Dynamically import all MCP servers
 async function loadServers() {
     const servers = [];
+    const serverConfigs = [
+        { name: 'book-planning', port: 3001, path: './config-mcps/book-planning-server/index.js', className: 'BookPlanningMCPServer' },
+        { name: 'series-planning', port: 3002, path: './config-mcps/series-planning-server/index.js', className: 'SeriesPlanningMCPServer' },
+        { name: 'chapter-planning', port: 3003, path: './config-mcps/chapter-planning-server/index.js', className: 'ChapterPlanningMCPServer' },
+        { name: 'character-planning', port: 3004, path: './config-mcps/charater-planning-server/index.js', className: 'CharacterPlanningMCPServer' },
+        { name: 'scene', port: 3005, path: './config-mcps/scene-server/index.js', className: 'SceneWritingMCPServer' },
+        { name: 'core-continuity', port: 3006, path: './config-mcps/core-continuity-server/index.js', className: 'CoreContinuityMCPServer' },
+        { name: 'review', port: 3007, path: './config-mcps/review-server/index.js', className: 'ReviewMCPServer' },
+        { name: 'reporting', port: 3008, path: './config-mcps/reporting-server/index.js', className: 'ReportingMCPServer' },
+        { name: 'author', port: 3009, path: './mcps/author-server/index.js', className: 'AuthorMCPServer' }
+    ];
+
+    console.error('\n🔄 Loading MCP servers...\n');
+
+    for (const config of serverConfigs) {
+        try {
+            const module = await import(config.path);
+            const ServerClass = module[config.className];
 
     console.error('Loading MCP servers...');
 
@@ -115,112 +137,25 @@ async function loadServers() {
         console.error('✗ Failed to load Review Server:', error.message);
     }
 
-    try {
-        // Reporting Server
-        const { ReportingMCPServer } = await import('./config-mcps/reporting-server/index.js');
-        servers.push({
-            name: 'reporting',
-            path: '/reporting',
-            serverClass: ReportingMCPServer,
-            port: 3008
-        });
-        console.error('✓ Reporting Server loaded');
-    } catch (error) {
-        console.error('✗ Failed to load Reporting Server:', error.message);
+            servers.push({
+                name: config.name,
+                port: config.port,
+                serverClass: ServerClass
+            });
+            console.error(`✓ ${config.name.padEnd(20)} - Port ${config.port}`);
+        } catch (error) {
+            console.error(`✗ ${config.name.padEnd(20)} - Failed: ${error.message}`);
+        }
     }
 
-    console.error(`\nSuccessfully loaded ${servers.length} MCP servers\n`);
+    console.error(`\n✅ Successfully loaded ${servers.length}/9 servers\n`);
     return servers;
 }
 
-// Create HTTP/SSE server for a single MCP server
-function createServerEndpoint(app, serverConfig) {
-    const { name, path, serverClass } = serverConfig;
-
-    console.error(`Setting up SSE endpoint: ${path}`);
-
-    // SSE endpoint - this is what TypingMind connects to
-    app.get(path, async (req, res) => {
-        console.error(`[${name}] New SSE connection established`);
-
-        try {
-            // Create a new instance of the MCP server
-            const mcpServer = new serverClass();
-
-            // Create SSE transport
-            const transport = new SSEServerTransport(path, res);
-
-            // Connect the MCP server to the transport
-            await mcpServer.server.connect(transport);
-
-            console.error(`[${name}] MCP server connected via SSE`);
-
-            // Handle client disconnect
-            req.on('close', () => {
-                console.error(`[${name}] SSE connection closed`);
-            });
-
-        } catch (error) {
-            console.error(`[${name}] Error setting up SSE connection:`, error);
-            if (!res.headersSent) {
-                res.status(500).json({ error: 'Failed to initialize MCP server' });
-            }
-        }
-    });
-
-    // POST endpoint for SSE message handling (required by MCP SSE transport)
-    app.post(path, express.json(), async (req, res) => {
-        console.error(`[${name}] Received POST request`);
-        // This is handled by the SSE transport automatically
-        res.status(200).send();
-    });
-
-    // Health check endpoint
-    app.get(`${path}/health`, async (req, res) => {
-        try {
-            const mcpServer = new serverClass();
-            const health = await mcpServer.db.healthCheck();
-            res.json({
-                server: name,
-                status: 'healthy',
-                database: health,
-                timestamp: new Date().toISOString()
-            });
-        } catch (error) {
-            res.status(500).json({
-                server: name,
-                status: 'unhealthy',
-                error: error.message
-            });
-        }
-    });
-
-    // Info endpoint - lists available tools
-    app.get(`${path}/info`, async (req, res) => {
-        try {
-            const mcpServer = new serverClass();
-            res.json({
-                server: name,
-                version: mcpServer.serverVersion,
-                path: path,
-                tools: mcpServer.tools.map(tool => ({
-                    name: tool.name,
-                    description: tool.description
-                }))
-            });
-        } catch (error) {
-            res.status(500).json({
-                error: 'Failed to get server info',
-                message: error.message
-            });
-        }
-    });
-}
-
-// Main server setup
-async function startServer() {
+// Create HTTP/SSE server for a single MCP server on dedicated port
+function createServerEndpoint(serverConfig) {
+    const { name, port, serverClass } = serverConfig;
     const app = express();
-    const port = process.env.HTTP_SSE_PORT || 3000;
 
     // Middleware
     app.use(cors({
@@ -234,77 +169,224 @@ async function startServer() {
         next();
     });
 
+    // Root SSE endpoint - GET creates SSE stream, POST handles messages
+    app.get('/', async (req, res) => {
+        const sessionId = randomUUID();
+        console.error(`[${name}] New SSE connection - Session: ${sessionId}`);
+
+        try {
+            // Create a new instance of the MCP server
+            const mcpServer = new serverClass();
+
+            // Create SSE transport with session endpoint
+            const transport = new SSEServerTransport(`/${sessionId}`, res);
+
+            // Store in active transports map
+            activeTransports.set(sessionId, { transport, mcpServer, name });
+
+            // Connect the MCP server to the transport
+            await mcpServer.server.connect(transport);
+
+            console.error(`[${name}] MCP server connected - Session: ${sessionId}`);
+
+            // Handle client disconnect
+            req.on('close', () => {
+                console.error(`[${name}] SSE connection closed - Session: ${sessionId}`);
+                activeTransports.delete(sessionId);
+            });
+
+        } catch (error) {
+            console.error(`[${name}] Error setting up SSE connection:`, error);
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Failed to initialize MCP server' });
+            }
+        }
+    });
+
+    // POST endpoint for SSE message handling (requires sessionId in body or query)
+    app.post('/', express.json(), async (req, res) => {
+        const sessionId = req.body.sessionId || req.query.sessionId;
+
+        if (!sessionId) {
+            return res.status(400).json({
+                error: 'Missing sessionId',
+                message: 'sessionId required in request body or query parameters'
+            });
+        }
+
+        const session = activeTransports.get(sessionId);
+        if (!session) {
+            return res.status(404).json({
+                error: 'Session not found',
+                message: `No active session with id: ${sessionId}`
+            });
+        }
+
+        console.error(`[${name}] Received POST request - Session: ${sessionId}`);
+
+        // The SSE transport handles the message automatically
+        res.status(200).json({ status: 'ok', sessionId });
+    });
+
+    // Health check endpoint
+    app.get('/health', async (req, res) => {
+        try {
+            const mcpServer = new serverClass();
+            const health = await mcpServer.db.healthCheck();
+            res.json({
+                server: name,
+                status: 'healthy',
+                database: health,
+                activeSessions: Array.from(activeTransports.entries())
+                    .filter(([_, session]) => session.name === name)
+                    .length,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            res.status(500).json({
+                server: name,
+                status: 'unhealthy',
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    });
+
+    // Info endpoint - lists available tools
+    app.get('/info', async (req, res) => {
+        try {
+            const mcpServer = new serverClass();
+            res.json({
+                server: name,
+                port: port,
+                version: mcpServer.serverVersion,
+                tools: mcpServer.tools.map(tool => ({
+                    name: tool.name,
+                    description: tool.description
+                })),
+                endpoints: {
+                    sse: `http://localhost:${port}/`,
+                    health: `http://localhost:${port}/health`,
+                    info: `http://localhost:${port}/info`
+                }
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: 'Failed to get server info',
+                message: error.message
+            });
+        }
+    });
+
+    return app;
+}
+
+// Display formatted startup table
+function displayStartupTable(servers) {
+    const width = 80;
+    console.error('═'.repeat(width));
+    console.error('  MCP Writing System - Multi-Port HTTP/SSE Server');
+    console.error('═'.repeat(width));
+    console.error('  Architecture: Each server runs on dedicated port with SSE transport');
+    console.error('  Session Management: activeTransports Map tracks all connections');
+    console.error('═'.repeat(width));
+    console.error('\n  📡 Active Servers:\n');
+
+    // Table header
+    console.error('  ┌─────────────────────┬──────┬──────────────────────────────────────────┐');
+    console.error('  │ Server              │ Port │ SSE Endpoint                             │');
+    console.error('  ├─────────────────────┼──────┼──────────────────────────────────────────┤');
+
+    // Table rows
+    servers.forEach(server => {
+        const nameCol = `  │ ${server.name.padEnd(19)}`;
+        const portCol = ` │ ${server.port.toString().padEnd(4)}`;
+        const endpointCol = ` │ http://localhost:${server.port}/`.padEnd(43) + '│';
+        console.error(nameCol + portCol + endpointCol);
+    });
+
+    console.error('  └─────────────────────┴──────┴──────────────────────────────────────────┘\n');
+
+    // Additional endpoints
+    console.error('  📋 Additional Endpoints (append to any server URL):\n');
+    console.error('     • /health   - Database status and active sessions');
+    console.error('     • /info     - Server details and available tools\n');
+
+    console.error('═'.repeat(width));
+    console.error('  🚀 All servers ready for TypingMind connections!');
+    console.error('═'.repeat(width));
+    console.error('');
+}
+
+// Main server setup
+async function startServer() {
     // Load all servers
     const servers = await loadServers();
 
     if (servers.length === 0) {
-        console.error('ERROR: No servers could be loaded!');
+        console.error('❌ ERROR: No servers could be loaded!');
         process.exit(1);
     }
 
-    // Setup endpoints for each server
-    servers.forEach(serverConfig => {
-        createServerEndpoint(app, serverConfig);
-    });
+    // Create and start Express app for each server on its dedicated port
+    const serverInstances = [];
 
-    // Root endpoint - list all servers
-    app.get('/', (req, res) => {
-        res.json({
-            name: 'MCP Writing System - HTTP/SSE Server',
-            version: '1.0.0',
-            servers: servers.map(s => ({
-                name: s.name,
-                path: s.path,
-                endpoints: {
-                    sse: `http://localhost:${port}${s.path}`,
-                    health: `http://localhost:${port}${s.path}/health`,
-                    info: `http://localhost:${port}${s.path}/info`
+    for (const serverConfig of servers) {
+        const app = createServerEndpoint(serverConfig);
+
+        try {
+            const serverInstance = app.listen(serverConfig.port, () => {
+                // Silently start - table will show all at once
+            });
+
+            serverInstances.push({
+                ...serverConfig,
+                instance: serverInstance
+            });
+        } catch (error) {
+            console.error(`❌ Failed to start ${serverConfig.name} on port ${serverConfig.port}:`, error.message);
+        }
+    }
+
+    // Display formatted table after all servers started
+    displayStartupTable(servers);
+
+    // Graceful shutdown handler
+    const shutdown = () => {
+        console.error('\n\n🛑 Shutting down Multi-Port HTTP/SSE server...\n');
+
+        // Close all active transports
+        console.error(`   Closing ${activeTransports.size} active session(s)...`);
+        activeTransports.clear();
+
+        // Close all server instances
+        let shutdownCount = 0;
+        serverInstances.forEach(({ name, instance }) => {
+            instance.close(() => {
+                shutdownCount++;
+                console.error(`   ✓ ${name} server closed`);
+
+                if (shutdownCount === serverInstances.length) {
+                    console.error('\n✅ All servers shut down gracefully\n');
+                    process.exit(0);
                 }
-            }))
+            });
         });
-    });
 
-    // Global health check
-    app.get('/health', (req, res) => {
-        res.json({
-            status: 'healthy',
-            serverCount: servers.length,
-            timestamp: new Date().toISOString()
-        });
-    });
+        // Force exit after 5 seconds if graceful shutdown fails
+        setTimeout(() => {
+            console.error('⚠️  Forcing shutdown after timeout');
+            process.exit(1);
+        }, 5000);
+    };
 
-    // Start listening
-    app.listen(port, () => {
-        console.error('═'.repeat(60));
-        console.error('  MCP Writing System - HTTP/SSE Server');
-        console.error('═'.repeat(60));
-        console.error(`  Port: ${port}`);
-        console.error(`  Servers: ${servers.length}`);
-        console.error('─'.repeat(60));
-        console.error('  Available endpoints:');
-        console.error(`  • Root:   http://localhost:${port}/`);
-        console.error(`  • Health: http://localhost:${port}/health`);
-        console.error('─'.repeat(60));
-        servers.forEach(s => {
-            console.error(`  • ${s.name}:`);
-            console.error(`    SSE:    http://localhost:${port}${s.path}`);
-            console.error(`    Health: http://localhost:${port}${s.path}/health`);
-            console.error(`    Info:   http://localhost:${port}${s.path}/info`);
-        });
-        console.error('═'.repeat(60));
-        console.error('  Ready for TypingMind connections!');
-        console.error('═'.repeat(60));
-    });
-
-    // Graceful shutdown
-    process.on('SIGINT', () => {
-        console.error('\nShutting down HTTP/SSE server...');
-        process.exit(0);
-    });
+    // Register shutdown handlers
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
 }
 
 // Start the server
 startServer().catch(error => {
-    console.error('Fatal error starting server:', error);
+    console.error('💥 Fatal error starting server:', error);
     process.exit(1);
 });
