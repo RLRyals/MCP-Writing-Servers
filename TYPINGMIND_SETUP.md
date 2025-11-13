@@ -115,7 +115,7 @@ Once connected, go to the **Plugins** tab in TypingMind. You should see all 9 MC
 
 1. ✅ book-planning-server
 2. ✅ chapter-planning-server
-3. ✅ charater-planning-server (note: this has a typo in the original code)
+3. ✅ character-planning-server
 4. ✅ core-continuity-server
 5. ✅ reporting-server
 6. ✅ review-server

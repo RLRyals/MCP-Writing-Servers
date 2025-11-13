@@ -37,9 +37,105 @@ async function loadServers() {
             const module = await import(config.path);
             const ServerClass = module[config.className];
 
-            if (!ServerClass) {
-                throw new Error(`Server class ${config.className} not found in module`);
-            }
+    console.error('Loading MCP servers...');
+
+    try {
+        // Book Planning Server
+        const { BookPlanningMCPServer } = await import('./config-mcps/book-planning-server/index.js');
+        servers.push({
+            name: 'book-planning',
+            path: '/book-planning',
+            serverClass: BookPlanningMCPServer,
+            port: 3001
+        });
+        console.error('✓ Book Planning Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Book Planning Server:', error.message);
+    }
+
+    try {
+        // Series Planning Server
+        const { SeriesPlanningMCPServer } = await import('./config-mcps/series-planning-server/index.js');
+        servers.push({
+            name: 'series-planning',
+            path: '/series-planning',
+            serverClass: SeriesPlanningMCPServer,
+            port: 3002
+        });
+        console.error('✓ Series Planning Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Series Planning Server:', error.message);
+    }
+
+    try {
+        // Chapter Planning Server
+        const { ChapterPlanningMCPServer } = await import('./config-mcps/chapter-planning-server/index.js');
+        servers.push({
+            name: 'chapter-planning',
+            path: '/chapter-planning',
+            serverClass: ChapterPlanningMCPServer,
+            port: 3003
+        });
+        console.error('✓ Chapter Planning Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Chapter Planning Server:', error.message);
+    }
+
+    try {
+        // Character Planning Server
+        const { CharacterPlanningMCPServer } = await import('./config-mcps/character-planning-server/index.js');
+        servers.push({
+            name: 'character-planning',
+            path: '/character-planning',
+            serverClass: CharacterPlanningMCPServer,
+            port: 3004
+        });
+        console.error('✓ Character Planning Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Character Planning Server:', error.message);
+    }
+
+    try {
+        // Scene Server
+        const { SceneMCPServer } = await import('./config-mcps/scene-server/index.js');
+        servers.push({
+            name: 'scene',
+            path: '/scene',
+            serverClass: SceneMCPServer,
+            port: 3005
+        });
+        console.error('✓ Scene Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Scene Server:', error.message);
+    }
+
+    try {
+        // Core Continuity Server
+        const { CoreContinuityMCPServer } = await import('./config-mcps/core-continuity-server/index.js');
+        servers.push({
+            name: 'core-continuity',
+            path: '/core-continuity',
+            serverClass: CoreContinuityMCPServer,
+            port: 3006
+        });
+        console.error('✓ Core Continuity Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Core Continuity Server:', error.message);
+    }
+
+    try {
+        // Review Server
+        const { ReviewMCPServer } = await import('./config-mcps/review-server/index.js');
+        servers.push({
+            name: 'review',
+            path: '/review',
+            serverClass: ReviewMCPServer,
+            port: 3007
+        });
+        console.error('✓ Review Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Review Server:', error.message);
+    }
 
             servers.push({
                 name: config.name,
