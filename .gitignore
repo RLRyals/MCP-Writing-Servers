@@ -1,3 +1,6 @@
+# Dependencies
+node_modules/
+
 # Typing Mind static files (large - can be re-downloaded from GitHub)
 # Source: https://github.com/TypingMind/typingmind
 typing-mind-static/*
