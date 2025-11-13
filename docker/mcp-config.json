@@ -58,7 +58,7 @@
     },
     "author-server": {
       "command": "node",
-      "args": ["/app/src/mcps/author-server/index.js"],
+      "args": ["/app/src/config-mcps/author-server/index.js"],
       "env": {
         "MCP_STDIO_MODE": "true"
       }
