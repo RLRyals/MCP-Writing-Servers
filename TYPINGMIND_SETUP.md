@@ -2,212 +2,170 @@
 
 ## Overview
 
-This guide explains how to connect your MCP Writing Servers to TypingMind using the `@typingmind/mcp-connector`. The connector will automatically spawn and manage all 9 MCP servers.
+This guide explains how to connect your MCP Writing Servers to TypingMind using the direct HTTP/SSE architecture. Each MCP server runs on its own dedicated port for simple, direct communication.
 
 ## Architecture
 
 ```
-TypingMind (Web UI)
+ TypingMind (Web UI)
     ↓
-MCP Connector (localhost:50880)
+HTTP/SSE Server (ports 3001-3009)
     ↓
-@typingmind/mcp-connector with mcp-config.json
-    ↓
-9 MCP Server Processes (spawned via stdio)
+9 MCP Server Instances (one per port)
     ↓
 PostgreSQL Database
 ```
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
+- Docker installed
+- PostgreSQL database (running separately or via Docker)
 - TypingMind account or self-hosted instance
-- `.env` file configured in the docker directory
+- `.env` file configured (use .env.example as template)
 
 ## Step 1: Configure Environment
 
-Create or update your `docker/.env` file:
+Create your `.env` file in the project root:
 
 ```bash
 # Database Configuration
+DATABASE_URL=postgresql://writer:your_secure_password_here@localhost:5432/mcp_writing_db
 POSTGRES_PASSWORD=your_secure_password_here
 POSTGRES_USER=writer
 POSTGRES_DB=mcp_writing_db
-POSTGRES_HOST=mcp-writing-db
+POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 
-# MCP Connector Configuration
-MCP_AUTH_TOKEN=your_secure_token_here  # Generate with: openssl rand -hex 32
-MCP_CONNECTOR_PORT=50880
-
-# Network Configuration
-MCP_NETWORK_NAME=mcp-network
+# Server Configuration
+NODE_ENV=production
+PORT=3001  # Main HTTP/SSE server port
 ```
 
-## Step 2: Start the Docker Stack
+## Step 2: Build and Run the Docker Container
 
-Navigate to the docker directory and start the services:
+Build the Docker image and run the container:
 
 ```bash
-cd docker
-docker-compose -f docker-compose.connector-config.yml up -d
+# Build the image
+docker build -t mcp-writing-servers .
+
+# Run the container
+docker run -d \
+  --name mcp-writing-servers \
+  --env-file .env \
+  -p 3001:3001 \
+  -p 3002:3002 \
+  -p 3003:3003 \
+  -p 3004:3004 \
+  -p 3005:3005 \
+  -p 3006:3006 \
+  -p 3007:3007 \
+  -p 3008:3008 \
+  -p 3009:3009 \
+  mcp-writing-servers
 ```
 
 This will:
-1. Start PostgreSQL database
-2. Wait for database to be ready
-3. Start the MCP Connector on port 50880
-4. Auto-discover and configure 9 MCP servers from mcp-config.json
+1. Start the HTTP/SSE server on port 3001
+2. Start individual MCP servers on ports 3001-3009
+3. Each server handles SSE connections independently
 
 ## Step 3: Verify the Setup
 
-Check that the connector is running:
+Check that the servers are running:
 
 ```bash
 # Check container status
-docker ps | grep mcp-writing-system
+docker ps | grep mcp-writing-servers
 
-# Check connector logs
-docker logs mcp-writing-system
+# Check server logs
+docker logs mcp-writing-servers
+
+# Test the health endpoint
+curl http://localhost:3001/health
 
 # You should see output like:
-# ✅ Found mcp-config.json
-# ✅ Config file is valid JSON
-# Servers defined: 9
-# 🚀 Starting MCP Connector...
+# {"status":"healthy","servers":9}
 ```
 
 ## Step 4: Configure TypingMind
 
-### Option A: Using TypingMind Web UI
+In TypingMind, you need to add each MCP server individually:
 
 1. Open TypingMind Settings
 2. Navigate to: **Settings → Advanced Settings → Model Context Protocol**
-3. Select: **Remote Server**
-4. Configure:
-   - **Server URL**: `http://localhost:50880`
-   - **Authentication Token**: Your `MCP_AUTH_TOKEN` from .env file
-5. Click **Connect**
-6. You should see **✓ Connected**
+3. Add each server with its dedicated port
 
-### Option B: Using TypingMind Desktop App
+### Server Endpoints
 
-If you're using the MCP Electron App installer:
+| Server | URL | Port |
+|--------|-----|------|
+| Book Planning | `http://localhost:3001/sse` | 3001 |
+| Series Planning | `http://localhost:3002/sse` | 3002 |
+| Chapter Planning | `http://localhost:3003/sse` | 3003 |
+| Character Planning | `http://localhost:3004/sse` | 3004 |
+| Scene | `http://localhost:3005/sse` | 3005 |
+| Core Continuity | `http://localhost:3006/sse` | 3006 |
+| Review | `http://localhost:3007/sse` | 3007 |
+| Reporting | `http://localhost:3008/sse` | 3008 |
+| Author | `http://localhost:3009/sse` | 3009 |
 
-1. The app will automatically create a config file at:
-   - Windows: `%APPDATA%\mcp-electron-app\typingmind-mcp-config.json`
-   - macOS: `~/Library/Application Support/mcp-electron-app/typingmind-mcp-config.json`
-   - Linux: `~/.config/mcp-electron-app/typingmind-mcp-config.json`
+## Step 5: Verify MCP Servers
 
-2. The config should look like:
-```json
-{
-  "enabled": true,
-  "serverUrl": "http://localhost:50880",
-  "authToken": "your_token_here",
-  "autoConnect": true
-}
+Test each server endpoint:
+
+```bash
+# Test book planning server
+curl http://localhost:3001/sse
+
+# Test series planning server
+curl http://localhost:3002/sse
+
+# Each should establish an SSE connection
 ```
 
-## Step 5: Verify MCP Plugins
-
-Once connected, go to the **Plugins** tab in TypingMind. You should see all 9 MCP servers listed:
-
-1. ✅ book-planning-server
-2. ✅ chapter-planning-server
-3. ✅ character-planning-server
-4. ✅ core-continuity-server
-5. ✅ reporting-server
-6. ✅ review-server
-7. ✅ scene-server
-8. ✅ series-planning-server
-9. ✅ author-server
-
-Enable the servers you want to use in your chat sessions.
-
-## Configuration Files
-
-### mcp-config.json (Docker Container)
-
-Located at: `docker/mcp-config.json`
-
-This file defines how the connector spawns each MCP server:
-
-```json
-{
-  "mcpServers": {
-    "book-planning-server": {
-      "command": "node",
-      "args": ["/app/src/config-mcps/book-planning-server/index.js"],
-      "env": {
-        "MCP_STDIO_MODE": "true"
-      }
-    },
-    // ... 8 more servers
-  }
-}
-```
-
-**Key Points:**
-- `command`: The executable to run (node for JavaScript servers)
-- `args`: Path to the server entry point
-- `env`: Environment variables passed to the server process
-- `MCP_STDIO_MODE`: Enables stdio communication mode
-
-### Important Notes
-
-1. **All servers run in stdio mode**: They communicate via stdin/stdout with the connector
-2. **Database environment variables** are automatically passed to all spawned processes
-3. **Each server shares the same PostgreSQL connection** via environment variables
+Once connected, go to the **Plugins** tab in TypingMind. You should see all 9 MCP servers listed.
 
 ## Troubleshooting
 
 ### Issue: "Connection Failed" in TypingMind
 
 **Solution:**
-1. Verify the connector is running: `docker ps | grep mcp-writing-system`
-2. Check connector logs: `docker logs mcp-writing-system`
-3. Verify the auth token matches in both .env and TypingMind config
-4. Ensure port 50880 is not blocked by firewall
+1. Verify the container is running: `docker ps | grep mcp-writing-servers`
+2. Check server logs: `docker logs mcp-writing-servers`
+3. Ensure ports 3001-3009 are not blocked by firewall
+4. Test endpoint directly: `curl http://localhost:3001/health`
 
-### Issue: "No Plugins Appearing"
+### Issue: "No Servers Responding"
 
 **Solution:**
-1. Check the mcp-config.json is valid JSON
-2. Verify all server paths exist in the container
-3. Check connector logs for startup errors
-4. Restart the container: `docker restart mcp-writing-system`
+1. Check server logs for errors: `docker logs mcp-writing-servers -f`
+2. Verify all ports are exposed: `docker port mcp-writing-servers`
+3. Test each endpoint individually
 
 ### Issue: Database Connection Errors
 
 **Solution:**
-1. Verify PostgreSQL is running: `docker ps | grep postgres`
-2. Check database logs: `docker logs mcp-writing-db`
-3. Verify DATABASE_URL environment variable is correct
-4. Test database connection:
+1. Verify PostgreSQL is running
+2. Check DATABASE_URL environment variable is correct
+3. Test database connection:
 ```bash
-docker exec -it mcp-writing-system \
-  psql -h mcp-writing-db -U writer -d mcp_writing_db
+docker exec -it mcp-writing-servers \
+  node -e "const pg = require('pg'); const client = new pg.Client(process.env.DATABASE_URL); client.connect().then(() => console.log('Connected')).catch(err => console.error(err));"
 ```
 
 ### Issue: Servers Not Starting
 
 **Solution:**
-1. Check MCP_STDIO_MODE is set to "true" in mcp-config.json
-2. Verify NODE_ENV and other environment variables are exported
-3. Check individual server logs in connector output
-4. Ensure all required npm packages are installed
+1. Check container logs: `docker logs mcp-writing-servers -f`
+2. Verify NODE_ENV and other environment variables are set
+3. Ensure all required npm packages are installed in the image
 
 ## Advanced Configuration
 
-### Changing the Connector Port
+### Changing Server Ports
 
-Edit `docker/.env`:
-```bash
-MCP_CONNECTOR_PORT=8080  # Change from 50880
-```
-
-Then update TypingMind settings to use the new port.
+Edit the Dockerfile `EXPOSE` directive and update the port mappings in your `docker run` command.
 
 ### Running Individual Servers
 
@@ -215,86 +173,77 @@ For testing or debugging, you can run individual servers:
 
 ```bash
 # Run book-planning server standalone
-docker exec -it mcp-writing-system \
+docker exec -it mcp-writing-servers \
   node /app/src/config-mcps/book-planning-server/index.js
 ```
 
 ### Viewing Server Tools
 
-Each MCP server exposes different tools. To see available tools:
-
-```bash
-# Get server info (when running in HTTP mode)
-curl http://localhost:50880/clients
-```
+Each MCP server exposes different tools. To see available tools, connect to the server via TypingMind and check the available functions.
 
 ## Architecture Details
 
 ### Process Management
 
-The @typingmind/mcp-connector:
-- Spawns each MCP server as a child process
-- Manages stdin/stdout communication
-- Handles server lifecycle (start, stop, restart)
-- Routes tool calls to the correct server
-- Aggregates responses back to TypingMind
+The HTTP/SSE server (`src/http-sse-server.js`):
+- Runs multiple Express instances, one per port
+- Each instance handles SSE connections for one MCP server
+- Manages SSE session lifecycle (connect, message, disconnect)
+- Routes tool calls to the correct MCP server instance
+- Streams responses back to TypingMind via SSE
 
-### Environment Variable Inheritance
+### Environment Variable Usage
 
-All spawned MCP processes inherit these environment variables:
-- `DATABASE_URL`
-- `POSTGRES_HOST`
-- `POSTGRES_PORT`
-- `POSTGRES_DB`
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
-- `NODE_ENV`
-- `MCP_STDIO_MODE` (set to "true")
+All MCP server processes use these environment variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `POSTGRES_HOST` - Database host
+- `POSTGRES_PORT` - Database port
+- `POSTGRES_DB` - Database name
+- `POSTGRES_USER` - Database user
+- `POSTGRES_PASSWORD` - Database password
+- `NODE_ENV` - Environment (production/development)
 
 ### Network Architecture
 
 ```
 Host Network (localhost)
     ↓
-Port 50880 → MCP Connector Container
+Ports 3001-3009 → Docker Container
     ↓
-Internal Processes → 9 MCP Servers (stdio)
+Express Servers (one per port)
     ↓
-Docker Network (mcp-network)
+MCP Server Instances (one per server)
     ↓
-PostgreSQL Container (port 5432)
+PostgreSQL Database (external or Docker)
 ```
 
 ## Security Considerations
 
-1. **Authentication Token**: Keep your MCP_AUTH_TOKEN secure and never commit it to git
-2. **Network Exposure**: Only expose port 50880 if needed; consider using reverse proxy
-3. **Database Password**: Use strong passwords and rotate regularly
-4. **Container Isolation**: All MCP servers run in the same container and share resources
-5. **Environment Variables**: Sensitive data is passed via environment variables, not config files
+1. **Port Exposure**: Only expose ports 3001-3009 if needed; consider using reverse proxy
+2. **Database Password**: Use strong passwords and rotate regularly
+3. **Container Isolation**: Run with appropriate user permissions
+4. **Environment Variables**: Sensitive data is passed via environment variables, not committed to git
+5. **Firewall Rules**: Configure firewall to restrict access to necessary ports only
 
 ## Performance Optimization
 
 ### Resource Limits
 
-Add to docker-compose.connector-config.yml:
+Add resource limits when running the container:
 
-```yaml
-services:
-  mcp-writing-system:
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 4G
-        reservations:
-          cpus: '1.0'
-          memory: 2G
+```bash
+docker run -d \
+  --name mcp-writing-servers \
+  --env-file .env \
+  --memory="4g" \
+  --cpus="2.0" \
+  -p 3001-3009:3001-3009 \
+  mcp-writing-servers
 ```
 
 ### Database Connection Pooling
 
-Each MCP server uses a shared DatabaseManager that implements connection pooling. The pool configuration can be adjusted in `src/shared/database.js`.
+Each MCP server uses a shared DatabaseManager that implements connection pooling. The pool configuration is in `src/shared/database.js`.
 
 ## Updating Servers
 
@@ -302,72 +251,54 @@ When you update MCP server code:
 
 1. Rebuild the Docker image:
 ```bash
-cd docker
-docker-compose -f docker-compose.connector-config.yml build
+docker build -t mcp-writing-servers .
 ```
 
-2. Restart the container:
+2. Stop and remove the old container:
 ```bash
-docker-compose -f docker-compose.connector-config.yml up -d
+docker stop mcp-writing-servers
+docker rm mcp-writing-servers
 ```
 
-3. Verify servers reloaded:
+3. Start the new container:
 ```bash
-docker logs mcp-writing-system
+docker run -d \
+  --name mcp-writing-servers \
+  --env-file .env \
+  -p 3001-3009:3001-3009 \
+  mcp-writing-servers
+```
+
+4. Verify servers reloaded:
+```bash
+docker logs mcp-writing-servers -f
 ```
 
 ## Development vs Production
 
 ### Development Setup
 
-For local development, you might want to:
-- Mount source code as a volume for live reloading
-- Enable debug logging
-- Run individual servers in HTTP mode for easier testing
+For local development:
+- Use `npm run dev` for hot-reloading
+- Enable debug logging by setting `NODE_ENV=development`
+- Run individual servers for easier testing
+- Connect directly without Docker
 
 ### Production Setup
 
 For production:
-- Use the config-based connector (this setup)
+- Use Docker container (this setup)
 - Enable resource limits
-- Use Docker secrets for sensitive data
+- Use Docker secrets or env files for sensitive data
 - Set up monitoring and logging
 - Configure automated backups for PostgreSQL
-
-## Migration from HTTP/SSE Architecture
-
-If you were previously using the HTTP/SSE server architecture (http-sse-server.js):
-
-### Old Architecture:
-```
-TypingMind → Connector → HTTP/SSE Server → MCP Servers → Database
-```
-
-### New Architecture:
-```
-TypingMind → Connector → MCP Servers (stdio) → Database
-```
-
-### Benefits of New Architecture:
-- ✅ Auto-discovery in TypingMind (servers appear as plugins)
-- ✅ Simpler deployment (no intermediate HTTP server)
-- ✅ Better process management (connector handles lifecycle)
-- ✅ More efficient (direct stdio communication)
-- ✅ Easier debugging (clear process boundaries)
-
-### Migration Steps:
-1. Stop old containers
-2. Update to new docker-compose.connector-config.yml
-3. Update .env with MCP_AUTH_TOKEN
-4. Start new stack
-5. Reconfigure TypingMind connection
+- Use reverse proxy (nginx/traefik) for SSL termination
 
 ## Support
 
 For issues or questions:
 - Check troubleshooting section above
-- Review connector logs: `docker logs mcp-writing-system`
-- Review database logs: `docker logs mcp-writing-db`
+- Review server logs: `docker logs mcp-writing-servers`
 - Check GitHub issues: https://github.com/RLRyals/MCP-Writing-Servers
 
 ## License
