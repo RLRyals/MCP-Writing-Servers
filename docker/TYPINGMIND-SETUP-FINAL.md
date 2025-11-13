@@ -13,7 +13,7 @@ TypingMind (Web) → @typingmind/mcp Connector → HTTP/SSE Server → MCP Serve
 **Key Points:**
 - ✅ TypingMind connects to the connector at `localhost:50880`
 - ✅ Connector uses HTTP/SSE to communicate with MCP servers (NOT stdio)
-- ✅ Each MCP server has an SSE endpoint at `localhost:3000/<server-name>`
+- ✅ Each MCP server has an SSE endpoint at `localhost:3001/<server-name>`
 - ✅ Configure servers in TypingMind with **URLs** (not commands)
 
 ---
@@ -44,11 +44,11 @@ docker logs mcp-writing-system -f
 🚀 Starting MCP Connector...
    Port: 50880
    Auth Token: abc12345****
-   HTTP/SSE Backend: http://localhost:3000
+   HTTP/SSE Backend: http://localhost:3001
 
 ℹ️  Configure servers in TypingMind UI with URLs like:
-   http://localhost:3000/book-planning
-   http://localhost:3000/series-planning
+   http://localhost:3001/book-planning
+   http://localhost:3001/series-planning
 ```
 
 ---
@@ -76,7 +76,7 @@ After connecting to the connector, configure each MCP server using **URL format*
 #### Important Notes
 
 - **Use URLs, not commands!** This is HTTP/SSE mode, not stdio mode
-- **URLs are internal to Docker:** Use `http://localhost:3000/<server-name>`
+- **URLs are internal to Docker:** Use `http://localhost:3001/<server-name>`
 - **No DATABASE_URL needed** - servers inherit connection from Docker environment
 - **No MCP_STDIO_MODE** - servers run in HTTP/SSE mode automatically
 
@@ -92,7 +92,7 @@ Copy these configurations into TypingMind's MCP server settings:
 ```json
 {
   "book-planning": {
-    "url": "http://localhost:3000/book-planning"
+    "url": "http://localhost:3001/book-planning"
   }
 }
 ```
@@ -101,7 +101,7 @@ Copy these configurations into TypingMind's MCP server settings:
 ```json
 {
   "series-planning": {
-    "url": "http://localhost:3000/series-planning"
+    "url": "http://localhost:3001/series-planning"
   }
 }
 ```
@@ -110,7 +110,7 @@ Copy these configurations into TypingMind's MCP server settings:
 ```json
 {
   "chapter-planning": {
-    "url": "http://localhost:3000/chapter-planning"
+    "url": "http://localhost:3001/chapter-planning"
   }
 }
 ```
@@ -119,7 +119,7 @@ Copy these configurations into TypingMind's MCP server settings:
 ```json
 {
   "character-planning": {
-    "url": "http://localhost:3000/character-planning"
+    "url": "http://localhost:3001/character-planning"
   }
 }
 ```
@@ -128,7 +128,7 @@ Copy these configurations into TypingMind's MCP server settings:
 ```json
 {
   "scene": {
-    "url": "http://localhost:3000/scene"
+    "url": "http://localhost:3001/scene"
   }
 }
 ```
@@ -137,7 +137,7 @@ Copy these configurations into TypingMind's MCP server settings:
 ```json
 {
   "core-continuity": {
-    "url": "http://localhost:3000/core-continuity"
+    "url": "http://localhost:3001/core-continuity"
   }
 }
 ```
@@ -146,7 +146,7 @@ Copy these configurations into TypingMind's MCP server settings:
 ```json
 {
   "review": {
-    "url": "http://localhost:3000/review"
+    "url": "http://localhost:3001/review"
   }
 }
 ```
@@ -155,7 +155,7 @@ Copy these configurations into TypingMind's MCP server settings:
 ```json
 {
   "reporting": {
-    "url": "http://localhost:3000/reporting"
+    "url": "http://localhost:3001/reporting"
   }
 }
 ```
@@ -170,28 +170,28 @@ If TypingMind allows pasting all servers at once:
 {
   "mcpServers": {
     "book-planning": {
-      "url": "http://localhost:3000/book-planning"
+      "url": "http://localhost:3001/book-planning"
     },
     "series-planning": {
-      "url": "http://localhost:3000/series-planning"
+      "url": "http://localhost:3001/series-planning"
     },
     "chapter-planning": {
-      "url": "http://localhost:3000/chapter-planning"
+      "url": "http://localhost:3001/chapter-planning"
     },
     "character-planning": {
-      "url": "http://localhost:3000/character-planning"
+      "url": "http://localhost:3001/character-planning"
     },
     "scene": {
-      "url": "http://localhost:3000/scene"
+      "url": "http://localhost:3001/scene"
     },
     "core-continuity": {
-      "url": "http://localhost:3000/core-continuity"
+      "url": "http://localhost:3001/core-continuity"
     },
     "review": {
-      "url": "http://localhost:3000/review"
+      "url": "http://localhost:3001/review"
     },
     "reporting": {
-      "url": "http://localhost:3000/reporting"
+      "url": "http://localhost:3001/reporting"
     }
   }
 }
@@ -207,7 +207,7 @@ From your host machine:
 
 ```bash
 # Test the HTTP/SSE server directly (inside Docker)
-docker exec mcp-writing-system curl http://localhost:3000/health
+docker exec mcp-writing-system curl http://localhost:3001/health
 
 # Should return:
 # {"status":"healthy","serverCount":8,"timestamp":"..."}
@@ -216,7 +216,7 @@ docker exec mcp-writing-system curl http://localhost:3000/health
 ### Test 2: List All Available Servers
 
 ```bash
-docker exec mcp-writing-system curl http://localhost:3000/
+docker exec mcp-writing-system curl http://localhost:3001/
 
 # Returns JSON with all available servers and their endpoints
 ```
@@ -224,7 +224,7 @@ docker exec mcp-writing-system curl http://localhost:3000/
 ### Test 3: Check a Specific Server's Tools
 
 ```bash
-docker exec mcp-writing-system curl http://localhost:3000/book-planning/info
+docker exec mcp-writing-system curl http://localhost:3001/book-planning/info
 
 # Returns:
 # {
@@ -250,7 +250,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:50880/clients
 
 ```bash
 # Test SSE endpoint (will stream events)
-docker exec mcp-writing-system curl -N http://localhost:3000/book-planning
+docker exec mcp-writing-system curl -N http://localhost:3001/book-planning
 ```
 
 ---
@@ -341,13 +341,13 @@ curl http://localhost:50880/health
 
 **Verify HTTP/SSE server is running:**
 ```bash
-docker exec mcp-writing-system curl http://localhost:3000/
+docker exec mcp-writing-system curl http://localhost:3001/
 # Should list all 8 servers
 ```
 
 **Check specific server:**
 ```bash
-docker exec mcp-writing-system curl http://localhost:3000/book-planning/info
+docker exec mcp-writing-system curl http://localhost:3001/book-planning/info
 # Should show server info and tools
 ```
 
@@ -454,7 +454,7 @@ openssl rand -hex 32
 
 1. ✅ Start Docker: `docker-compose -f docker-compose.connector-http-sse.yml up -d`
 2. ✅ Connect TypingMind to connector: `http://localhost:50880` with your auth token
-3. ✅ Configure servers in TypingMind with **URLs**: `http://localhost:3000/<server-name>`
+3. ✅ Configure servers in TypingMind with **URLs**: `http://localhost:3001/<server-name>`
 4. ✅ Start using your MCP writing tools!
 
 ---
@@ -473,7 +473,7 @@ If you encounter issues:
 
 1. Check Docker logs: `docker logs mcp-writing-system -f`
 2. Check database: `docker logs mcp-writing-db`
-3. Test HTTP/SSE endpoints: `docker exec mcp-writing-system curl http://localhost:3000/`
+3. Test HTTP/SSE endpoints: `docker exec mcp-writing-system curl http://localhost:3001/`
 4. Test connector: `curl http://localhost:50880/health`
 5. Verify environment variables in `.env`
 
