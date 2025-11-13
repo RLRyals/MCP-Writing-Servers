@@ -14,9 +14,9 @@
         "MCP_STDIO_MODE": "true"
       }
     },
-    "charater-planning-server": {
+    "character-planning-server": {
       "command": "node",
-      "args": ["/app/src/config-mcps/charater-planning-server/index.js"],
+      "args": ["/app/src/config-mcps/character-planning-server/index.js"],
       "env": {
         "MCP_STDIO_MODE": "true"
       }

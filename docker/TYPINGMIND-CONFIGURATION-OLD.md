@@ -74,7 +74,7 @@ Copy and paste these configurations into TypingMind's MCP server settings:
 {
   "character-planning": {
     "command": "node",
-    "args": ["/app/src/config-mcps/charater-planning-server/index.js"],
+    "args": ["/app/src/config-mcps/character-planning-server/index.js"],
     "env": {
       "MCP_STDIO_MODE": "true",
       "DATABASE_URL": "postgresql://writer:your_secure_password2025@mcp-writing-db:5432/mcp_writing_db",
@@ -182,7 +182,7 @@ If TypingMind allows pasting multiple servers at once, use this combined configu
     },
     "character-planning": {
       "command": "node",
-      "args": ["/app/src/config-mcps/charater-planning-server/index.js"],
+      "args": ["/app/src/config-mcps/character-planning-server/index.js"],
       "env": {
         "MCP_STDIO_MODE": "true",
         "DATABASE_URL": "postgresql://writer:your_secure_password2025@mcp-writing-db:5432/mcp_writing_db",
