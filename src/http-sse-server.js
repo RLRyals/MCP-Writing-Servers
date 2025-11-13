@@ -22,12 +22,12 @@ async function loadServers() {
         { name: 'book-planning', port: 3001, path: './config-mcps/book-planning-server/index.js', className: 'BookPlanningMCPServer' },
         { name: 'series-planning', port: 3002, path: './config-mcps/series-planning-server/index.js', className: 'SeriesPlanningMCPServer' },
         { name: 'chapter-planning', port: 3003, path: './config-mcps/chapter-planning-server/index.js', className: 'ChapterPlanningMCPServer' },
-        { name: 'character-planning', port: 3004, path: './config-mcps/charater-planning-server/index.js', className: 'CharacterPlanningMCPServer' },
+        { name: 'character-planning', port: 3004, path: './config-mcps/character-planning-server/index.js', className: 'CharacterPlanningMCPServer' },
         { name: 'scene', port: 3005, path: './config-mcps/scene-server/index.js', className: 'SceneWritingMCPServer' },
         { name: 'core-continuity', port: 3006, path: './config-mcps/core-continuity-server/index.js', className: 'CoreContinuityMCPServer' },
         { name: 'review', port: 3007, path: './config-mcps/review-server/index.js', className: 'ReviewMCPServer' },
         { name: 'reporting', port: 3008, path: './config-mcps/reporting-server/index.js', className: 'ReportingMCPServer' },
-        { name: 'author', port: 3009, path: './mcps/author-server/index.js', className: 'AuthorMCPServer' }
+        { name: 'author', port: 3009, path: './config-mcps/author-server/index.js', className: 'AuthorMCPServer' }
     ];
 
     console.error('\n🔄 Loading MCP servers...\n');
