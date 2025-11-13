@@ -1,28 +1,28 @@
 {
   "mcpServers": {
     "book-planning": {
-      "url": "http://localhost:3000/book-planning"
+      "url": "http://localhost:3001/book-planning"
     },
     "series-planning": {
-      "url": "http://localhost:3000/series-planning"
+      "url": "http://localhost:3001/series-planning"
     },
     "chapter-planning": {
-      "url": "http://localhost:3000/chapter-planning"
+      "url": "http://localhost:3001/chapter-planning"
     },
     "character-planning": {
-      "url": "http://localhost:3000/character-planning"
+      "url": "http://localhost:3001/character-planning"
     },
     "scene": {
-      "url": "http://localhost:3000/scene"
+      "url": "http://localhost:3001/scene"
     },
     "core-continuity": {
-      "url": "http://localhost:3000/core-continuity"
+      "url": "http://localhost:3001/core-continuity"
     },
     "review": {
-      "url": "http://localhost:3000/review"
+      "url": "http://localhost:3001/review"
     },
     "reporting": {
-      "url": "http://localhost:3000/reporting"
+      "url": "http://localhost:3001/reporting"
     }
   }
 }
