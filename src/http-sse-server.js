@@ -61,7 +61,7 @@ async function loadServers() {
 
     try {
         // Character Planning Server
-        const { CharacterPlanningMCPServer } = await import('./config-mcps/charater-planning-server/index.js');
+        const { CharacterPlanningMCPServer } = await import('./config-mcps/character-planning-server/index.js');
         servers.push({
             name: 'character-planning',
             path: '/character-planning',
