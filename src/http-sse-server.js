@@ -97,11 +97,11 @@ async function loadServers() {
 
     try {
         // Scene Server
-        const { SceneMCPServer } = await import('./config-mcps/scene-server/index.js');
+        const { SceneWritingMCPServer } = await import('./config-mcps/scene-server/index.js');
         servers.push({
             name: 'scene',
             path: '/scene',
-            serverClass: SceneMCPServer,
+            serverClass: SceneWritingMCPServer,
             port: 3005
         });
         console.error('✓ Scene Server loaded');
@@ -203,29 +203,32 @@ function createServerEndpoint(serverConfig) {
         }
     });
 
-    // POST endpoint for SSE message handling (requires sessionId in body or query)
-    app.post('/', express.json(), async (req, res) => {
-        const sessionId = req.body.sessionId || req.query.sessionId;
+    // POST endpoint for SSE message handling - matches the session-specific path
+    // The SSEServerTransport creates POST endpoint at /<sessionId>
+    app.post('/:sessionId', express.json(), async (req, res) => {
+        const sessionId = req.params.sessionId;
 
-        if (!sessionId) {
-            return res.status(400).json({
-                error: 'Missing sessionId',
-                message: 'sessionId required in request body or query parameters'
-            });
+        console.error(`[${name}] Received POST request for session: ${sessionId}`);
+
+        try {
+            const session = activeTransports.get(sessionId);
+            if (!session) {
+                console.error(`[${name}] No active session found for: ${sessionId}`);
+                return res.status(404).json({
+                    error: 'Session not found',
+                    message: `No active session with id: ${sessionId}`
+                });
+            }
+
+            // Let the transport handle the incoming message
+            await session.transport.handlePostMessage(req, res, req.body);
+
+        } catch (error) {
+            console.error(`[${name}] Error handling POST:`, error);
+            if (!res.headersSent) {
+                res.status(500).json({ error: error.message });
+            }
         }
-
-        const session = activeTransports.get(sessionId);
-        if (!session) {
-            return res.status(404).json({
-                error: 'Session not found',
-                message: `No active session with id: ${sessionId}`
-            });
-        }
-
-        console.error(`[${name}] Received POST request - Session: ${sessionId}`);
-
-        // The SSE transport handles the message automatically
-        res.status(200).json({ status: 'ok', sessionId });
     });
 
     // Health check endpoint
