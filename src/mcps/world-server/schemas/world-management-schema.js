@@ -14,11 +14,11 @@ export const worldManagementSchemas = [
                 },
                 check_type: {
                     type: 'string',
-                    description: 'Check type: all, locations, elements, organizations, relationships'
+                    description: 'Check type: all, locations, elements, organizations, relationships?'
                 },
                 severity_threshold: {
                     type: 'string',
-                    description: 'Min severity: info, warning, error'
+                    description: 'Min severity: info, warning, error?'
                 }
             },
             required: ['series_id']
@@ -36,15 +36,15 @@ export const worldManagementSchemas = [
                 },
                 guide_type: {
                     type: 'string',
-                    description: 'Guide type: complete, locations_only, elements_only, organizations_only, summary'
+                    description: 'Guide type: complete, locations_only, elements_only, organizations_only, summary?'
                 },
                 include_usage_stats: {
                     type: 'boolean',
-                    description: 'Include usage stats'
+                    description: 'Include usage stats?'
                 },
                 format: {
                     type: 'string',
-                    description: 'Format: text, structured, reference_sheet'
+                    description: 'Format: text, structured, reference_sheet?'
                 }
             },
             required: ['series_id']
@@ -62,7 +62,7 @@ export const worldManagementSchemas = [
                 },
                 analysis_focus: {
                     type: 'string',
-                    description: 'Focus: overall, power_structures, magic_systems, geography, relationships'
+                    description: 'Focus: overall, power_structures, magic_systems, geography, relationships?'
                 }
             },
             required: ['series_id']
@@ -80,7 +80,7 @@ export const worldManagementSchemas = [
                 },
                 gap_type: {
                     type: 'string',
-                    description: 'Gap type: unused_locations, weak_organizations, underused_elements, missing_connections'
+                    description: 'Gap type: unused_locations, weak_organizations, underused_elements, missing_connections?'
                 }
             },
             required: ['series_id']
@@ -98,7 +98,7 @@ export const worldManagementSchemas = [
                 },
                 relationship_type: {
                     type: 'string',
-                    description: 'Type: all, location_hierarchies, org_alliances, element_interactions'
+                    description: 'Type: all, location_hierarchies, org_alliances, element_interactions?'
                 }
             },
             required: ['series_id']
@@ -116,7 +116,7 @@ export const worldManagementSchemas = [
                 },
                 include_stats: {
                     type: 'boolean',
-                    description: 'Include stats',
+                    description: 'Include stats?',
                     default: true
                 }
             },
@@ -135,7 +135,7 @@ export const worldManagementSchemas = [
                 },
                 element_type: {
                     type: 'string',
-                    description: 'Element type: location, world_element, organization, all',
+                    description: 'Element type: location, world_element, organization, all?',
                     default: 'all'
                 }
             },

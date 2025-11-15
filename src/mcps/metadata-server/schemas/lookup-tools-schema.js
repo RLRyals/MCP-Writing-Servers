@@ -15,12 +15,12 @@ export const lookupSystemToolsSchema = [
                 },
                 genre_filter: {
                     type: 'string',
-                    description: 'Genre name filter'
+                    description: 'Genre name filter?'
                 },
                 active_only: {
                     type: 'boolean',
                     default: true,
-                    description: 'Active options only'
+                    description: 'Active options only?'
                 }
             },
             required: ['option_type']
@@ -48,7 +48,7 @@ export const lookupSystemToolsSchema = [
                 is_active: {
                     type: 'boolean',
                     default: true,
-                    description: 'Active immediately'
+                    description: 'Active immediately?'
                 }
             },
             required: ['option_type', 'name', 'description']
@@ -71,15 +71,15 @@ export const lookupSystemToolsSchema = [
                 },
                 name: {
                     type: 'string',
-                    description: 'Updated name'
+                    description: 'Updated name?'
                 },
                 description: {
                     type: 'string',
-                    description: 'Updated description'
+                    description: 'Updated description?'
                 },
                 is_active: {
                     type: 'boolean',
-                    description: 'Active status'
+                    description: 'Active status?'
                 }
             },
             required: ['option_type', 'option_id']
@@ -103,7 +103,7 @@ export const lookupSystemToolsSchema = [
                 permanent: {
                     type: 'boolean',
                     default: false,
-                    description: 'True=permanent delete (caution), false=soft delete'
+                    description: 'True=permanent delete (caution), false=soft delete?'
                 }
             },
             required: ['option_type', 'option_id']

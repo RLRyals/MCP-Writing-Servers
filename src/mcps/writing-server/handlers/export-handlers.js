@@ -21,23 +21,23 @@ export class ExportHandlers {
                             type: 'string',
                             enum: ['txt', 'md', 'rtf', 'standard_manuscript'],
                             default: 'txt',
-                            description: 'Export format'
+                            description: 'Export format?'
                         },
                         include_metadata: {
                             type: 'boolean',
                             default: true,
-                            description: 'Include metadata'
+                            description: 'Include metadata?'
                         },
                         chapters_to_include: {
                             type: 'array',
                             items: { type: 'integer' },
-                            description: 'Chapter IDs (all if omitted)'
+                            description: 'Chapter IDs (all if omitted)?'
                         },
                         export_purpose: {
                             type: 'string',
                             enum: ['submission', 'beta_review', 'backup', 'publication'],
                             default: 'backup',
-                            description: 'Export purpose'
+                            description: 'Export purpose?'
                         }
                     },
                     required: ['book_id']
@@ -57,17 +57,17 @@ export class ExportHandlers {
                             type: 'string',
                             enum: ['book', 'chapter', 'scene', 'detailed'],
                             default: 'chapter',
-                            description: 'Detail level'
+                            description: 'Detail level?'
                         },
                         include_history: {
                             type: 'boolean',
                             default: false,
-                            description: 'Include history'
+                            description: 'Include history?'
                         },
                         calculate_targets: {
                             type: 'boolean',
                             default: true,
-                            description: 'Calc vs targets'
+                            description: 'Calc vs targets?'
                         }
                     },
                     required: ['book_id']

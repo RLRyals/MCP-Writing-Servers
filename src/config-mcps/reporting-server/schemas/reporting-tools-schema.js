@@ -10,23 +10,23 @@ export const reportingToolsSchema = [
             properties: {
                 series_id: {
                     type: 'integer',
-                    description: 'The ID of the series to generate report for'
+                    description: 'The ID of the series to generate report for?'
                 },
                 book_id: {
                     type: 'integer',
-                    description: 'The ID of the book to generate report for'
+                    description: 'The ID of the book to generate report for?'
                 },
                 series_name: {
                     type: 'string',
-                    description: 'The name of the series to generate report for (will search for matching series)'
+                    description: 'The name of the series to generate report for (will search for matching series)?'
                 },
                 book_name: {
                     type: 'string',
-                    description: 'The name of the book to generate report for (will search for matching book)'
+                    description: 'The name of the book to generate report for (will search for matching book)?'
                 },
                 include_sections: {
                     type: 'array',
-                    description: 'Optional: Specific sections to include. If not provided, includes all sections.',
+                    description: 'Optional: Specific sections to include. If not provided, includes all sections?',
                     items: {
                         type: 'string',
                         enum: [

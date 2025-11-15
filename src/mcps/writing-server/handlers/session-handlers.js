@@ -20,7 +20,7 @@ export class SessionHandlers {
                         chapter_ids: {
                             type: 'array',
                             items: { type: 'integer' },
-                            description: 'Chapter IDs worked on'
+                            description: 'Chapter IDs worked on?'
                         },
                         session_date: {
                             type: 'string',
@@ -28,11 +28,11 @@ export class SessionHandlers {
                         },
                         start_time: {
                             type: 'string',
-                            description: 'Start (HH:MM)'
+                            description: 'Start (HH:MM)?'
                         },
                         end_time: {
                             type: 'string',
-                            description: 'End (HH:MM)'
+                            description: 'End (HH:MM)?'
                         },
                         words_written: {
                             type: 'integer',
@@ -40,18 +40,18 @@ export class SessionHandlers {
                         },
                         words_edited: {
                             type: 'integer',
-                            description: 'Edited words',
+                            description: 'Edited words?',
                             default: 0
                         },
                         session_notes: {
                             type: 'string',
-                            description: 'Session notes'
+                            description: 'Session notes?'
                         },
                         mood_rating: {
                             type: 'integer',
                             minimum: 1,
                             maximum: 10,
-                            description: 'Mood/energy (1-10)'
+                            description: 'Mood/energy (1-10)?'
                         }
                     },
                     required: ['book_id', 'session_date', 'words_written']
@@ -71,12 +71,12 @@ export class SessionHandlers {
                             type: 'string',
                             enum: ['week', 'month', 'quarter', 'all_time'],
                             default: 'month',
-                            description: 'Time period'
+                            description: 'Time period?'
                         },
                         include_analytics: {
                             type: 'boolean',
                             default: true,
-                            description: 'Include details'
+                            description: 'Include details?'
                         }
                     },
                     required: ['book_id']
@@ -107,7 +107,7 @@ export class SessionHandlers {
                         },
                         description: {
                             type: 'string',
-                            description: 'Goal description'
+                            description: 'Goal description?'
                         }
                     },
                     required: ['book_id', 'goal_type', 'target_value', 'target_date']
@@ -127,7 +127,7 @@ export class SessionHandlers {
                             type: 'string',
                             enum: ['daily_patterns', 'weekly_trends', 'goal_progress', 'productivity_factors'],
                             default: 'daily_patterns',
-                            description: 'Analysis type'
+                            description: 'Analysis type?'
                         },
                         date_range: {
                             type: 'object',
@@ -135,7 +135,7 @@ export class SessionHandlers {
                                 start_date: { type: 'string' },
                                 end_date: { type: 'string' }
                             },
-                            description: 'Date range'
+                            description: 'Date range?'
                         }
                     },
                     required: ['book_id']
