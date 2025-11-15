@@ -19,10 +19,10 @@ export const seriesToolsSchema = [
             properties: {
                 title: { type: 'string', description: 'Title' },
                 author_id: { type: 'integer', description: 'Author ID' },
-                description: { type: 'string', description: 'Description' },
-                genre_ids: { type: 'array', items: { type: 'integer' }, description: 'Genre IDs' },
-                start_year: { type: 'integer', description: 'Start year' },
-                status: { type: 'string', enum: ['ongoing', 'completed', 'hiatus'], description: 'Status' }
+                description: { type: 'string', description: 'Description?' },
+                genre_ids: { type: 'array', items: { type: 'integer' }, description: 'Genre IDs?' },
+                start_year: { type: 'integer', description: 'Start year?' },
+                status: { type: 'string', enum: ['ongoing', 'completed', 'hiatus'], description: 'Status?' }
             },
             required: ['title', 'author_id']
         }
@@ -45,11 +45,11 @@ export const seriesToolsSchema = [
             type: 'object',
             properties: {
                 series_id: { type: 'integer', description: 'Series ID' },
-                title: { type: 'string', description: 'Title' },
-                description: { type: 'string', description: 'Description' },
-                genre_ids: { type: 'array', items: { type: 'integer' }, description: 'Genre IDs (replaces all)' },
-                start_year: { type: 'integer', description: 'Start year' },
-                status: { type: 'string', enum: ['ongoing', 'completed', 'hiatus'], description: 'Status' }
+                title: { type: 'string', description: 'Title?' },
+                description: { type: 'string', description: 'Description?' },
+                genre_ids: { type: 'array', items: { type: 'integer' }, description: 'Genre IDs (replaces all)?' },
+                start_year: { type: 'integer', description: 'Start year?' },
+                status: { type: 'string', enum: ['ongoing', 'completed', 'hiatus'], description: 'Status?' }
             },
             required: ['series_id']
         }

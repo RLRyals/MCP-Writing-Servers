@@ -20,7 +20,7 @@ export class RelationshipHandlers {
                         },
                         arc_name: {
                             type: 'string',
-                            description: 'Arc name'
+                            description: 'Arc name?'
                         },
                         participants: {
                             type: 'array',
@@ -36,27 +36,27 @@ export class RelationshipHandlers {
                                 },
                                 required: ['character_id', 'role_in_relationship']
                             },
-                            description: 'Characters (2+, flexible roles)'
+                            description: 'Characters (2+, flexible roles)?'
                         },
                         relationship_type: {
                             type: 'string',
                             enum: ['romantic', 'family', 'friendship', 'professional', 'antagonistic', 'mentor', 'alliance'],
-                            description: 'Relationship type'
+                            description: 'Relationship type?'
                         },
                         current_dynamic: {
                             type: 'string',
-                            description: 'Current dynamic/stage'
+                            description: 'Current dynamic/stage?'
                         },
                         development_factors: {
                             type: 'array',
                             items: { type: 'string' },
-                            description: 'Development drivers'
+                            description: 'Development drivers?'
                         },
                         complexity_level: {
                             type: 'integer',
                             minimum: 1,
                             maximum: 10,
-                            description: 'Complexity (1-10)'
+                            description: 'Complexity (1-10)?'
                         }
                     },
                     required: ['plot_thread_id', 'arc_name', 'participants', 'relationship_type']
@@ -74,7 +74,7 @@ export class RelationshipHandlers {
                         },
                         arc_name: {
                             type: 'string',
-                            description: 'Arc name'
+                            description: 'Arc name?'
                         },
                         participants: {
                             type: 'array',
@@ -90,27 +90,27 @@ export class RelationshipHandlers {
                                 },
                                 required: ['character_id', 'role_in_relationship']
                             },
-                            description: 'Characters (2+, flexible roles)'
+                            description: 'Characters (2+, flexible roles)?'
                         },
                         relationship_type: {
                             type: 'string',
                             enum: ['romantic', 'family', 'friendship', 'professional', 'antagonistic', 'mentor', 'alliance'],
-                            description: 'Relationship type'
+                            description: 'Relationship type?'
                         },
                         current_dynamic: {
                             type: 'string',
-                            description: 'Current dynamic/stage'
+                            description: 'Current dynamic/stage?'
                         },
                         development_factors: {
                             type: 'array',
                             items: { type: 'string' },
-                            description: 'Development drivers'
+                            description: 'Development drivers?'
                         },
                         complexity_level: {
                             type: 'integer',
                             minimum: 1,
                             maximum: 10,
-                            description: 'Complexity (1-10)'
+                            description: 'Complexity (1-10)?'
                         }
                     },
                     required: ['arc_id']
@@ -128,11 +128,11 @@ export class RelationshipHandlers {
                         },
                         chapter_id: {
                             type: 'integer',
-                            description: 'Chapter ID'
+                            description: 'Chapter ID?'
                         },
                         scene_id: {
                             type: 'integer',
-                            description: 'Scene ID'
+                            description: 'Scene ID?'
                         },
                         dynamic_change: {
                             type: 'string',
@@ -142,7 +142,7 @@ export class RelationshipHandlers {
                             type: 'integer',
                             minimum: -10,
                             maximum: 10,
-                            description: 'Tension change (-10 to +10)'
+                            description: 'Tension change (-10 to +10)?'
                         },
                         change_type: {
                             type: 'string',
@@ -151,7 +151,7 @@ export class RelationshipHandlers {
                         },
                         trigger_event: {
                             type: 'string',
-                            description: 'Change trigger'
+                            description: 'Change trigger?'
                         }
                     },
                     required: ['arc_id', 'dynamic_change', 'change_type']
@@ -179,12 +179,12 @@ export class RelationshipHandlers {
                     properties: {
                         plot_thread_id: {
                             type: 'integer',
-                            description: 'Plot thread filter'
+                            description: 'Plot thread filter?'
                         },
                         relationship_type: {
                             type: 'string',
                             enum: ['romantic', 'family', 'friendship', 'professional', 'antagonistic', 'mentor', 'alliance'],
-                            description: 'Type filter'
+                            description: 'Type filter?'
                         }
                     }
                 }

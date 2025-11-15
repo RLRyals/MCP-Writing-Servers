@@ -14,17 +14,17 @@ export const bookToolsSchema = [
             properties: {
                 series_id: {
                     type: 'integer',
-                    description: 'Series ID filter'
+                    description: 'Series ID filter?'
                 },
                 status: {
                     type: 'string',
                     enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published'],
-                    description: 'Status filter'
+                    description: 'Status filter?'
                 },
                 include_stats: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include stats'
+                    description: 'Include stats?'
                 }
             },
             required: []
@@ -43,7 +43,7 @@ export const bookToolsSchema = [
                 include_chapters: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include chapters'
+                    description: 'Include chapters?'
                 }
             },
             required: ['book_id']
@@ -71,41 +71,41 @@ export const bookToolsSchema = [
                     type: 'string',
                     enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published'],
                     default: 'planned',
-                    description: 'Status'
+                    description: 'Status?'
                 },
                 target_word_count: {
                     type: 'integer',
-                    description: 'Target word count'
+                    description: 'Target word count?'
                 },
                 actual_word_count: {
                     type: 'integer',
                     default: 0,
-                    description: 'Current word count'
+                    description: 'Current word count?'
                 },
                 publication_year: {
                     type: 'integer',
-                    description: 'Pub year'
+                    description: 'Pub year?'
                 },
                 description: {
                     type: 'string',
-                    description: 'Description'
+                    description: 'Description?'
                 },
                 isbn: {
                     type: 'string',
-                    description: 'ISBN'
+                    description: 'ISBN?'
                 },
                 page_count: {
                     type: 'integer',
-                    description: 'Pages'
+                    description: 'Pages?'
                 },
                 cover_image_url: {
                     type: 'string',
-                    description: 'Cover URL'
+                    description: 'Cover URL?'
                 },
                 genre_names: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Genre names'
+                    description: 'Genre names?'
                 }
             },
             required: ['title', 'series_id', 'book_number']
@@ -123,49 +123,49 @@ export const bookToolsSchema = [
                 },
                 title: {
                     type: 'string',
-                    description: 'Title'
+                    description: 'Title?'
                 },
                 book_number: {
                     type: 'integer',
-                    description: 'Series position'
+                    description: 'Series position?'
                 },
                 status: {
                     type: 'string',
                     enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published'],
-                    description: 'Status'
+                    description: 'Status?'
                 },
                 target_word_count: {
                     type: 'integer',
-                    description: 'Target word count'
+                    description: 'Target word count?'
                 },
                 actual_word_count: {
                     type: 'integer',
-                    description: 'Current word count'
+                    description: 'Current word count?'
                 },
                 publication_year: {
                     type: 'integer',
-                    description: 'Pub year'
+                    description: 'Pub year?'
                 },
                 isbn: {
                     type: 'string',
-                    description: 'ISBN'
+                    description: 'ISBN?'
                 },
                 page_count: {
                     type: 'integer',
-                    description: 'Pages'
+                    description: 'Pages?'
                 },
                 description: {
                     type: 'string',
-                    description: 'Description'
+                    description: 'Description?'
                 },
                 cover_image_url: {
                     type: 'string',
-                    description: 'Cover URL'
+                    description: 'Cover URL?'
                 },
                 genre_names: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Genre names'
+                    description: 'Genre names?'
                 }
             },
             required: ['book_id']
@@ -211,49 +211,49 @@ export const chapterToolsSchema = [
                 },
                 title: {
                     type: 'string',
-                    description: 'Title'
+                    description: 'Title?'
                 },
                 subtitle: {
                     type: 'string',
-                    description: 'Subtitle'
+                    description: 'Subtitle?'
                 },
                 summary: {
                     type: 'string',
-                    description: 'Summary'
+                    description: 'Summary?'
                 },
                 target_word_count: {
                     type: 'integer',
-                    description: 'Target word count'
+                    description: 'Target word count?'
                 },
                 status: {
                     type: 'string',
                     enum: ['planned', 'outlined', 'drafted', 'revised', 'final'],
                     default: 'planned',
-                    description: 'Writing status'
+                    description: 'Writing status?'
                 },
                 pov_character_id: {
                     type: 'integer',
-                    description: 'POV character ID'
+                    description: 'POV character ID?'
                 },
                 primary_location: {
                     type: 'string',
-                    description: 'Main setting'
+                    description: 'Main setting?'
                 },
                 story_time_start: {
                     type: 'string',
-                    description: 'Start time (e.g., "Day 1, 3pm")'
+                    description: 'Start time (e.g., "Day 1, 3pm")?'
                 },
                 story_time_end: {
                     type: 'string',
-                    description: 'End time'
+                    description: 'End time?'
                 },
                 story_duration: {
                     type: 'string',
-                    description: 'Duration (e.g., "2 hours")'
+                    description: 'Duration (e.g., "2 hours")?'
                 },
                 author_notes: {
                     type: 'string',
-                    description: 'Planning notes'
+                    description: 'Planning notes?'
                 }
             },
             required: ['book_id', 'chapter_number']
@@ -271,56 +271,56 @@ export const chapterToolsSchema = [
                 },
                 title: {
                     type: 'string',
-                    description: 'Title'
+                    description: 'Title?'
                 },
                 subtitle: {
                     type: 'string',
-                    description: 'Subtitle'
+                    description: 'Subtitle?'
                 },
                 summary: {
                     type: 'string',
-                    description: 'Summary'
+                    description: 'Summary?'
                 },
                 word_count: {
                     type: 'integer',
-                    description: 'Current word count'
+                    description: 'Current word count?'
                 },
                 target_word_count: {
                     type: 'integer',
-                    description: 'Target word count'
+                    description: 'Target word count?'
                 },
                 status: {
                     type: 'string',
                     enum: ['planned', 'outlined', 'drafted', 'revised', 'final'],
-                    description: 'Writing status'
+                    description: 'Writing status?'
                 },
                 pov_character_id: {
                     type: 'integer',
-                    description: 'POV character ID'
+                    description: 'POV character ID?'
                 },
                 primary_location: {
                     type: 'string',
-                    description: 'Main setting'
+                    description: 'Main setting?'
                 },
                 story_time_start: {
                     type: 'string',
-                    description: 'Start time'
+                    description: 'Start time?'
                 },
                 story_time_end: {
                     type: 'string',
-                    description: 'End time'
+                    description: 'End time?'
                 },
                 story_duration: {
                     type: 'string',
-                    description: 'Duration'
+                    description: 'Duration?'
                 },
                 author_notes: {
                     type: 'string',
-                    description: 'Author notes'
+                    description: 'Author notes?'
                 },
                 writing_notes: {
                     type: 'string',
-                    description: 'Writing notes'
+                    description: 'Writing notes?'
                 }
             },
             required: ['chapter_id']
@@ -339,12 +339,12 @@ export const chapterToolsSchema = [
                 include_scenes: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include scenes'
+                    description: 'Include scenes?'
                 },
                 include_characters: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include character presence'
+                    description: 'Include character presence?'
                 }
             },
             required: ['chapter_id']
@@ -363,12 +363,12 @@ export const chapterToolsSchema = [
                 status: {
                     type: 'string',
                     enum: ['planned', 'outlined', 'drafted', 'revised', 'final'],
-                    description: 'Status filter'
+                    description: 'Status filter?'
                 },
                 include_stats: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include stats'
+                    description: 'Include stats?'
                 }
             },
             required: ['book_id']
@@ -441,71 +441,71 @@ export const sceneToolsSchema = [
                 },
                 scene_title: {
                     type: 'string',
-                    description: 'Title'
+                    description: 'Title?'
                 },
                 scene_purpose: {
                     type: 'string',
                     enum: ['action', 'dialogue', 'description', 'transition', 'exposition', 'conflict', 'resolution'],
-                    description: 'Purpose'
+                    description: 'Purpose?'
                 },
                 scene_type: {
                     type: 'string',
                     enum: ['dramatic', 'comedic', 'action', 'romance', 'mystery', 'horror', 'slice_of_life'],
-                    description: 'Tone/genre'
+                    description: 'Tone/genre?'
                 },
                 location: {
                     type: 'string',
-                    description: 'Location'
+                    description: 'Location?'
                 },
                 time_of_day: {
                     type: 'string',
-                    description: 'Time (morning, afternoon, night, etc.)'
+                    description: 'Time (morning, afternoon, night, etc.)?'
                 },
                 duration: {
                     type: 'string',
-                    description: 'Duration (5 minutes, 2 hours, etc.)'
+                    description: 'Duration (5 minutes, 2 hours, etc.)?'
                 },
                 summary: {
                     type: 'string',
-                    description: 'Summary'
+                    description: 'Summary?'
                 },
                 pov_character_id: {
                     type: 'integer',
-                    description: 'POV character ID'
+                    description: 'POV character ID?'
                 },
                 scene_participants: {
                     type: 'array',
                     items: { type: 'integer' },
-                    description: 'Character IDs in scene'
+                    description: 'Character IDs in scene?'
                 },
                 writing_status: {
                     type: 'string',
                     enum: ['planned', 'outlined', 'drafted', 'revised', 'final'],
                     default: 'planned',
-                    description: 'Writing status'
+                    description: 'Writing status?'
                 },
                 target_word_count: {
                     type: 'integer',
-                    description: 'Target word count'
+                    description: 'Target word count?'
                 },
                 intensity_level: {
                     type: 'integer',
                     minimum: 1,
                     maximum: 10,
-                    description: 'Intensity (1=low, 10=max)'
+                    description: 'Intensity (1=low, 10=max)?'
                 },
                 scene_elements: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Element tags (tropes, themes, moods)'
+                    description: 'Element tags (tropes, themes, moods)?'
                 },
                 implementation_notes: {
                     type: 'string',
-                    description: 'Implementation notes'
+                    description: 'Implementation notes?'
                 },
                 notes: {
                     type: 'string',
-                    description: 'Author notes'
+                    description: 'Author notes?'
                 }
             },
             required: ['chapter_id', 'scene_number']
@@ -523,74 +523,74 @@ export const sceneToolsSchema = [
                 },
                 scene_title: {
                     type: 'string',
-                    description: 'Title'
+                    description: 'Title?'
                 },
                 scene_purpose: {
                     type: 'string',
                     enum: ['action', 'dialogue', 'description', 'transition', 'exposition', 'conflict', 'resolution'],
-                    description: 'Purpose'
+                    description: 'Purpose?'
                 },
                 scene_type: {
                     type: 'string',
                     enum: ['dramatic', 'comedic', 'action', 'romance', 'mystery', 'horror', 'slice_of_life'],
-                    description: 'Tone/genre'
+                    description: 'Tone/genre?'
                 },
                 location: {
                     type: 'string',
-                    description: 'Location'
+                    description: 'Location?'
                 },
                 time_of_day: {
                     type: 'string',
-                    description: 'Time of day'
+                    description: 'Time of day?'
                 },
                 duration: {
                     type: 'string',
-                    description: 'Duration'
+                    description: 'Duration?'
                 },
                 summary: {
                     type: 'string',
-                    description: 'Summary'
+                    description: 'Summary?'
                 },
                 word_count: {
                     type: 'integer',
-                    description: 'Current word count'
+                    description: 'Current word count?'
                 },
                 target_word_count: {
                     type: 'integer',
-                    description: 'Target word count'
+                    description: 'Target word count?'
                 },
                 pov_character_id: {
                     type: 'integer',
-                    description: 'POV character ID'
+                    description: 'POV character ID?'
                 },
                 scene_participants: {
                     type: 'array',
                     items: { type: 'integer' },
-                    description: 'Character IDs in scene'
+                    description: 'Character IDs in scene?'
                 },
                 writing_status: {
                     type: 'string',
                     enum: ['planned', 'outlined', 'drafted', 'revised', 'final'],
-                    description: 'Writing status'
+                    description: 'Writing status?'
                 },
                 intensity_level: {
                     type: 'integer',
                     minimum: 1,
                     maximum: 10,
-                    description: 'Intensity (1=low, 10=max)'
+                    description: 'Intensity (1=low, 10=max)?'
                 },
                 scene_elements: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Element tags (tropes, themes, moods)'
+                    description: 'Element tags (tropes, themes, moods)?'
                 },
                 implementation_notes: {
                     type: 'string',
-                    description: 'Implementation notes'
+                    description: 'Implementation notes?'
                 },
                 notes: {
                     type: 'string',
-                    description: 'Scene notes'
+                    description: 'Scene notes?'
                 }
             },
             required: ['scene_id']
@@ -609,7 +609,7 @@ export const sceneToolsSchema = [
                 include_characters: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include character details'
+                    description: 'Include character details?'
                 }
             },
             required: ['scene_id']
@@ -628,17 +628,17 @@ export const sceneToolsSchema = [
                 scene_type: {
                     type: 'string',
                     enum: ['dramatic', 'comedic', 'action', 'romance', 'mystery', 'horror', 'slice_of_life'],
-                    description: 'Scene type filter'
+                    description: 'Scene type filter?'
                 },
                 writing_status: {
                     type: 'string',
                     enum: ['planned', 'outlined', 'drafted', 'revised', 'final'],
-                    description: 'Status filter'
+                    description: 'Status filter?'
                 },
                 include_stats: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include stats'
+                    description: 'Include stats?'
                 },
                 intensity_filter: {
                     type: 'object',
@@ -646,12 +646,12 @@ export const sceneToolsSchema = [
                         min_intensity: { type: 'integer', minimum: 1, maximum: 10 },
                         max_intensity: { type: 'integer', minimum: 1, maximum: 10 }
                     },
-                    description: 'Intensity range filter'
+                    description: 'Intensity range filter?'
                 },
                 scene_elements: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Element filter'
+                    description: 'Element filter?'
                 }
             },
             required: ['chapter_id']
@@ -715,12 +715,12 @@ export const sceneToolsSchema = [
                     type: 'string',
                     enum: ['intensity_flow', 'element_distribution', 'character_presence', 'scene_balance'],
                     default: 'intensity_flow',
-                    description: 'Analysis type'
+                    description: 'Analysis type?'
                 },
                 include_suggestions: {
                     type: 'boolean',
                     default: true,
-                    description: 'Include suggestions'
+                    description: 'Include suggestions?'
                 }
             },
             required: ['chapter_id']
@@ -746,12 +746,12 @@ export const analysisToolsSchema = [
                 include_scene_details: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include scene details'
+                    description: 'Include scene details?'
                 },
                 include_character_info: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include character presence'
+                    description: 'Include character presence?'
                 }
             },
             required: ['book_id']
@@ -770,12 +770,12 @@ export const analysisToolsSchema = [
                 include_projections: {
                     type: 'boolean',
                     default: false,
-                    description: 'Include completion projections'
+                    description: 'Include completion projections?'
                 },
                 include_recommendations: {
                     type: 'boolean',
                     default: true,
-                    description: 'Include recommendations'
+                    description: 'Include recommendations?'
                 }
             },
             required: ['book_id']
@@ -794,23 +794,23 @@ export const analysisToolsSchema = [
                 check_chapter_numbering: {
                     type: 'boolean',
                     default: true,
-                    description: 'Check chapter numbering'
+                    description: 'Check chapter numbering?'
                 },
                 check_word_counts: {
                     type: 'boolean',
                     default: true,
-                    description: 'Check word counts'
+                    description: 'Check word counts?'
                 },
                 check_character_continuity: {
                     type: 'boolean',
                     default: false,
-                    description: 'Check character continuity (needs character server)'
+                    description: 'Check character continuity (needs character server)?'
                 },
                 severity_level: {
                     type: 'string',
                     enum: ['all', 'warnings_and_errors', 'errors_only'],
                     default: 'all',
-                    description: 'Issue severity filter'
+                    description: 'Issue severity filter?'
                 }
             },
             required: ['book_id']

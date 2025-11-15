@@ -20,13 +20,13 @@ export class ValidationHandlers {
                         chapter_ids: {
                             type: 'array',
                             items: { type: 'integer' },
-                            description: 'Chapter IDs (validates all if omitted)'
+                            description: 'Chapter IDs (validates all if omitted)?'
                         },
                         validation_level: {
                             type: 'string',
                             enum: ['basic', 'detailed', 'comprehensive'],
                             default: 'detailed',
-                            description: 'Check depth'
+                            description: 'Check depth?'
                         }
                     },
                     required: ['book_id']
@@ -46,12 +46,12 @@ export class ValidationHandlers {
                             type: 'string',
                             enum: ['pacing', 'character_arcs', 'plot_threads', 'emotional_beats'],
                             default: 'pacing',
-                            description: 'Analysis type'
+                            description: 'Analysis type?'
                         },
                         flexible_guidelines: {
                             type: 'boolean',
                             default: true,
-                            description: 'Flexible vs rigid rules'
+                            description: 'Flexible vs rigid rules?'
                         }
                     },
                     required: ['book_id']
@@ -74,13 +74,13 @@ export class ValidationHandlers {
                                 enum: ['character_continuity', 'timeline_consistency', 'pov_consistency', 'location_consistency', 'plot_holes']
                             },
                             default: ['character_continuity', 'timeline_consistency', 'pov_consistency'],
-                            description: 'Violation types'
+                            description: 'Violation types?'
                         },
                         severity_threshold: {
                             type: 'string',
                             enum: ['info', 'warning', 'error'],
                             default: 'warning',
-                            description: 'Min severity'
+                            description: 'Min severity?'
                         }
                     },
                     required: ['book_id']

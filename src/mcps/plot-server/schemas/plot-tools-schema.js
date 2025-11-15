@@ -23,23 +23,23 @@ export const plotThreadToolsSchema = [
                     minimum: 1,
                     maximum: 10,
                     default: 5,
-                    description: 'Importance (1-10)'
+                    description: 'Importance (1-10)?'
                 },
                 complexity_level: {
                     type: 'integer',
                     minimum: 1,
                     maximum: 10,
                     default: 5,
-                    description: 'Complexity (1-10)'
+                    description: 'Complexity (1-10)?'
                 },
-                start_book: { type: 'integer', description: 'Start book #' },
-                end_book: { type: 'integer', description: 'End book #' },
+                start_book: { type: 'integer', description: 'Start book #?' },
+                end_book: { type: 'integer', description: 'End book #?' },
                 related_characters: {
                     type: 'array',
                     items: { type: 'integer' },
-                    description: 'Related character IDs'
+                    description: 'Related character IDs?'
                 },
-                parent_thread_id: { type: 'integer', description: 'Parent thread ID' }
+                parent_thread_id: { type: 'integer', description: 'Parent thread ID?' }
             },
             required: ['series_id', 'title', 'description', 'thread_type']
         }
@@ -51,16 +51,16 @@ export const plotThreadToolsSchema = [
             type: 'object',
             properties: {
                 thread_id: { type: 'integer', description: 'Thread ID' },
-                title: { type: 'string', description: 'Title' },
-                description: { type: 'string', description: 'Description' },
+                title: { type: 'string', description: 'Title?' },
+                description: { type: 'string', description: 'Description?' },
                 current_status: {
                     type: 'string',
                     enum: ['active', 'resolved', 'on_hold', 'abandoned'],
-                    description: 'Status'
+                    description: 'Status?'
                 },
-                end_book: { type: 'integer', description: 'End book #' },
-                resolution_notes: { type: 'string', description: 'Resolution details' },
-                resolution_book: { type: 'integer', description: 'Resolution book #' }
+                end_book: { type: 'integer', description: 'End book #?' },
+                resolution_notes: { type: 'string', description: 'Resolution details?' },
+                resolution_book: { type: 'integer', description: 'Resolution book #?' }
             },
             required: ['thread_id']
         }
@@ -72,10 +72,10 @@ export const plotThreadToolsSchema = [
             type: 'object',
             properties: {
                 series_id: { type: 'integer', description: 'Series ID' },
-                thread_type: { type: 'string', description: 'Type filter' },
-                current_status: { type: 'string', description: 'Status filter' },
-                book_number: { type: 'integer', description: 'Book # filter' },
-                importance_min: { type: 'integer', description: 'Min importance' }
+                thread_type: { type: 'string', description: 'Type filter?' },
+                current_status: { type: 'string', description: 'Status filter?' },
+                book_number: { type: 'integer', description: 'Book # filter?' },
+                importance_min: { type: 'integer', description: 'Min importance?' }
             },
             required: ['series_id']
         }
@@ -161,20 +161,20 @@ export const genreExtensionToolsSchema = [
                 affects_characters: {
                     type: 'array',
                     items: { type: 'integer' },
-                    description: 'Character IDs who learn this'
+                    description: 'Character IDs who learn this?'
                 },
                 revealed_in_chapter: {
                     type: 'integer',
-                    description: 'Reveal chapter ID'
+                    description: 'Reveal chapter ID?'
                 },
                 consequences: {
                     type: 'string',
-                    description: 'Consequences'
+                    description: 'Consequences?'
                 },
                 foreshadowing_chapters: {
                     type: 'array',
                     items: { type: 'integer' },
-                    description: 'Foreshadowing chapter IDs'
+                    description: 'Foreshadowing chapter IDs?'
                 }
             },
             required: ['plot_thread_id', 'reveal_type', 'information_content', 'reveal_method', 'significance_level']
@@ -210,12 +210,12 @@ export const genreExtensionToolsSchema = [
                 limitations: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Constraints & limitations'
+                    description: 'Constraints & limitations?'
                 },
                 system_rules: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Rules & principles'
+                    description: 'Rules & principles?'
                 },
                 power_scaling: {
                     type: 'object',
@@ -224,7 +224,7 @@ export const genreExtensionToolsSchema = [
                         highest_level: { type: 'string' },
                         progression_method: { type: 'string' }
                     },
-                    description: 'Power levels'
+                    description: 'Power levels?'
                 }
             },
             required: ['series_id', 'system_name', 'system_type', 'power_source', 'access_method']
@@ -251,16 +251,16 @@ export const genreExtensionToolsSchema = [
                 },
                 discovered_by: {
                     type: 'integer',
-                    description: 'Discoverer character ID'
+                    description: 'Discoverer character ID?'
                 },
                 discovery_chapter: {
                     type: 'integer',
-                    description: 'Discovery chapter ID'
+                    description: 'Discovery chapter ID?'
                 },
                 significance: {
                     type: 'string',
                     enum: ['critical', 'important', 'supporting', 'red_herring'],
-                    description: 'Significance'
+                    description: 'Significance?'
                 }
             },
             required: ['reveal_id', 'evidence_type', 'evidence_description']
@@ -286,7 +286,7 @@ export const genreExtensionToolsSchema = [
                 },
                 chapter_id: {
                     type: 'integer',
-                    description: 'Chapter ID'
+                    description: 'Chapter ID?'
                 },
                 current_power_level: {
                     type: 'integer',
@@ -296,11 +296,11 @@ export const genreExtensionToolsSchema = [
                 },
                 progression_method: {
                     type: 'string',
-                    description: 'Progression method'
+                    description: 'Progression method?'
                 },
                 cost_or_sacrifice: {
                     type: 'string',
-                    description: 'Cost/sacrifice'
+                    description: 'Cost/sacrifice?'
                 }
             },
             required: ['character_id', 'system_id', 'book_id', 'current_power_level']

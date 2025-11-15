@@ -11,21 +11,21 @@ export const eventChapterMappingSchemas = [
             properties: {
                 event_id: { type: 'integer', description: 'Event ID' },
                 chapter_id: { type: 'integer', description: 'Chapter ID' },
-                scene_number: { type: 'integer', description: 'Scene # in chapter' },
+                scene_number: { type: 'integer', description: 'Scene # in chapter?' },
                 presentation_type: {
                     type: 'string',
                     enum: ['direct_scene', 'flashback', 'memory', 'reference', 'foreshadowing', 'dream', 'retelling'],
-                    description: 'How event is presented'
+                    description: 'How event is presented?'
                 },
-                pov_character_id: { type: 'integer', description: 'POV character ID' },
-                event_aspect: { type: 'string', description: 'Part/perspective shown' },
+                pov_character_id: { type: 'integer', description: 'POV character ID?' },
+                event_aspect: { type: 'string', description: 'Part/perspective shown?' },
                 completeness: {
                     type: 'string',
                     enum: ['full', 'partial', 'glimpse'],
-                    description: 'Completeness level',
+                    description: 'Completeness level?',
                     default: 'full'
                 },
-                narrative_function: { type: 'string', description: 'Purpose in narrative' }
+                narrative_function: { type: 'string', description: 'Purpose in narrative?' }
             }
         }
     },
@@ -50,11 +50,11 @@ export const eventChapterMappingSchemas = [
                 chapter_id: { type: 'integer', description: 'Chapter ID' },
                 presentation_type: {
                     type: 'string',
-                    description: 'Presentation type filter'
+                    description: 'Presentation type filter?'
                 },
                 pov_character_id: {
                     type: 'integer',
-                    description: 'POV character filter'
+                    description: 'POV character filter?'
                 }
             }
         }
@@ -67,20 +67,20 @@ export const eventChapterMappingSchemas = [
             required: ['mapping_id'],
             properties: {
                 mapping_id: { type: 'integer', description: 'Mapping ID' },
-                scene_number: { type: 'integer', description: 'Scene # in chapter' },
+                scene_number: { type: 'integer', description: 'Scene # in chapter?' },
                 presentation_type: {
                     type: 'string',
                     enum: ['direct_scene', 'flashback', 'memory', 'reference', 'foreshadowing', 'dream', 'retelling'],
-                    description: 'How event is presented'
+                    description: 'How event is presented?'
                 },
-                pov_character_id: { type: 'integer', description: 'POV character ID' },
-                event_aspect: { type: 'string', description: 'Part shown' },
+                pov_character_id: { type: 'integer', description: 'POV character ID?' },
+                event_aspect: { type: 'string', description: 'Part shown?' },
                 completeness: {
                     type: 'string',
                     enum: ['full', 'partial', 'glimpse'],
-                    description: 'Completeness level'
+                    description: 'Completeness level?'
                 },
-                narrative_function: { type: 'string', description: 'Purpose in narrative' }
+                narrative_function: { type: 'string', description: 'Purpose in narrative?' }
             }
         }
     },
@@ -106,7 +106,7 @@ export const eventChapterMappingSchemas = [
                 analysis_type: {
                     type: 'string',
                     enum: ['linearity', 'pov_distribution', 'event_coverage', 'all'],
-                    description: 'Analysis type',
+                    description: 'Analysis type?',
                     default: 'all'
                 }
             }

@@ -33,9 +33,9 @@ export const authorToolsSchema = [
             type: 'object',
             properties: {
                 name: { type: 'string', description: 'Author name' },
-                email: { type: 'string', description: 'Email' },
-                bio: { type: 'string', description: 'Bio' },
-                birth_year: { type: 'integer', description: 'Birth year' }
+                email: { type: 'string', description: 'Email?' },
+                bio: { type: 'string', description: 'Bio?' },
+                birth_year: { type: 'integer', description: 'Birth year?' }
             },
             required: ['name']
         }
@@ -47,9 +47,9 @@ export const authorToolsSchema = [
             type: 'object',
             properties: {
                 author_id: { type: 'integer', description: 'Author ID' },
-                name: { type: 'string', description: 'Author name' },
-                bio: { type: 'string', description: 'Bio' },
-                birth_year: { type: 'integer', description: 'Birth year' }
+                name: { type: 'string', description: 'Author name?' },
+                bio: { type: 'string', description: 'Bio?' },
+                birth_year: { type: 'integer', description: 'Birth year?' }
             },
             required: ['author_id']
         }

@@ -15,23 +15,23 @@ export const storyAnalysisToolsSchema = [
                 book_id: { type: 'integer', description: 'Book ID' },
                 story_concern: {
                     type: 'string',
-                    description: 'Overall story focus (use metadata-server get_available_options w/ option_type="story_concerns")'
+                    description: 'Overall story focus (use metadata-server get_available_options w/ option_type="story_concerns")?'
                 },
-                main_character_problem: { type: 'string', description: 'Protagonist issues' },
-                influence_character_impact: { type: 'string', description: 'How others challenge MC' },
+                main_character_problem: { type: 'string', description: 'Protagonist issues?' },
+                influence_character_impact: { type: 'string', description: 'How others challenge MC?' },
                 story_outcome: {
                     type: 'string',
-                    description: 'Goal achieved? (use metadata-server get_available_options w/ option_type="story_outcomes")'
+                    description: 'Goal achieved? (use metadata-server get_available_options w/ option_type="story_outcomes")?'
                 },
                 story_judgment: {
                     type: 'string',
-                    description: 'Outcome satisfaction (use metadata-server get_available_options w/ option_type="story_judgments")'
+                    description: 'Outcome satisfaction (use metadata-server get_available_options w/ option_type="story_judgments")?'
                 },
                 thematic_elements: {
                     type: 'object',
-                    description: 'Conflicting themes/values'
+                    description: 'Conflicting themes/values?'
                 },
-                analysis_notes: { type: 'string', description: 'Additional notes' }
+                analysis_notes: { type: 'string', description: 'Additional notes?' }
             },
             required: ['book_id']
         }
@@ -49,9 +49,9 @@ export const storyAnalysisToolsSchema = [
                     enum: ['main_character', 'influence_character', 'relationship', 'objective_story'],
                     description: 'Throughline type'
                 },
-                character_problem: { type: 'string', description: 'Core problem' },
-                character_solution: { type: 'string', description: 'Problem approach' },
-                character_arc: { type: 'string', description: 'Development arc' }
+                character_problem: { type: 'string', description: 'Core problem?' },
+                character_solution: { type: 'string', description: 'Problem approach?' },
+                character_arc: { type: 'string', description: 'Development arc?' }
             },
             required: ['book_id', 'character_id', 'throughline_type']
         }
@@ -65,12 +65,12 @@ export const storyAnalysisToolsSchema = [
                 book_id: { type: 'integer', description: 'Book ID' },
                 appreciation_type: { type: 'string', description: 'Appreciation type' },
                 appreciation_value: { type: 'string', description: 'Appreciation value' },
-                supporting_evidence: { type: 'string', description: 'Story evidence' },
+                supporting_evidence: { type: 'string', description: 'Story evidence?' },
                 confidence_level: {
                     type: 'integer',
                     minimum: 1,
                     maximum: 10,
-                    description: 'Confidence (1-10)'
+                    description: 'Confidence (1-10)?'
                 }
             },
             required: ['book_id', 'appreciation_type', 'appreciation_value']
@@ -93,7 +93,7 @@ export const storyAnalysisToolsSchema = [
                 effectiveness: {
                     type: 'string',
                     enum: ['solves', 'complicates', 'redirects', 'unknown'],
-                    description: 'Solution effectiveness'
+                    description: 'Solution effectiveness?'
                 }
             },
             required: ['book_id', 'problem', 'solution', 'problem_level']
