@@ -77,8 +77,10 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs:1001
 
 # Expose ports for MCP servers
-# Port 3001: HTTP/SSE server (main)
-# Ports 3002-3009: Individual MCP server endpoints
+# Ports 3001-3009: 9 individual MCP server endpoints with HTTP/SSE transport
+# 3001: book-planning, 3002: series-planning, 3003: chapter-planning
+# 3004: character-planning, 3005: scene, 3006: core-continuity
+# 3007: review, 3008: reporting, 3009: author
 EXPOSE 3001 3002 3003 3004 3005 3006 3007 3008 3009
 
 # Health check - verifies the HTTP/SSE server is responsive
