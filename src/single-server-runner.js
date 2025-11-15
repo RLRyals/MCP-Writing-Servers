@@ -168,13 +168,131 @@ async function startServer() {
                     endpoints: {
                         sse: `http://localhost:${port}/`,
                         health: `http://localhost:${port}/health`,
-                        info: `http://localhost:${port}/info`
+                        info: `http://localhost:${port}/info`,
+                        mcp: `http://localhost:${port}/mcp`
                     }
                 });
             } catch (error) {
                 res.status(500).json({
                     error: 'Failed to get server info',
                     message: error.message
+                });
+            }
+        });
+
+        // MCP JSON-RPC endpoint for stdio adapter
+        app.post('/mcp', express.json(), async (req, res) => {
+            try {
+                const mcpServer = new ServerClass();
+                const { jsonrpc, id, method, params } = req.body;
+
+                // Validate JSON-RPC 2.0 request
+                if (jsonrpc !== '2.0') {
+                    return res.json({
+                        jsonrpc: '2.0',
+                        id: id || null,
+                        error: {
+                            code: -32600,
+                            message: 'Invalid Request: jsonrpc must be "2.0"'
+                        }
+                    });
+                }
+
+                // Handle different MCP methods
+                if (method === 'tools/list') {
+                    return res.json({
+                        jsonrpc: '2.0',
+                        id,
+                        result: {
+                            tools: mcpServer.tools
+                        }
+                    });
+                } else if (method === 'tools/call') {
+                    const { name, arguments: args } = params || {};
+
+                    if (!name) {
+                        return res.json({
+                            jsonrpc: '2.0',
+                            id,
+                            error: {
+                                code: -32602,
+                                message: 'Invalid params: tool name is required'
+                            }
+                        });
+                    }
+
+                    // Find the tool handler
+                    const handler = mcpServer.getToolHandler(name);
+                    if (!handler) {
+                        return res.json({
+                            jsonrpc: '2.0',
+                            id,
+                            error: {
+                                code: -32601,
+                                message: `Unknown tool: ${name}`
+                            }
+                        });
+                    }
+
+                    // Execute the tool
+                    try {
+                        const result = await handler(args || {});
+                        return res.json({
+                            jsonrpc: '2.0',
+                            id,
+                            result
+                        });
+                    } catch (toolError) {
+                        return res.json({
+                            jsonrpc: '2.0',
+                            id,
+                            error: {
+                                code: -32000,
+                                message: `Tool execution error: ${toolError.message}`,
+                                data: {
+                                    tool: name,
+                                    error: toolError.message
+                                }
+                            }
+                        });
+                    }
+                } else if (method === 'initialize') {
+                    return res.json({
+                        jsonrpc: '2.0',
+                        id,
+                        result: {
+                            protocolVersion: '2024-11-05',
+                            capabilities: {
+                                tools: {}
+                            },
+                            serverInfo: {
+                                name: serverName,
+                                version: mcpServer.serverVersion || '1.0.0'
+                            }
+                        }
+                    });
+                } else {
+                    return res.json({
+                        jsonrpc: '2.0',
+                        id,
+                        error: {
+                            code: -32601,
+                            message: `Method not found: ${method}`
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error(`[${serverName}:${port}] Error handling /mcp request:`, error);
+                return res.json({
+                    jsonrpc: '2.0',
+                    id: req.body?.id || null,
+                    error: {
+                        code: -32603,
+                        message: 'Internal error',
+                        data: {
+                            message: error.message
+                        }
+                    }
                 });
             }
         });

@@ -10,6 +10,7 @@
     "start": "node src/http-sse-server.js",
     "start:stdio": "node src/stdio-server.js",
     "start:orchestrator": "node server.js",
+    "start:adapter": "node mcp-stdio-adapter.js",
     "dev": "node --watch src/http-sse-server.js"
   },
   "repository": {
