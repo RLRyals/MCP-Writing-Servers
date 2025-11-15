@@ -11,8 +11,7 @@ export const authorToolsSchema = [
         description: 'List all authors',
         inputSchema: {
             type: 'object',
-            properties: {},
-            required: []
+            properties: {}
         }
     },
     {
