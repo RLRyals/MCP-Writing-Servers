@@ -1,0 +1,61 @@
+# ============================================
+# MCP Claude Desktop Bridge - TCP to stdio
+# ============================================
+# Bridges Claude Desktop TCP connections to stdio protocol
+# Enables Claude Desktop to connect to Dockerized MCP servers
+# Uses socat for TCP-to-stdio bridging
+# ============================================
+
+# ============================================
+# Stage 1: Base - Alpine with Node.js
+# ============================================
+FROM node:18-alpine AS base
+
+# Install socat for TCP-to-stdio bridging and dumb-init
+RUN apk add --no-cache \
+    socat \
+    dumb-init \
+    bash
+
+# Set working directory
+WORKDIR /app
+
+# ============================================
+# Stage 2: Runtime - Final bridge image
+# ============================================
+FROM base AS runtime
+
+# Copy package.json for ES6 module support
+COPY package.json ./
+
+# Copy the stdio adapter script
+COPY mcp-stdio-adapter.js ./
+
+# Ensure the script is executable
+RUN chmod +x mcp-stdio-adapter.js
+
+# Create nodejs user and group if they don't exist
+# UID/GID 1001 for non-root execution
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
+
+# Set proper ownership for application files
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user for security
+USER nodejs:1001
+
+# Expose TCP port for Claude Desktop connections
+# Port 8888: TCP listener that bridges to stdio
+EXPOSE 8888
+
+# Use dumb-init as entrypoint for proper signal handling
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
+# Start socat to bridge TCP:8888 to the stdio adapter
+# socat listens on TCP port 8888 and pipes I/O to/from the Node.js stdio adapter
+# TCP-LISTEN:8888 - Listen on TCP port 8888
+# fork - Fork a new process for each connection
+# reuseaddr - Allow socket reuse
+# EXEC - Execute the stdio adapter and pipe stdin/stdout
+CMD ["socat", "TCP-LISTEN:8888,fork,reuseaddr", "EXEC:node mcp-stdio-adapter.js"]
