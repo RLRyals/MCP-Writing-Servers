@@ -28,30 +28,32 @@ export const authorToolsSchema = [
     },
     {
         name: 'create_author',
-        description: 'Create author',
+        description: 'Create author. Only name is required.',
         inputSchema: {
             type: 'object',
             properties: {
-                name: { type: 'string', description: 'Author name' },
-                email: { type: 'string', description: 'Email' },
-                bio: { type: 'string', description: 'Bio' },
-                birth_year: { type: 'integer', description: 'Birth year' }
+                name: { type: 'string', description: 'Author name (required)' },
+                email: { type: 'string', description: '(Optional) Email address', default: null },
+                bio: { type: 'string', description: '(Optional) Author biography', default: null },
+                birth_year: { type: 'integer', description: '(Optional) Birth year', default: null }
             },
-            required: ['name']
+            required: ['name'],
+            additionalProperties: false
         }
     },
     {
         name: 'update_author',
-        description: 'Update author',
+        description: 'Update author. Only author_id is required.',
         inputSchema: {
             type: 'object',
             properties: {
-                author_id: { type: 'integer', description: 'Author ID' },
-                name: { type: 'string', description: 'Author name' },
-                bio: { type: 'string', description: 'Bio' },
-                birth_year: { type: 'integer', description: 'Birth year' }
+                author_id: { type: 'integer', description: 'Author ID (required)' },
+                name: { type: 'string', description: '(Optional) Author name', default: null },
+                bio: { type: 'string', description: '(Optional) Author biography', default: null },
+                birth_year: { type: 'integer', description: '(Optional) Birth year', default: null }
             },
-            required: ['author_id']
+            required: ['author_id'],
+            additionalProperties: false
         }
     }
 ];
