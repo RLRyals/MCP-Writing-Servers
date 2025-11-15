@@ -19,10 +19,10 @@ export const seriesToolsSchema = [
             properties: {
                 title: { type: 'string', description: 'Title' },
                 author_id: { type: 'integer', description: 'Author ID' },
-                description: { type: 'string', description: 'Description' },
-                genre_ids: { type: 'array', items: { type: 'integer' }, description: 'Genre IDs' },
-                start_year: { type: 'integer', description: 'Start year' },
-                status: { type: 'string', enum: ['ongoing', 'completed', 'hiatus'], description: 'Status' }
+                description: { type: ['string', 'null'], description: 'Description (optional)' },
+                genre_ids: { type: ['array', 'null'], items: { type: 'integer' }, description: 'Genre IDs (optional)' },
+                start_year: { type: ['integer', 'null'], description: 'Start year (optional)' },
+                status: { type: ['string', 'null'], enum: ['ongoing', 'completed', 'hiatus', null], description: 'Status (optional)' }
             },
             required: ['title', 'author_id']
         }
@@ -45,11 +45,11 @@ export const seriesToolsSchema = [
             type: 'object',
             properties: {
                 series_id: { type: 'integer', description: 'Series ID' },
-                title: { type: 'string', description: 'Title' },
-                description: { type: 'string', description: 'Description' },
-                genre_ids: { type: 'array', items: { type: 'integer' }, description: 'Genre IDs (replaces all)' },
-                start_year: { type: 'integer', description: 'Start year' },
-                status: { type: 'string', enum: ['ongoing', 'completed', 'hiatus'], description: 'Status' }
+                title: { type: ['string', 'null'], description: 'Title (optional)' },
+                description: { type: ['string', 'null'], description: 'Description (optional)' },
+                genre_ids: { type: ['array', 'null'], items: { type: 'integer' }, description: 'Genre IDs (replaces all, optional)' },
+                start_year: { type: ['integer', 'null'], description: 'Start year (optional)' },
+                status: { type: ['string', 'null'], enum: ['ongoing', 'completed', 'hiatus', null], description: 'Status (optional)' }
             },
             required: ['series_id']
         }

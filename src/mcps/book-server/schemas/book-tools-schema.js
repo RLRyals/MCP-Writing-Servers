@@ -13,18 +13,18 @@ export const bookToolsSchema = [
             type: 'object',
             properties: {
                 series_id: {
-                    type: 'integer',
-                    description: 'Series ID filter'
+                    type: ['integer', 'null'],
+                    description: 'Series ID filter (optional)'
                 },
                 status: {
-                    type: 'string',
-                    enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published'],
-                    description: 'Status filter'
+                    type: ['string', 'null'],
+                    enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published', null],
+                    description: 'Status filter (optional)'
                 },
                 include_stats: {
-                    type: 'boolean',
+                    type: ['boolean', 'null'],
                     default: false,
-                    description: 'Include stats'
+                    description: 'Include stats (optional)'
                 }
             },
             required: []
@@ -41,9 +41,9 @@ export const bookToolsSchema = [
                     description: 'Book ID'
                 },
                 include_chapters: {
-                    type: 'boolean',
+                    type: ['boolean', 'null'],
                     default: false,
-                    description: 'Include chapters'
+                    description: 'Include chapters (optional)'
                 }
             },
             required: ['book_id']
@@ -68,44 +68,44 @@ export const bookToolsSchema = [
                     description: 'Series position'
                 },
                 status: {
-                    type: 'string',
-                    enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published'],
+                    type: ['string', 'null'],
+                    enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published', null],
                     default: 'planned',
-                    description: 'Status'
+                    description: 'Status (optional)'
                 },
                 target_word_count: {
-                    type: 'integer',
-                    description: 'Target word count'
+                    type: ['integer', 'null'],
+                    description: 'Target word count (optional)'
                 },
                 actual_word_count: {
-                    type: 'integer',
+                    type: ['integer', 'null'],
                     default: 0,
-                    description: 'Current word count'
+                    description: 'Current word count (optional)'
                 },
                 publication_year: {
-                    type: 'integer',
-                    description: 'Pub year'
+                    type: ['integer', 'null'],
+                    description: 'Pub year (optional)'
                 },
                 description: {
-                    type: 'string',
-                    description: 'Description'
+                    type: ['string', 'null'],
+                    description: 'Description (optional)'
                 },
                 isbn: {
-                    type: 'string',
-                    description: 'ISBN'
+                    type: ['string', 'null'],
+                    description: 'ISBN (optional)'
                 },
                 page_count: {
-                    type: 'integer',
-                    description: 'Pages'
+                    type: ['integer', 'null'],
+                    description: 'Pages (optional)'
                 },
                 cover_image_url: {
-                    type: 'string',
-                    description: 'Cover URL'
+                    type: ['string', 'null'],
+                    description: 'Cover URL (optional)'
                 },
                 genre_names: {
-                    type: 'array',
+                    type: ['array', 'null'],
                     items: { type: 'string' },
-                    description: 'Genre names'
+                    description: 'Genre names (optional)'
                 }
             },
             required: ['title', 'series_id', 'book_number']
@@ -122,50 +122,50 @@ export const bookToolsSchema = [
                     description: 'Book ID'
                 },
                 title: {
-                    type: 'string',
-                    description: 'Title'
+                    type: ['string', 'null'],
+                    description: 'Title (optional)'
                 },
                 book_number: {
-                    type: 'integer',
-                    description: 'Series position'
+                    type: ['integer', 'null'],
+                    description: 'Series position (optional)'
                 },
                 status: {
-                    type: 'string',
-                    enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published'],
-                    description: 'Status'
+                    type: ['string', 'null'],
+                    enum: ['planned', 'in_progress', 'draft', 'editing', 'final', 'published', null],
+                    description: 'Status (optional)'
                 },
                 target_word_count: {
-                    type: 'integer',
-                    description: 'Target word count'
+                    type: ['integer', 'null'],
+                    description: 'Target word count (optional)'
                 },
                 actual_word_count: {
-                    type: 'integer',
-                    description: 'Current word count'
+                    type: ['integer', 'null'],
+                    description: 'Current word count (optional)'
                 },
                 publication_year: {
-                    type: 'integer',
-                    description: 'Pub year'
+                    type: ['integer', 'null'],
+                    description: 'Pub year (optional)'
                 },
                 isbn: {
-                    type: 'string',
-                    description: 'ISBN'
+                    type: ['string', 'null'],
+                    description: 'ISBN (optional)'
                 },
                 page_count: {
-                    type: 'integer',
-                    description: 'Pages'
+                    type: ['integer', 'null'],
+                    description: 'Pages (optional)'
                 },
                 description: {
-                    type: 'string',
-                    description: 'Description'
+                    type: ['string', 'null'],
+                    description: 'Description (optional)'
                 },
                 cover_image_url: {
-                    type: 'string',
-                    description: 'Cover URL'
+                    type: ['string', 'null'],
+                    description: 'Cover URL (optional)'
                 },
                 genre_names: {
-                    type: 'array',
+                    type: ['array', 'null'],
                     items: { type: 'string' },
-                    description: 'Genre names'
+                    description: 'Genre names (optional)'
                 }
             },
             required: ['book_id']

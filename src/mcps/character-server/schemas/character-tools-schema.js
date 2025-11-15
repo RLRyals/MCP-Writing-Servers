@@ -14,14 +14,14 @@ export const characterToolsSchema = [
             properties: {
                 series_id: { type: 'integer', description: 'Series ID' },
                 character_type: {
-                    type: 'string',
-                    enum: ['main', 'supporting', 'minor', 'antagonist'],
-                    description: 'Type filter'
+                    type: ['string', 'null'],
+                    enum: ['main', 'supporting', 'minor', 'antagonist', null],
+                    description: 'Type filter (optional)'
                 },
                 status: {
-                    type: 'string',
-                    enum: ['alive', 'dead', 'missing', 'unknown'],
-                    description: 'Status filter'
+                    type: ['string', 'null'],
+                    enum: ['alive', 'dead', 'missing', 'unknown', null],
+                    description: 'Status filter (optional)'
                 }
             },
             required: ['series_id']
@@ -46,22 +46,22 @@ export const characterToolsSchema = [
             properties: {
                 series_id: { type: 'integer', description: 'Series ID' },
                 name: { type: 'string', description: 'Primary name' },
-                full_name: { type: 'string', description: 'Full name' },
+                full_name: { type: ['string', 'null'], description: 'Full name (optional)' },
                 aliases: {
-                    type: 'array',
+                    type: ['array', 'null'],
                     items: { type: 'string' },
-                    description: 'Alt names/nicknames'
+                    description: 'Alt names/nicknames (optional)'
                 },
                 character_type: {
-                    type: 'string',
-                    enum: ['main', 'supporting', 'minor', 'antagonist'],
-                    description: 'Importance level'
+                    type: ['string', 'null'],
+                    enum: ['main', 'supporting', 'minor', 'antagonist', null],
+                    description: 'Importance level (optional)'
                 },
-                first_appearance_book_id: { type: 'integer', description: 'First appearance book ID' },
+                first_appearance_book_id: { type: ['integer', 'null'], description: 'First appearance book ID (optional)' },
                 status: {
-                    type: 'string',
-                    enum: ['alive', 'dead', 'missing', 'unknown'],
-                    description: 'Status'
+                    type: ['string', 'null'],
+                    enum: ['alive', 'dead', 'missing', 'unknown', null],
+                    description: 'Status (optional)'
                 }
             },
             required: ['series_id', 'name']
@@ -74,17 +74,17 @@ export const characterToolsSchema = [
             type: 'object',
             properties: {
                 character_id: { type: 'integer', description: 'Character ID' },
-                name: { type: 'string', description: 'Primary name' },
-                full_name: { type: 'string', description: 'Full name' },
+                name: { type: ['string', 'null'], description: 'Primary name (optional)' },
+                full_name: { type: ['string', 'null'], description: 'Full name (optional)' },
                 character_type: {
-                    type: 'string',
-                    enum: ['main', 'supporting', 'minor', 'antagonist'],
-                    description: 'Importance level'
+                    type: ['string', 'null'],
+                    enum: ['main', 'supporting', 'minor', 'antagonist', null],
+                    description: 'Importance level (optional)'
                 },
                 status: {
-                    type: 'string',
-                    enum: ['alive', 'dead', 'missing', 'unknown'],
-                    description: 'Status'
+                    type: ['string', 'null'],
+                    enum: ['alive', 'dead', 'missing', 'unknown', null],
+                    description: 'Status (optional)'
                 }
             },
             required: ['character_id']
@@ -112,11 +112,11 @@ export const characterDetailToolsSchema = [
                     description: 'Attribute (eye_color/height/temperament)'
                 },
                 value: { type: 'string', description: 'Value' },
-                source_book_id: { type: 'integer', description: 'Source book ID' },
+                source_book_id: { type: ['integer', 'null'], description: 'Source book ID (optional)' },
                 confidence_level: {
-                    type: 'string',
-                    enum: ['established', 'mentioned', 'implied'],
-                    description: 'Confidence level'
+                    type: ['string', 'null'],
+                    enum: ['established', 'mentioned', 'implied', null],
+                    description: 'Confidence level (optional)'
                 }
             },
             required: ['character_id', 'category', 'attribute', 'value']
@@ -130,8 +130,8 @@ export const characterDetailToolsSchema = [
             properties: {
                 character_id: { type: 'integer', description: 'Character ID' },
                 category: {
-                    type: 'string',
-                    description: 'Category filter'
+                    type: ['string', 'null'],
+                    description: 'Category filter (optional)'
                 }
             },
             required: ['character_id']
@@ -153,11 +153,11 @@ export const characterDetailToolsSchema = [
                     description: 'Attribute to update'
                 },
                 value: { type: 'string', description: 'New value' },
-                source_book_id: { type: 'integer', description: 'Source book ID' },
+                source_book_id: { type: ['integer', 'null'], description: 'Source book ID (optional)' },
                 confidence_level: {
-                    type: 'string',
-                    enum: ['established', 'mentioned', 'implied'],
-                    description: 'Confidence level'
+                    type: ['string', 'null'],
+                    enum: ['established', 'mentioned', 'implied', null],
+                    description: 'Confidence level (optional)'
                 }
             },
             required: ['character_id', 'category', 'attribute', 'value']
@@ -204,14 +204,14 @@ export const characterKnowledgeToolsSchema = [
                     description: 'What they know'
                 },
                 knowledge_level: {
-                    type: 'string',
-                    enum: ['knows', 'suspects', 'unaware', 'forgot'],
-                    description: 'Knowledge level'
+                    type: ['string', 'null'],
+                    enum: ['knows', 'suspects', 'unaware', 'forgot', null],
+                    description: 'Knowledge level (optional)'
                 },
-                learned_book_id: { type: 'integer', description: 'Book learned in' },
+                learned_book_id: { type: ['integer', 'null'], description: 'Book learned in (optional)' },
                 learned_context: {
-                    type: 'string',
-                    description: 'How/when learned'
+                    type: ['string', 'null'],
+                    description: 'How/when learned (optional)'
                 }
             },
             required: ['character_id', 'knowledge_category', 'knowledge_item']
@@ -233,16 +233,16 @@ export const characterKnowledgeToolsSchema = [
                     description: 'What they know'
                 },
                 knowledge_level: {
-                    type: 'string',
-                    enum: ['knows', 'suspects', 'unaware', 'forgot'],
-                    description: 'Knowledge level',
+                    type: ['string', 'null'],
+                    enum: ['knows', 'suspects', 'unaware', 'forgot', null],
+                    description: 'Knowledge level (optional)',
                     default: 'knows'
                 },
                 learned_chapter_id: { type: 'integer', description: 'Chapter learned in' },
-                learned_scene: { type: 'integer', description: 'Scene number' },
+                learned_scene: { type: ['integer', 'null'], description: 'Scene number (optional)' },
                 learned_context: {
-                    type: 'string',
-                    description: 'How/when learned'
+                    type: ['string', 'null'],
+                    description: 'How/when learned (optional)'
                 }
             },
             required: ['character_id', 'knowledge_category', 'knowledge_item', 'learned_chapter_id']
@@ -256,12 +256,12 @@ export const characterKnowledgeToolsSchema = [
             properties: {
                 character_id: { type: 'integer', description: 'Character ID' },
                 knowledge_item: {
-                    type: 'string',
-                    description: 'Item to check (partial match)'
+                    type: ['string', 'null'],
+                    description: 'Item to check (partial match, optional)'
                 },
                 knowledge_category: {
-                    type: 'string',
-                    description: 'Category filter'
+                    type: ['string', 'null'],
+                    description: 'Category filter (optional)'
                 }
             },
             required: ['character_id']
@@ -279,9 +279,9 @@ export const characterKnowledgeToolsSchema = [
                     description: 'Search term (partial match)'
                 },
                 knowledge_level: {
-                    type: 'string',
-                    enum: ['knows', 'suspects', 'unaware', 'forgot'],
-                    description: 'Level filter'
+                    type: ['string', 'null'],
+                    enum: ['knows', 'suspects', 'unaware', 'forgot', null],
+                    description: 'Level filter (optional)'
                 }
             },
             required: ['series_id', 'knowledge_item']
@@ -301,32 +301,32 @@ export const characterTimelineToolsSchema = [
             properties: {
                 character_id: { type: 'integer', description: 'Character ID' },
                 chapter_id: { type: 'integer', description: 'Chapter ID' },
-                scene_id: { type: 'integer', description: 'Scene ID' },
+                scene_id: { type: ['integer', 'null'], description: 'Scene ID (optional)' },
                 presence_type: {
                     type: 'string',
                     enum: ['present', 'mentioned', 'flashback', 'dream', 'phone_call'],
                     description: 'Presence type'
                 },
                 importance_level: {
-                    type: 'string',
-                    enum: ['major', 'minor', 'cameo', 'background'],
-                    description: 'Importance'
+                    type: ['string', 'null'],
+                    enum: ['major', 'minor', 'cameo', 'background', null],
+                    description: 'Importance (optional)'
                 },
-                physical_state: { type: 'string', description: 'Physical state' },
-                emotional_state: { type: 'string', description: 'Emotional state' },
-                enters_at_scene: { type: 'integer', description: 'Entry scene #' },
-                exits_at_scene: { type: 'integer', description: 'Exit scene #' },
+                physical_state: { type: ['string', 'null'], description: 'Physical state (optional)' },
+                emotional_state: { type: ['string', 'null'], description: 'Emotional state (optional)' },
+                enters_at_scene: { type: ['integer', 'null'], description: 'Entry scene # (optional)' },
+                exits_at_scene: { type: ['integer', 'null'], description: 'Exit scene # (optional)' },
                 learns_this_chapter: {
-                    type: 'array',
+                    type: ['array', 'null'],
                     items: { type: 'string' },
-                    description: 'Info learned'
+                    description: 'Info learned (optional)'
                 },
                 reveals_this_chapter: {
-                    type: 'array',
+                    type: ['array', 'null'],
                     items: { type: 'string' },
-                    description: 'Secrets revealed'
+                    description: 'Secrets revealed (optional)'
                 },
-                character_growth: { type: 'string', description: 'Character changes' }
+                character_growth: { type: ['string', 'null'], description: 'Character changes (optional)' }
             },
             required: ['character_id', 'chapter_id', 'presence_type']
         }
@@ -338,10 +338,10 @@ export const characterTimelineToolsSchema = [
             type: 'object',
             properties: {
                 character_id: { type: 'integer', description: 'Character ID' },
-                book_id: { type: 'integer', description: 'Book ID' },
-                include_scenes: { type: 'boolean', description: 'Include scenes', default: false },
-                include_knowledge: { type: 'boolean', description: 'Include knowledge', default: true },
-                include_relationships: { type: 'boolean', description: 'Include relationships', default: false }
+                book_id: { type: ['integer', 'null'], description: 'Book ID (optional)' },
+                include_scenes: { type: ['boolean', 'null'], description: 'Include scenes (optional)', default: false },
+                include_knowledge: { type: ['boolean', 'null'], description: 'Include knowledge (optional)', default: true },
+                include_relationships: { type: ['boolean', 'null'], description: 'Include relationships (optional)', default: false }
             },
             required: ['character_id']
         }
@@ -356,9 +356,9 @@ export const characterTimelineToolsSchema = [
                 from_chapter_id: { type: 'integer', description: 'Start chapter' },
                 to_chapter_id: { type: 'integer', description: 'End chapter' },
                 check_type: {
-                    type: 'string',
-                    enum: ['physical_state', 'emotional_state', 'knowledge', 'location', 'all'],
-                    description: 'Check type',
+                    type: ['string', 'null'],
+                    enum: ['physical_state', 'emotional_state', 'knowledge', 'location', 'all', null],
+                    description: 'Check type (optional)',
                     default: 'all'
                 }
             },
@@ -372,16 +372,16 @@ export const characterTimelineToolsSchema = [
             type: 'object',
             properties: {
                 chapter_id: { type: 'integer', description: 'Chapter ID' },
-                scene_number: { type: 'integer', description: 'Scene # filter' },
+                scene_number: { type: ['integer', 'null'], description: 'Scene # filter (optional)' },
                 presence_type: {
-                    type: 'string',
-                    enum: ['present', 'mentioned', 'flashback', 'dream', 'phone_call'],
-                    description: 'Presence filter'
+                    type: ['string', 'null'],
+                    enum: ['present', 'mentioned', 'flashback', 'dream', 'phone_call', null],
+                    description: 'Presence filter (optional)'
                 },
                 importance_level: {
-                    type: 'string',
-                    enum: ['major', 'minor', 'cameo', 'background'],
-                    description: 'Importance filter'
+                    type: ['string', 'null'],
+                    enum: ['major', 'minor', 'cameo', 'background', null],
+                    description: 'Importance filter (optional)'
                 }
             },
             required: ['chapter_id']
