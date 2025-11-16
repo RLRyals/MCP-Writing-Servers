@@ -20,7 +20,8 @@ const servers = [
     { name: 'core-continuity', port: 3006 },
     { name: 'review', port: 3007 },
     { name: 'reporting', port: 3008 },
-    { name: 'author', port: 3009 }
+    { name: 'author', port: 3009 },
+    { name: 'database-admin', port: 3010 }
 ];
 
 // Store child process references
@@ -56,6 +57,7 @@ function log(serverName, message, level = 'info') {
         'review': colors.blue,
         'reporting': colors.magenta,
         'author': colors.cyan,
+        'database-admin': colors.green,
         'orchestrator': colors.bright + colors.white
     };
 
