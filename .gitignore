@@ -11,3 +11,7 @@ typing-mind-static/*
 .env.local
 .env.*.local
 credentials-backup.txt
+
+# Files that may contain tokens/secrets
+**/config/secrets.js
+**/*.secret.js
