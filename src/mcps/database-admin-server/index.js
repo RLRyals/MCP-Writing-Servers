@@ -15,6 +15,7 @@ if (process.env.MCP_STDIO_MODE === 'true') {
 import { BaseMCPServer } from '../../shared/base-server.js';
 import { DatabaseHandlers } from './handlers/database-handlers.js';
 import { BatchHandlers } from './handlers/batch-handlers.js';
+import { SchemaHandlers } from './handlers/schema-handlers.js';
 
 class DatabaseAdminMCPServer extends BaseMCPServer {
     constructor() {
@@ -23,6 +24,7 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
         // Initialize database handlers with shared DB connection
         this.databaseHandlers = new DatabaseHandlers(this.db);
         this.batchHandlers = new BatchHandlers(this.db);
+        this.schemaHandlers = new SchemaHandlers(this.db);
 
         // Initialize tools after base constructor
         this.tools = this.getTools();
@@ -66,7 +68,8 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
         // Get tool definitions from handlers
         const databaseTools = this.databaseHandlers.getDatabaseTools();
         const batchTools = this.batchHandlers.getBatchTools();
-        return [...databaseTools, ...batchTools];
+        const schemaTools = this.schemaHandlers.getSchemaTools();
+        return [...databaseTools, ...batchTools, ...schemaTools];
     }
 
     getToolHandler(toolName) {
@@ -79,7 +82,12 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
             // Batch operations
             'db_batch_insert': this.batchHandlers.handleBatchInsert.bind(this.batchHandlers),
             'db_batch_update': this.batchHandlers.handleBatchUpdate.bind(this.batchHandlers),
-            'db_batch_delete': this.batchHandlers.handleBatchDelete.bind(this.batchHandlers)
+            'db_batch_delete': this.batchHandlers.handleBatchDelete.bind(this.batchHandlers),
+            // Schema introspection
+            'db_get_schema': this.schemaHandlers.handleGetSchema.bind(this.schemaHandlers),
+            'db_list_tables': this.schemaHandlers.handleListTables.bind(this.schemaHandlers),
+            'db_get_relationships': this.schemaHandlers.handleGetRelationships.bind(this.schemaHandlers),
+            'db_list_table_columns': this.schemaHandlers.handleListTableColumns.bind(this.schemaHandlers)
         };
         return handlers[toolName];
     }
