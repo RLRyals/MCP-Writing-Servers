@@ -43,7 +43,10 @@ export const WHITELIST = {
 
     // Session and export tables
     writing_sessions: ['id', 'book_id', 'chapter_id', 'session_date', 'words_written', 'notes', 'created_at'],
-    exports: ['id', 'book_id', 'export_format', 'file_path', 'status', 'created_at', 'updated_at']
+    exports: ['id', 'book_id', 'export_format', 'file_path', 'status', 'created_at', 'updated_at'],
+
+    // Security and audit tables
+    audit_logs: ['id', 'timestamp', 'operation', 'table_name', 'record_id', 'user_id', 'client_info', 'changes', 'success', 'error_message', 'execution_time_ms', 'query_hash']
 };
 
 /**
@@ -65,7 +68,8 @@ export const SOFT_DELETE_TABLES = new Set([
  */
 export const READ_ONLY_TABLES = new Set([
     'genres',
-    'lookup_values'
+    'lookup_values',
+    'audit_logs'  // Audit logs can only be written by the audit logger
 ]);
 
 /**
