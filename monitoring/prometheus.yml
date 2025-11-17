@@ -1,0 +1,150 @@
+# ============================================
+# Prometheus Configuration
+# MCP Writing Servers - Monitoring Setup
+# ============================================
+
+global:
+  scrape_interval: 15s      # Default scrape interval
+  evaluation_interval: 15s   # Evaluate rules every 15 seconds
+  scrape_timeout: 10s        # Timeout for scrapes
+
+  # Attach labels to all metrics
+  external_labels:
+    cluster: 'mcp-writing-servers'
+    environment: 'production'
+
+# Alert manager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - 'alert-rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # ============================================
+  # MCP Writing Servers - Health Endpoints
+  # ============================================
+
+  # Book Planning Server
+  - job_name: 'book-planning'
+    static_configs:
+      - targets: ['mcp-servers:3001']
+        labels:
+          service: 'book-planning'
+          port: '3001'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Series Planning Server
+  - job_name: 'series-planning'
+    static_configs:
+      - targets: ['mcp-servers:3002']
+        labels:
+          service: 'series-planning'
+          port: '3002'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Chapter Planning Server
+  - job_name: 'chapter-planning'
+    static_configs:
+      - targets: ['mcp-servers:3003']
+        labels:
+          service: 'chapter-planning'
+          port: '3003'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Character Planning Server
+  - job_name: 'character-planning'
+    static_configs:
+      - targets: ['mcp-servers:3004']
+        labels:
+          service: 'character-planning'
+          port: '3004'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Scene Server
+  - job_name: 'scene'
+    static_configs:
+      - targets: ['mcp-servers:3005']
+        labels:
+          service: 'scene'
+          port: '3005'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Core Continuity Server
+  - job_name: 'core-continuity'
+    static_configs:
+      - targets: ['mcp-servers:3006']
+        labels:
+          service: 'core-continuity'
+          port: '3006'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Review Server
+  - job_name: 'review'
+    static_configs:
+      - targets: ['mcp-servers:3007']
+        labels:
+          service: 'review'
+          port: '3007'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Reporting Server
+  - job_name: 'reporting'
+    static_configs:
+      - targets: ['mcp-servers:3008']
+        labels:
+          service: 'reporting'
+          port: '3008'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Author Server
+  - job_name: 'author'
+    static_configs:
+      - targets: ['mcp-servers:3009']
+        labels:
+          service: 'author'
+          port: '3009'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # Database Admin Server (Critical)
+  - job_name: 'database-admin'
+    static_configs:
+      - targets: ['mcp-servers:3010']
+        labels:
+          service: 'database-admin'
+          port: '3010'
+          critical: 'true'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # ============================================
+  # PostgreSQL Exporter (Optional)
+  # ============================================
+  # - job_name: 'postgresql'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+  #       labels:
+  #         service: 'postgresql'
+
+  # ============================================
+  # Prometheus Self-Monitoring
+  # ============================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'

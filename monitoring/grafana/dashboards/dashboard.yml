@@ -1,0 +1,18 @@
+# ============================================
+# Grafana Dashboard Provisioning Configuration
+# Auto-loads dashboards on Grafana startup
+# ============================================
+
+apiVersion: 1
+
+providers:
+  - name: 'MCP Writing Servers'
+    orgId: 1
+    folder: 'MCP'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true
