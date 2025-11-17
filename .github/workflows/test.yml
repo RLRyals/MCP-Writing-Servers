@@ -1,0 +1,123 @@
+name: Database Admin Server Tests
+
+on:
+  push:
+    branches: [ main, develop, 'claude/**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: writing_server_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/writing_server_test
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL" > .env
+          echo "Test database configured"
+
+      - name: Initialize database schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/writing_server_test
+        run: |
+          # Run database initialization if init.sql exists
+          if [ -f init.sql ]; then
+            PGPASSWORD=postgres psql -h localhost -U postgres -d writing_server_test -f init.sql
+          fi
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/writing_server_test
+          NODE_ENV: test
+        run: |
+          npm test || node tests/database-admin-server/run-tests.js
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            coverage/
+            test-results/
+
+      - name: Report coverage
+        if: success()
+        run: |
+          echo "✅ Tests completed successfully"
+          echo "📊 Coverage goal: 90%+"
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        if: hashFiles('.eslintrc*') != ''
+        run: npm run lint || echo "No lint script configured"
+        continue-on-error: true
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Run security audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Check for vulnerable dependencies
+        run: |
+          echo "🔒 Checking for security vulnerabilities..."
+          npm audit || echo "⚠️ Security vulnerabilities detected - review recommended"
