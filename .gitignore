@@ -15,3 +15,9 @@ credentials-backup.txt
 # Files that may contain tokens/secrets
 **/config/secrets.js
 **/*.secret.js
+
+# Database backups (potentially large and may contain sensitive data)
+backups/
+*.sql
+*.sql.gz
+*-manifest.json
