@@ -14,6 +14,7 @@ if (process.env.MCP_STDIO_MODE === 'true') {
 
 import { BaseMCPServer } from '../../shared/base-server.js';
 import { DatabaseHandlers } from './handlers/database-handlers.js';
+import { BatchHandlers } from './handlers/batch-handlers.js';
 
 class DatabaseAdminMCPServer extends BaseMCPServer {
     constructor() {
@@ -21,6 +22,7 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
 
         // Initialize database handlers with shared DB connection
         this.databaseHandlers = new DatabaseHandlers(this.db);
+        this.batchHandlers = new BatchHandlers(this.db);
 
         // Initialize tools after base constructor
         this.tools = this.getTools();
@@ -62,15 +64,22 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
 
     getTools() {
         // Get tool definitions from handlers
-        return this.databaseHandlers.getDatabaseTools();
+        const databaseTools = this.databaseHandlers.getDatabaseTools();
+        const batchTools = this.batchHandlers.getBatchTools();
+        return [...databaseTools, ...batchTools];
     }
 
     getToolHandler(toolName) {
         const handlers = {
+            // Core CRUD operations
             'db_query_records': this.databaseHandlers.handleQueryRecords.bind(this.databaseHandlers),
             'db_insert_record': this.databaseHandlers.handleInsertRecord.bind(this.databaseHandlers),
             'db_update_records': this.databaseHandlers.handleUpdateRecords.bind(this.databaseHandlers),
-            'db_delete_records': this.databaseHandlers.handleDeleteRecords.bind(this.databaseHandlers)
+            'db_delete_records': this.databaseHandlers.handleDeleteRecords.bind(this.databaseHandlers),
+            // Batch operations
+            'db_batch_insert': this.batchHandlers.handleBatchInsert.bind(this.batchHandlers),
+            'db_batch_update': this.batchHandlers.handleBatchUpdate.bind(this.batchHandlers),
+            'db_batch_delete': this.batchHandlers.handleBatchDelete.bind(this.batchHandlers)
         };
         return handlers[toolName];
     }
