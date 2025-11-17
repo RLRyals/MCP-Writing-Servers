@@ -5,10 +5,15 @@
 import { databaseToolsSchema } from '../schemas/database-tools-schema.js';
 import { SecurityValidator } from '../utils/security-validator.js';
 import { QueryBuilder } from '../utils/query-builder.js';
+import { AccessControl } from '../utils/access-control.js';
+import { AuditLogger } from '../utils/audit-logger.js';
+import { DataValidator } from '../utils/data-validator.js';
 
 export class DatabaseHandlers {
     constructor(db) {
         this.db = db;
+        this.auditLogger = new AuditLogger(db);
+        this.dataValidator = new DataValidator(db);
     }
 
     // =============================================
@@ -22,11 +27,15 @@ export class DatabaseHandlers {
     // QUERY RECORDS HANDLER
     // =============================================
     async handleQueryRecords(args) {
-        try {
-            const { table, columns, where, order_by, limit, offset } = args;
+        const startTime = Date.now();
+        const { table, columns, where, order_by, limit, offset } = args;
 
+        try {
             // Validate table access
             SecurityValidator.validateTable(table);
+
+            // Access control check
+            AccessControl.validateTableAccess(table, 'READ');
 
             // Build and execute query
             const query = QueryBuilder.buildSelectQuery({
@@ -49,6 +58,13 @@ export class DatabaseHandlers {
                 const countResult = await this.db.query(countQuery.text, countQuery.values);
                 totalCount = parseInt(countResult.rows[0].count, 10);
             }
+
+            // Audit log success
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logRead(table, {
+                executionTime,
+                queryText: query.text
+            });
 
             // Format response
             const response = {
@@ -74,6 +90,11 @@ export class DatabaseHandlers {
             };
         } catch (error) {
             console.error('[DB-ADMIN] handleQueryRecords error:', error);
+
+            // Audit log failure
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logFailure('READ', table, error, { executionTime });
+
             throw new Error(`Failed to query records: ${error.message}`);
         }
     }
@@ -82,12 +103,25 @@ export class DatabaseHandlers {
     // INSERT RECORD HANDLER
     // =============================================
     async handleInsertRecord(args) {
-        try {
-            const { table, data } = args;
+        const startTime = Date.now();
+        const { table, data } = args;
 
+        try {
             // Validate table is not read-only
             SecurityValidator.validateTable(table);
             SecurityValidator.validateNotReadOnly(table, 'insert into');
+
+            // Access control check
+            AccessControl.validateTableAccess(table, 'INSERT');
+
+            // Data validation
+            const validationResult = await this.dataValidator.validateComprehensive(table, data, 'insert');
+            if (!validationResult.valid) {
+                const validationError = new Error('Validation failed');
+                validationError.code = 'DB_400_VALIDATION';
+                validationError.details = validationResult.errors;
+                throw validationError;
+            }
 
             // Build and execute insert query
             const query = QueryBuilder.buildInsertQuery(table, data);
@@ -96,6 +130,13 @@ export class DatabaseHandlers {
 
             const result = await this.db.query(query.text, query.values);
             const insertedRecord = result.rows[0];
+
+            // Audit log success
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logCreate(table, insertedRecord.id, {
+                executionTime,
+                queryText: query.text
+            });
 
             return {
                 content: [
@@ -108,6 +149,17 @@ export class DatabaseHandlers {
             };
         } catch (error) {
             console.error('[DB-ADMIN] handleInsertRecord error:', error);
+
+            // Audit log failure
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logFailure('CREATE', table, error, { executionTime });
+
+            // Handle validation errors
+            if (error.code === 'DB_400_VALIDATION') {
+                throw new Error(
+                    `Validation failed:\n${error.details.map(d => `  - ${d}`).join('\n')}`
+                );
+            }
 
             // Provide helpful error messages for common database errors
             if (error.code === '23505') {
@@ -126,16 +178,29 @@ export class DatabaseHandlers {
     // UPDATE RECORDS HANDLER
     // =============================================
     async handleUpdateRecords(args) {
-        try {
-            const { table, data, where } = args;
+        const startTime = Date.now();
+        const { table, data, where } = args;
 
+        try {
             // Validate table is not read-only
             SecurityValidator.validateTable(table);
             SecurityValidator.validateNotReadOnly(table, 'update');
 
+            // Access control check
+            AccessControl.validateTableAccess(table, 'UPDATE');
+
             // Ensure WHERE clause is provided for safety
             if (!where || Object.keys(where).length === 0) {
                 throw new Error('WHERE clause is required for update operations to prevent accidental mass updates');
+            }
+
+            // Data validation (for update operation)
+            const validationResult = await this.dataValidator.validateRecordData(table, data, null, 'update');
+            if (!validationResult.valid) {
+                const validationError = new Error('Validation failed');
+                validationError.code = 'DB_400_VALIDATION';
+                validationError.details = validationResult.errors;
+                throw validationError;
             }
 
             // Build and execute update query
@@ -146,6 +211,13 @@ export class DatabaseHandlers {
             const result = await this.db.query(query.text, query.values);
 
             if (result.rows.length === 0) {
+                // Audit log (no records found is still a successful operation)
+                const executionTime = Date.now() - startTime;
+                await this.auditLogger.logSuccess('UPDATE', table, {
+                    executionTime,
+                    queryText: query.text
+                });
+
                 return {
                     content: [
                         {
@@ -155,6 +227,15 @@ export class DatabaseHandlers {
                         }
                     ]
                 };
+            }
+
+            // Audit log success
+            const executionTime = Date.now() - startTime;
+            for (const record of result.rows) {
+                await this.auditLogger.logUpdate(table, record.id, { old: {}, new: data }, {
+                    executionTime,
+                    queryText: query.text
+                });
             }
 
             return {
@@ -168,6 +249,17 @@ export class DatabaseHandlers {
             };
         } catch (error) {
             console.error('[DB-ADMIN] handleUpdateRecords error:', error);
+
+            // Audit log failure
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logFailure('UPDATE', table, error, { executionTime });
+
+            // Handle validation errors
+            if (error.code === 'DB_400_VALIDATION') {
+                throw new Error(
+                    `Validation failed:\n${error.details.map(d => `  - ${d}`).join('\n')}`
+                );
+            }
 
             // Provide helpful error messages for common database errors
             if (error.code === '23505') {
@@ -184,12 +276,16 @@ export class DatabaseHandlers {
     // DELETE RECORDS HANDLER
     // =============================================
     async handleDeleteRecords(args) {
-        try {
-            const { table, where, soft_delete } = args;
+        const startTime = Date.now();
+        const { table, where, soft_delete } = args;
 
+        try {
             // Validate table is not read-only
             SecurityValidator.validateTable(table);
             SecurityValidator.validateNotReadOnly(table, 'delete from');
+
+            // Access control check
+            AccessControl.validateTableAccess(table, 'DELETE');
 
             // Ensure WHERE clause is provided for safety
             if (!where || Object.keys(where).length === 0) {
@@ -215,6 +311,13 @@ export class DatabaseHandlers {
             const result = await this.db.query(query.text, query.values);
 
             if (result.rows.length === 0) {
+                // Audit log (no records found is still a successful operation)
+                const executionTime = Date.now() - startTime;
+                await this.auditLogger.logSuccess('DELETE', table, {
+                    executionTime,
+                    queryText: query.text
+                });
+
                 return {
                     content: [
                         {
@@ -224,6 +327,15 @@ export class DatabaseHandlers {
                         }
                     ]
                 };
+            }
+
+            // Audit log success
+            const executionTime = Date.now() - startTime;
+            for (const record of result.rows) {
+                await this.auditLogger.logDelete(table, record.id, {
+                    executionTime,
+                    queryText: query.text
+                });
             }
 
             return {
@@ -237,6 +349,10 @@ export class DatabaseHandlers {
             };
         } catch (error) {
             console.error('[DB-ADMIN] handleDeleteRecords error:', error);
+
+            // Audit log failure
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logFailure('DELETE', table, error, { executionTime });
 
             // Provide helpful error messages for common database errors
             if (error.code === '23503') {

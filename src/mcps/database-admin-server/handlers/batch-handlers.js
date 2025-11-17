@@ -6,10 +6,13 @@ import { batchToolsSchema } from '../schemas/batch-tools-schema.js';
 import { SecurityValidator } from '../utils/security-validator.js';
 import { QueryBuilder } from '../utils/query-builder.js';
 import { TransactionManager } from '../utils/transaction-manager.js';
+import { AccessControl } from '../utils/access-control.js';
+import { AuditLogger } from '../utils/audit-logger.js';
 
 export class BatchHandlers {
     constructor(db) {
         this.db = db;
+        this.auditLogger = new AuditLogger(db);
     }
 
     // =============================================
@@ -23,12 +26,16 @@ export class BatchHandlers {
     // BATCH INSERT HANDLER
     // =============================================
     async handleBatchInsert(args) {
-        try {
-            const { table, records } = args;
+        const startTime = Date.now();
+        const { table, records } = args;
 
+        try {
             // Validate table access
             SecurityValidator.validateTable(table);
             SecurityValidator.validateNotReadOnly(table, 'batch insert into');
+
+            // Access control check
+            AccessControl.validateTableAccess(table, 'BATCH_INSERT');
 
             // Validate batch size
             if (!Array.isArray(records)) {
@@ -58,6 +65,13 @@ export class BatchHandlers {
             // Extract IDs from inserted records
             const insertedIds = result.map(record => record.id);
 
+            // Audit log success
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logSuccess('BATCH_INSERT', table, {
+                recordId: insertedIds.join(','),
+                executionTime
+            });
+
             // Format response
             const response = {
                 success: true,
@@ -82,6 +96,10 @@ export class BatchHandlers {
         } catch (error) {
             console.error('[DB-ADMIN] handleBatchInsert error:', error);
 
+            // Audit log failure
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logFailure('BATCH_INSERT', table, error, { executionTime });
+
             // Provide context about which operation failed
             let errorMessage = `Batch insert failed: ${error.message}`;
 
@@ -98,12 +116,16 @@ export class BatchHandlers {
     // BATCH UPDATE HANDLER
     // =============================================
     async handleBatchUpdate(args) {
-        try {
-            const { table, updates, return_records = true } = args;
+        const startTime = Date.now();
+        const { table, updates, return_records = true } = args;
 
+        try {
             // Validate table access
             SecurityValidator.validateTable(table);
             SecurityValidator.validateNotReadOnly(table, 'batch update');
+
+            // Access control check
+            AccessControl.validateTableAccess(table, 'BATCH_UPDATE');
 
             // Validate updates array
             if (!Array.isArray(updates)) {
@@ -142,6 +164,12 @@ export class BatchHandlers {
                 }
             );
 
+            // Audit log success
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logSuccess('BATCH_UPDATE', table, {
+                executionTime
+            });
+
             // Format response
             const response = {
                 success: true,
@@ -167,6 +195,10 @@ export class BatchHandlers {
         } catch (error) {
             console.error('[DB-ADMIN] handleBatchUpdate error:', error);
 
+            // Audit log failure
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logFailure('BATCH_UPDATE', table, error, { executionTime });
+
             let errorMessage = `Batch update failed: ${error.message}`;
 
             if (TransactionManager.isRetryableError(error)) {
@@ -181,12 +213,16 @@ export class BatchHandlers {
     // BATCH DELETE HANDLER
     // =============================================
     async handleBatchDelete(args) {
-        try {
-            const { table, conditions, soft_delete } = args;
+        const startTime = Date.now();
+        const { table, conditions, soft_delete } = args;
 
+        try {
             // Validate table access
             SecurityValidator.validateTable(table);
             SecurityValidator.validateNotReadOnly(table, 'batch delete from');
+
+            // Access control check
+            AccessControl.validateTableAccess(table, 'BATCH_DELETE');
 
             // Validate conditions array
             if (!Array.isArray(conditions)) {
@@ -225,6 +261,12 @@ export class BatchHandlers {
                 }
             );
 
+            // Audit log success
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logSuccess('BATCH_DELETE', table, {
+                executionTime
+            });
+
             // Format response
             const response = {
                 success: true,
@@ -246,6 +288,10 @@ export class BatchHandlers {
             };
         } catch (error) {
             console.error('[DB-ADMIN] handleBatchDelete error:', error);
+
+            // Audit log failure
+            const executionTime = Date.now() - startTime;
+            await this.auditLogger.logFailure('BATCH_DELETE', table, error, { executionTime });
 
             let errorMessage = `Batch delete failed: ${error.message}`;
 

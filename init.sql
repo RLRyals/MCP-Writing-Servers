@@ -2427,3 +2427,42 @@ ON CONFLICT (status_name) DO NOTHING;
 INSERT INTO migrations (filename) VALUES ('021_add_scene_lookup_tables.sql')
 ON CONFLICT DO NOTHING;
 END $$;
+
+-- =============================================
+-- Migration 022: Security & Audit Logging (Phase 4)
+-- =============================================
+DO $$
+BEGIN
+    -- Check if migration was already applied
+    IF EXISTS (SELECT 1 FROM migrations WHERE filename = '022_security_audit_logging.sql') THEN
+        RAISE NOTICE 'Migration 022_security_audit_logging.sql already applied, skipping.';
+        RETURN;
+    END IF;
+
+-- Audit logs table - comprehensive logging of all database operations
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+    operation VARCHAR(50) NOT NULL CHECK (operation IN ('CREATE', 'READ', 'UPDATE', 'DELETE', 'BATCH_INSERT', 'BATCH_UPDATE', 'BATCH_DELETE')),
+    table_name VARCHAR(255) NOT NULL,
+    record_id VARCHAR(255),
+    user_id VARCHAR(255),
+    client_info JSONB,
+    changes JSONB,  -- Old and new values for updates
+    success BOOLEAN NOT NULL,
+    error_message TEXT,
+    execution_time_ms INTEGER,
+    query_hash VARCHAR(64)
+);
+
+-- Indexes for efficient audit log queries
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_table ON audit_logs(table_name);
+CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_operation ON audit_logs(operation);
+CREATE INDEX IF NOT EXISTS idx_audit_success ON audit_logs(success);
+
+-- Record this migration
+INSERT INTO migrations (filename) VALUES ('022_security_audit_logging.sql')
+ON CONFLICT DO NOTHING;
+END $$;

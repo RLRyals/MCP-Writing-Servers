@@ -16,6 +16,7 @@ import { BaseMCPServer } from '../../shared/base-server.js';
 import { DatabaseHandlers } from './handlers/database-handlers.js';
 import { BatchHandlers } from './handlers/batch-handlers.js';
 import { SchemaHandlers } from './handlers/schema-handlers.js';
+import { AuditHandlers } from './handlers/audit-handlers.js';
 
 class DatabaseAdminMCPServer extends BaseMCPServer {
     constructor() {
@@ -25,6 +26,7 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
         this.databaseHandlers = new DatabaseHandlers(this.db);
         this.batchHandlers = new BatchHandlers(this.db);
         this.schemaHandlers = new SchemaHandlers(this.db);
+        this.auditHandlers = new AuditHandlers(this.db);
 
         // Initialize tools after base constructor
         this.tools = this.getTools();
@@ -69,7 +71,8 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
         const databaseTools = this.databaseHandlers.getDatabaseTools();
         const batchTools = this.batchHandlers.getBatchTools();
         const schemaTools = this.schemaHandlers.getSchemaTools();
-        return [...databaseTools, ...batchTools, ...schemaTools];
+        const auditTools = this.auditHandlers.getAuditTools();
+        return [...databaseTools, ...batchTools, ...schemaTools, ...auditTools];
     }
 
     getToolHandler(toolName) {
@@ -87,7 +90,10 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
             'db_get_schema': this.schemaHandlers.handleGetSchema.bind(this.schemaHandlers),
             'db_list_tables': this.schemaHandlers.handleListTables.bind(this.schemaHandlers),
             'db_get_relationships': this.schemaHandlers.handleGetRelationships.bind(this.schemaHandlers),
-            'db_list_table_columns': this.schemaHandlers.handleListTableColumns.bind(this.schemaHandlers)
+            'db_list_table_columns': this.schemaHandlers.handleListTableColumns.bind(this.schemaHandlers),
+            // Audit tools
+            'db_query_audit_logs': this.auditHandlers.handleQueryAuditLogs.bind(this.auditHandlers),
+            'db_get_audit_summary': this.auditHandlers.handleGetAuditSummary.bind(this.auditHandlers)
         };
         return handlers[toolName];
     }
