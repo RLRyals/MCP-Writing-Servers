@@ -18,26 +18,8 @@ const activeTransports = new Map();
 // Dynamically import all MCP servers
 async function loadServers() {
     const servers = [];
-    const serverConfigs = [
-        { name: 'book-planning', port: 3001, path: './config-mcps/book-planning-server/index.js', className: 'BookPlanningMCPServer' },
-        { name: 'series-planning', port: 3002, path: './config-mcps/series-planning-server/index.js', className: 'SeriesPlanningMCPServer' },
-        { name: 'chapter-planning', port: 3003, path: './config-mcps/chapter-planning-server/index.js', className: 'ChapterPlanningMCPServer' },
-        { name: 'character-planning', port: 3004, path: './config-mcps/charater-planning-server/index.js', className: 'CharacterPlanningMCPServer' },
-        { name: 'scene', port: 3005, path: './config-mcps/scene-server/index.js', className: 'SceneWritingMCPServer' },
-        { name: 'core-continuity', port: 3006, path: './config-mcps/core-continuity-server/index.js', className: 'CoreContinuityMCPServer' },
-        { name: 'review', port: 3007, path: './config-mcps/review-server/index.js', className: 'ReviewMCPServer' },
-        { name: 'reporting', port: 3008, path: './config-mcps/reporting-server/index.js', className: 'ReportingMCPServer' },
-        { name: 'author', port: 3009, path: './mcps/author-server/index.js', className: 'AuthorMCPServer' }
-    ];
 
     console.error('\n🔄 Loading MCP servers...\n');
-
-    for (const config of serverConfigs) {
-        try {
-            const module = await import(config.path);
-            const ServerClass = module[config.className];
-
-    console.error('Loading MCP servers...');
 
     try {
         // Book Planning Server
@@ -137,18 +119,35 @@ async function loadServers() {
         console.error('✗ Failed to load Review Server:', error.message);
     }
 
-            servers.push({
-                name: config.name,
-                port: config.port,
-                serverClass: ServerClass
-            });
-            console.error(`✓ ${config.name.padEnd(20)} - Port ${config.port}`);
-        } catch (error) {
-            console.error(`✗ ${config.name.padEnd(20)} - Failed: ${error.message}`);
-        }
+    try {
+        // Reporting Server
+        const { ReportingMCPServer } = await import('./config-mcps/reporting-server/index.js');
+        servers.push({
+            name: 'reporting',
+            path: '/reporting',
+            serverClass: ReportingMCPServer,
+            port: 3008
+        });
+        console.error('✓ Reporting Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Reporting Server:', error.message);
     }
 
-    console.error(`\n✅ Successfully loaded ${servers.length}/9 servers\n`);
+    try {
+        // Database Admin Server
+        const { DatabaseAdminMCPServer } = await import('./mcps/database-admin-server/index.js');
+        servers.push({
+            name: 'database-admin',
+            path: '/database-admin',
+            serverClass: DatabaseAdminMCPServer,
+            port: 3010
+        });
+        console.error('✓ Database Admin Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Database Admin Server:', error.message);
+    }
+
+    console.error(`\n✅ Successfully loaded ${servers.length}/10 servers\n`);
     return servers;
 }
 

@@ -77,15 +77,17 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs:1001
 
 # Expose ports for MCP servers
-# Ports 3001-3009: 9 individual MCP server endpoints with HTTP/SSE transport
+# Ports 3001-3010: 10 individual MCP server endpoints with HTTP/SSE transport
 # 3001: book-planning, 3002: series-planning, 3003: chapter-planning
 # 3004: character-planning, 3005: scene, 3006: core-continuity
-# 3007: review, 3008: reporting, 3009: author
-EXPOSE 3001 3002 3003 3004 3005 3006 3007 3008 3009
+# 3007: review, 3008: reporting, 3009: author, 3010: database-admin
+EXPOSE 3001 3002 3003 3004 3005 3006 3007 3008 3009 3010
 
 # Health check - verifies the HTTP/SSE server is responsive
+# Checks all critical services including database-admin on port 3010
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:3001/health || exit 1
+    CMD curl -f http://localhost:3001/health && \
+        curl -f http://localhost:3010/health || exit 1
 
 # Use dumb-init as entrypoint for proper signal handling
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]

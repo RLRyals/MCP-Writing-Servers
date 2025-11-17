@@ -1,0 +1,158 @@
+# ============================================
+# Prometheus Alert Rules
+# MCP Writing Servers - Alert Definitions
+# ============================================
+
+groups:
+  # ============================================
+  # Service Health Alerts
+  # ============================================
+  - name: service_health
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} on {{ $labels.instance }} has been down for more than 2 minutes."
+
+      - alert: HighErrorRate
+        expr: (mcp_errors_total / mcp_requests_total) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.service }}."
+
+      - alert: CriticalErrorRate
+        expr: (mcp_errors_total / mcp_requests_total) > 0.10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical error rate on {{ $labels.service }}"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.service }}. Immediate action required!"
+
+  # ============================================
+  # Performance Alerts
+  # ============================================
+  - name: performance
+    interval: 30s
+    rules:
+      - alert: HighLatencyP95
+        expr: mcp_request_duration_ms{quantile="0.95"} > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High P95 latency on {{ $labels.service }}"
+          description: "P95 latency is {{ $value }}ms on {{ $labels.service }}. Target is <100ms."
+
+      - alert: HighLatencyP99
+        expr: mcp_request_duration_ms{quantile="0.99"} > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High P99 latency on {{ $labels.service }}"
+          description: "P99 latency is {{ $value }}ms on {{ $labels.service }}."
+
+  # ============================================
+  # Resource Alerts
+  # ============================================
+  - name: resources
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: (mcp_memory_usage_bytes{type="used"} / (mcp_memory_usage_bytes{type="used"} + mcp_memory_usage_bytes{type="free"})) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.service }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.service }}."
+
+      - alert: CriticalMemoryUsage
+        expr: (mcp_memory_usage_bytes{type="used"} / (mcp_memory_usage_bytes{type="used"} + mcp_memory_usage_bytes{type="free"})) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical memory usage on {{ $labels.service }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.service }}. Immediate action required!"
+
+  # ============================================
+  # Database Alerts
+  # ============================================
+  - name: database
+    interval: 30s
+    rules:
+      - alert: DatabaseConnectionFailure
+        expr: up{job="database-admin"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database Admin Server is down"
+          description: "Database Admin Server has been unreachable for 1 minute. This affects all database operations!"
+
+      - alert: DatabaseHealthDegraded
+        expr: database_health_status{status="degraded"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database health degraded"
+          description: "Database health check reports degraded status for {{ $labels.service }}."
+
+  # ============================================
+  # Backup Operation Alerts
+  # ============================================
+  - name: backups
+    interval: 1h
+    rules:
+      - alert: BackupFailure
+        expr: backup_success_rate < 1.0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup operations failing"
+          description: "Backup success rate is {{ $value | humanizePercentage }}. Target is 100%."
+
+      - alert: NoRecentBackup
+        expr: time() - backup_last_success_timestamp > 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No successful backup in 24 hours"
+          description: "Last successful backup was {{ $value | humanizeDuration }} ago."
+
+  # ============================================
+  # Prometheus Self-Monitoring
+  # ============================================
+  - name: prometheus
+    interval: 30s
+    rules:
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus config reload failed"
+          description: "Prometheus configuration reload has failed. Check logs."
+
+      - alert: PrometheusTooManyRestarts
+        expr: changes(process_start_time_seconds{job="prometheus"}[15m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus restarting frequently"
+          description: "Prometheus has restarted {{ $value }} times in the last 15 minutes."

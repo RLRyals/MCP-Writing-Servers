@@ -1,0 +1,217 @@
+# ============================================
+# MCP Writing Servers - Production Docker Compose
+# Phase 7: Integration, Deployment & Production Rollout
+# ============================================
+# Complete production stack with:
+# - PostgreSQL database with optimized settings
+# - PgBouncer connection pooling
+# - MCP Writing Servers (10 servers on ports 3001-3010)
+# - Prometheus monitoring
+# - Grafana dashboards
+# - Health checks and auto-restart
+# ============================================
+
+version: '3.8'
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: mcp-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mcp_series}
+      POSTGRES_USER: ${POSTGRES_USER:-writer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your_secure_password2025}
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-256MB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-1GB}
+      POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-128MB}
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: ${POSTGRES_CHECKPOINT_COMPLETION_TARGET:-0.9}
+      POSTGRES_WAL_BUFFERS: ${POSTGRES_WAL_BUFFERS:-16MB}
+      POSTGRES_MAX_WORKER_PROCESSES: ${POSTGRES_MAX_WORKER_PROCESSES:-4}
+      POSTGRES_MAX_PARALLEL_WORKERS_PER_GATHER: ${POSTGRES_MAX_PARALLEL_WORKERS_PER_GATHER:-2}
+      POSTGRES_EFFECTIVE_IO_CONCURRENCY: ${POSTGRES_EFFECTIVE_IO_CONCURRENCY:-200}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./backups:/backups
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-writer} -d ${POSTGRES_DB:-mcp_series}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ============================================
+  # PgBouncer - Connection Pooling
+  # ============================================
+  pgbouncer:
+    image: bitnami/pgbouncer:latest
+    container_name: mcp-pgbouncer
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_USERNAME: ${POSTGRES_USER:-writer}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-your_secure_password2025}
+      POSTGRESQL_DATABASE: ${POSTGRES_DB:-mcp_series}
+      PGBOUNCER_DATABASE: ${POSTGRES_DB:-mcp_series}
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 1000
+      PGBOUNCER_DEFAULT_POOL_SIZE: 25
+      PGBOUNCER_MIN_POOL_SIZE: 10
+      PGBOUNCER_RESERVE_POOL_SIZE: 5
+    ports:
+      - "6432:6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "6432"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ============================================
+  # MCP Writing Servers
+  # ============================================
+  mcp-servers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: mcp-writing-servers
+    environment:
+      # Database connection through PgBouncer
+      DATABASE_URL: postgresql://${POSTGRES_USER:-writer}:${POSTGRES_PASSWORD:-your_secure_password2025}@pgbouncer:6432/${POSTGRES_DB:-mcp_series}
+      NODE_ENV: ${NODE_ENV:-production}
+      # MCP Configuration
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: json
+    volumes:
+      # Persist backups
+      - backup_data:/app/data
+      # Persist logs
+      - log_data:/app/logs
+    ports:
+      # Expose all 10 MCP server ports
+      - "3001:3001"  # book-planning
+      - "3002:3002"  # series-planning
+      - "3003:3003"  # chapter-planning
+      - "3004:3004"  # character-planning
+      - "3005:3005"  # scene
+      - "3006:3006"  # core-continuity
+      - "3007:3007"  # review
+      - "3008:3008"  # reporting
+      - "3009:3009"  # author
+      - "3010:3010"  # database-admin
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ============================================
+  # Prometheus - Metrics Collection
+  # ============================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - mcp-servers
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # ============================================
+  # Grafana - Monitoring Dashboards
+  # ============================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+  backup_data:
+    driver: local
+  log_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
