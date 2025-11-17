@@ -55,6 +55,18 @@ async function runTests() {
         // Import and run query builder tests
         await import('./query-builder.test.js');
 
+        // Import and run batch operations tests
+        await import('./batch-operations.test.js');
+
+        // Import and run schema introspection tests
+        await import('./schema-introspection.test.js');
+
+        // Import and run audit handlers tests
+        await import('./audit-handlers.test.js');
+
+        // Import and run backup handlers tests
+        await import('./backup-handlers.test.js');
+
         // Print summary
         console.log('\n' + '═'.repeat(70));
         console.log('\n📊 Test Summary\n');
