@@ -17,6 +17,7 @@ import { DatabaseHandlers } from './handlers/database-handlers.js';
 import { BatchHandlers } from './handlers/batch-handlers.js';
 import { SchemaHandlers } from './handlers/schema-handlers.js';
 import { AuditHandlers } from './handlers/audit-handlers.js';
+import { BackupHandlers } from './handlers/backup-handlers.js';
 
 class DatabaseAdminMCPServer extends BaseMCPServer {
     constructor() {
@@ -27,6 +28,7 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
         this.batchHandlers = new BatchHandlers(this.db);
         this.schemaHandlers = new SchemaHandlers(this.db);
         this.auditHandlers = new AuditHandlers(this.db);
+        this.backupHandlers = new BackupHandlers(this.db);
 
         // Initialize tools after base constructor
         this.tools = this.getTools();
@@ -72,7 +74,8 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
         const batchTools = this.batchHandlers.getBatchTools();
         const schemaTools = this.schemaHandlers.getSchemaTools();
         const auditTools = this.auditHandlers.getAuditTools();
-        return [...databaseTools, ...batchTools, ...schemaTools, ...auditTools];
+        const backupTools = this.backupHandlers.getBackupTools();
+        return [...databaseTools, ...batchTools, ...schemaTools, ...auditTools, ...backupTools];
     }
 
     getToolHandler(toolName) {
@@ -93,7 +96,20 @@ class DatabaseAdminMCPServer extends BaseMCPServer {
             'db_list_table_columns': this.schemaHandlers.handleListTableColumns.bind(this.schemaHandlers),
             // Audit tools
             'db_query_audit_logs': this.auditHandlers.handleQueryAuditLogs.bind(this.auditHandlers),
-            'db_get_audit_summary': this.auditHandlers.handleGetAuditSummary.bind(this.auditHandlers)
+            'db_get_audit_summary': this.auditHandlers.handleGetAuditSummary.bind(this.auditHandlers),
+            // Backup & Restore operations
+            'db_backup_full': this.backupHandlers.handleBackupFull.bind(this.backupHandlers),
+            'db_backup_table': this.backupHandlers.handleBackupTable.bind(this.backupHandlers),
+            'db_backup_incremental': this.backupHandlers.handleBackupIncremental.bind(this.backupHandlers),
+            'db_export_json': this.backupHandlers.handleExportJson.bind(this.backupHandlers),
+            'db_export_csv': this.backupHandlers.handleExportCsv.bind(this.backupHandlers),
+            'db_restore_full': this.backupHandlers.handleRestoreFull.bind(this.backupHandlers),
+            'db_restore_table': this.backupHandlers.handleRestoreTable.bind(this.backupHandlers),
+            'db_import_json': this.backupHandlers.handleImportJson.bind(this.backupHandlers),
+            'db_import_csv': this.backupHandlers.handleImportCsv.bind(this.backupHandlers),
+            'db_list_backups': this.backupHandlers.handleListBackups.bind(this.backupHandlers),
+            'db_delete_backup': this.backupHandlers.handleDeleteBackup.bind(this.backupHandlers),
+            'db_validate_backup': this.backupHandlers.handleValidateBackup.bind(this.backupHandlers)
         };
         return handlers[toolName];
     }
