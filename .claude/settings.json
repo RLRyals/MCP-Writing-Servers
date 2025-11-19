@@ -1,0 +1,100 @@
+{
+  "description": "MCP Writing Servers - A comprehensive suite of Model Context Protocol servers for fiction writing applications",
+  "workingDirectory": "/home/user/MCP-Writing-Servers",
+  "hooks": {
+    "SessionStart": ".claude/hooks/SessionStart.sh"
+  },
+  "environment": {
+    "NODE_ENV": "development",
+    "LOG_LEVEL": "info",
+    "LOG_FORMAT": "text"
+  },
+  "mcpServers": {
+    "database-admin": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["mcp-stdio-adapter.js", "database-admin-server"],
+      "description": "Database administration and CRUD operations"
+    },
+    "book-planning": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "book-planning"],
+      "description": "Book planning and structure management"
+    },
+    "character-planning": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "character-planning"],
+      "description": "Character development and management"
+    },
+    "series-planning": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "series-planning"],
+      "description": "Series planning and continuity"
+    },
+    "chapter-planning": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "chapter-planning"],
+      "description": "Chapter structure and planning"
+    },
+    "scene": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "scene"],
+      "description": "Scene writing and management"
+    },
+    "core-continuity": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "core-continuity"],
+      "description": "Story continuity tracking"
+    },
+    "review": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "review"],
+      "description": "Content review and feedback"
+    },
+    "reporting": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "reporting"],
+      "description": "Analytics and reporting"
+    },
+    "author": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["src/stdio-server.js", "author"],
+      "description": "Author profile management"
+    }
+  },
+  "quickStart": {
+    "database": {
+      "dockerCommand": "docker-compose up -d postgres",
+      "initCommand": "docker-compose exec postgres psql -U writer -d mcp_series -f /docker-entrypoint-initdb.d/init.sql",
+      "healthCheck": "psql -U writer -d mcp_series -c 'SELECT 1;'"
+    },
+    "servers": {
+      "httpSSE": "npm start",
+      "stdio": "node src/stdio-server.js",
+      "orchestrator": "npm run start:orchestrator"
+    }
+  },
+  "integrationNotes": {
+    "targetRepo": "MCP-Electron-App (FictionLab)",
+    "clonePath": "servers/mcp-writing",
+    "requiredEnvVars": [
+      "DATABASE_URL",
+      "GITHUB_AUTH_TOKEN",
+      "MCP_AUTH_TOKEN"
+    ],
+    "ports": {
+      "httpSSE": 3001,
+      "connector": 50880,
+      "serverRange": "3001-3010"
+    }
+  }
+}
