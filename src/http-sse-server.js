@@ -326,7 +326,7 @@ function createServerEndpoint(serverConfig) {
             // Create a temporary MCP server instance
             const mcpServer = new serverClass();
 
-            // Check if tool exists
+            // Find the requested tool (for validation)
             const tool = mcpServer.tools.find(t => t.name === params.name);
             if (!tool) {
                 return res.status(404).json({
@@ -341,56 +341,22 @@ function createServerEndpoint(serverConfig) {
 
             console.error(`[${name}] Executing tool: ${params.name}`);
 
-            // Call the handler method directly
-            // The handlers are organized in: crudHandlers, batchHandlers, schemaHandlers, auditHandlers, backupHandlers
-            const args = params.arguments || {};
-            let result;
-
-            // Simple mapping for database admin tools
-            switch (params.name) {
-                case 'db_list_tables':
-                    result = await mcpServer.schemaHandlers.handleListTables(args);
-                    break;
-                case 'db_get_schema':
-                    result = await mcpServer.schemaHandlers.handleGetSchema(args);
-                    break;
-                case 'db_get_relationships':
-                    result = await mcpServer.schemaHandlers.handleGetRelationships(args);
-                    break;
-                case 'db_list_table_columns':
-                    result = await mcpServer.schemaHandlers.handleListTableColumns(args);
-                    break;
-                case 'db_query_records':
-                    result = await mcpServer.crudHandlers.handleQueryRecords(args);
-                    break;
-                case 'db_insert_record':
-                    result = await mcpServer.crudHandlers.handleInsertRecord(args);
-                    break;
-                case 'db_update_records':
-                    result = await mcpServer.crudHandlers.handleUpdateRecords(args);
-                    break;
-                case 'db_delete_records':
-                    result = await mcpServer.crudHandlers.handleDeleteRecords(args);
-                    break;
-                case 'db_batch_insert':
-                    result = await mcpServer.batchHandlers.handleBatchInsert(args);
-                    break;
-                case 'db_batch_update':
-                    result = await mcpServer.batchHandlers.handleBatchUpdate(args);
-                    break;
-                case 'db_batch_delete':
-                    result = await mcpServer.batchHandlers.handleBatchDelete(args);
-                    break;
-                case 'db_query_audit_logs':
-                    result = await mcpServer.auditHandlers.handleQueryAuditLogs(args);
-                    break;
-                case 'db_get_audit_summary':
-                    result = await mcpServer.auditHandlers.handleGetAuditSummary(args);
-                    break;
-                default:
-                    // For backup/restore tools or unknown tools
-                    throw new Error(`Tool not implemented in direct API: ${params.name}`);
+            // Get the tool handler from the server instance
+            const handler = mcpServer.getToolHandler(params.name);
+            if (!handler) {
+                return res.status(500).json({
+                    jsonrpc: '2.0',
+                    error: {
+                        code: -32603,
+                        message: `Handler not found for tool: ${params.name}`
+                    },
+                    id: id || null
+                });
             }
+
+            // Execute the tool with the handler
+            const args = params.arguments || {};
+            const result = await handler(args);
 
             // Return MCP-style response
             res.json({
