@@ -33,6 +33,10 @@ services:
       POSTGRES_MAX_WORKER_PROCESSES: ${POSTGRES_MAX_WORKER_PROCESSES:-4}
       POSTGRES_MAX_PARALLEL_WORKERS_PER_GATHER: ${POSTGRES_MAX_PARALLEL_WORKERS_PER_GATHER:-2}
       POSTGRES_EFFECTIVE_IO_CONCURRENCY: ${POSTGRES_EFFECTIVE_IO_CONCURRENCY:-200}
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -64,9 +68,11 @@ services:
       PGBOUNCER_DATABASE: ${POSTGRES_DB:-mcp_series}
       PGBOUNCER_POOL_MODE: transaction
       PGBOUNCER_MAX_CLIENT_CONN: 1000
-      PGBOUNCER_DEFAULT_POOL_SIZE: 25
-      PGBOUNCER_MIN_POOL_SIZE: 10
-      PGBOUNCER_RESERVE_POOL_SIZE: 5
+      # Increased from 25 to 100 to handle 10 MCP servers × 20 connections each = 200 client connections
+      # Transaction mode allows efficient multiplexing, so 100 server connections is sufficient
+      PGBOUNCER_DEFAULT_POOL_SIZE: 100
+      PGBOUNCER_MIN_POOL_SIZE: 20
+      PGBOUNCER_RESERVE_POOL_SIZE: 20
     ports:
       - "6432:6432"
     depends_on:

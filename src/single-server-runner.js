@@ -39,6 +39,9 @@ const serverConfigs = {
 // Active SSE transports Map
 const activeTransports = new Map();
 
+// Shared MCP server instance - ONE per process to prevent connection pool exhaustion
+let sharedMCPServer = null;
+
 async function startServer() {
     const config = serverConfigs[serverName];
 
@@ -56,6 +59,13 @@ async function startServer() {
         if (!ServerClass) {
             throw new Error(`Server class ${config.className} not found in ${config.path}`);
         }
+
+        // Create ONE shared MCP server instance for this process
+        // This prevents creating a new 20-connection pool for every HTTP request
+        sharedMCPServer = new ServerClass();
+        console.error(`✅ [${serverName}:${port}] Shared MCP server instance created`);
+        console.error(`   Database connection pool: max 20 connections (shared across all requests)`);
+
 
         // Create Express app
         const app = express();
@@ -78,17 +88,14 @@ async function startServer() {
             console.error(`[${serverName}:${port}] New SSE connection - Session: ${sessionId}`);
 
             try {
-                // Create a new instance of the MCP server
-                const mcpServer = new ServerClass();
-
                 // Create SSE transport with session endpoint
                 const transport = new SSEServerTransport(`/${sessionId}`, res);
 
-                // Store in active transports map
-                activeTransports.set(sessionId, { transport, mcpServer });
+                // Store in active transports map (using shared server instance)
+                activeTransports.set(sessionId, { transport, mcpServer: sharedMCPServer });
 
-                // Connect the MCP server to the transport
-                await mcpServer.server.connect(transport);
+                // Connect the shared MCP server to the transport
+                await sharedMCPServer.server.connect(transport);
 
                 console.error(`[${serverName}:${port}] MCP server connected - Session: ${sessionId}`);
 
@@ -96,6 +103,8 @@ async function startServer() {
                 req.on('close', () => {
                     console.error(`[${serverName}:${port}] SSE connection closed - Session: ${sessionId}`);
                     activeTransports.delete(sessionId);
+                    // Note: We don't close the database connection here because
+                    // the shared server instance is reused across all sessions
                 });
 
             } catch (error) {
@@ -133,8 +142,8 @@ async function startServer() {
         // Health check endpoint
         app.get('/health', async (req, res) => {
             try {
-                const mcpServer = new ServerClass();
-                const health = await mcpServer.db.healthCheck();
+                // Use shared server instance instead of creating new one
+                const health = await sharedMCPServer.db.healthCheck();
                 res.json({
                     server: serverName,
                     port: port,
@@ -157,12 +166,12 @@ async function startServer() {
         // Info endpoint
         app.get('/info', async (req, res) => {
             try {
-                const mcpServer = new ServerClass();
+                // Use shared server instance instead of creating new one
                 res.json({
                     server: serverName,
                     port: port,
-                    version: mcpServer.serverVersion,
-                    tools: mcpServer.tools.map(tool => ({
+                    version: sharedMCPServer.serverVersion,
+                    tools: sharedMCPServer.tools.map(tool => ({
                         name: tool.name,
                         description: tool.description
                     })),
@@ -184,7 +193,7 @@ async function startServer() {
         // MCP JSON-RPC endpoint for stdio adapter
         app.post('/mcp', express.json(), async (req, res) => {
             try {
-                const mcpServer = new ServerClass();
+                // Use shared server instance instead of creating new one
                 const { jsonrpc, id, method, params } = req.body;
 
                 // Validate JSON-RPC 2.0 request
@@ -205,7 +214,7 @@ async function startServer() {
                         jsonrpc: '2.0',
                         id,
                         result: {
-                            tools: mcpServer.tools
+                            tools: sharedMCPServer.tools
                         }
                     });
                 } else if (method === 'tools/call') {
@@ -223,7 +232,7 @@ async function startServer() {
                     }
 
                     // Find the tool handler
-                    const handler = mcpServer.getToolHandler(name);
+                    const handler = sharedMCPServer.getToolHandler(name);
                     if (!handler) {
                         return res.json({
                             jsonrpc: '2.0',
@@ -268,7 +277,7 @@ async function startServer() {
                             },
                             serverInfo: {
                                 name: serverName,
-                                version: mcpServer.serverVersion || '1.0.0'
+                                version: sharedMCPServer.serverVersion || '1.0.0'
                             }
                         }
                     });
@@ -306,11 +315,22 @@ async function startServer() {
         });
 
         // Graceful shutdown
-        const shutdown = () => {
+        const shutdown = async () => {
             console.error(`\n🛑 [${serverName}:${port}] Shutting down...`);
 
             // Close active transports
             activeTransports.clear();
+
+            // Close database connection pool
+            if (sharedMCPServer && sharedMCPServer.db) {
+                try {
+                    console.error(`[${serverName}:${port}] Closing database connection pool...`);
+                    await sharedMCPServer.db.close();
+                    console.error(`✅ [${serverName}:${port}] Database pool closed`);
+                } catch (error) {
+                    console.error(`⚠️  [${serverName}:${port}] Error closing database pool:`, error);
+                }
+            }
 
             // Close server
             serverInstance.close(() => {
