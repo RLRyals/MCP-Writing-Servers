@@ -269,13 +269,108 @@ function createServerEndpoint(serverConfig) {
                 endpoints: {
                     sse: `http://localhost:${port}/`,
                     health: `http://localhost:${port}/health`,
-                    info: `http://localhost:${port}/info`
+                    info: `http://localhost:${port}/info`,
+                    api: `http://localhost:${port}/api/tool-call`
                 }
             });
         } catch (error) {
             res.status(500).json({
                 error: 'Failed to get server info',
                 message: error.message
+            });
+        }
+    });
+
+    // Direct API endpoint for tool calls (without SSE session)
+    // This endpoint is designed for simple HTTP clients like Electron apps
+    app.post('/api/tool-call', express.json(), async (req, res) => {
+        console.error(`[${name}] Direct API tool call request`);
+
+        try {
+            const { jsonrpc, method, params, id } = req.body;
+
+            // Validate JSON-RPC 2.0 request
+            if (jsonrpc !== '2.0') {
+                return res.status(400).json({
+                    jsonrpc: '2.0',
+                    error: {
+                        code: -32600,
+                        message: 'Invalid Request: jsonrpc must be "2.0"'
+                    },
+                    id: id || null
+                });
+            }
+
+            if (method !== 'tools/call') {
+                return res.status(400).json({
+                    jsonrpc: '2.0',
+                    error: {
+                        code: -32601,
+                        message: 'Method not found: only "tools/call" is supported'
+                    },
+                    id: id || null
+                });
+            }
+
+            if (!params || !params.name) {
+                return res.status(400).json({
+                    jsonrpc: '2.0',
+                    error: {
+                        code: -32602,
+                        message: 'Invalid params: "name" is required'
+                    },
+                    id: id || null
+                });
+            }
+
+            // Create a temporary MCP server instance
+            const mcpServer = new serverClass();
+
+            // Find the requested tool
+            const tool = mcpServer.tools.find(t => t.name === params.name);
+            if (!tool) {
+                return res.status(404).json({
+                    jsonrpc: '2.0',
+                    error: {
+                        code: -32601,
+                        message: `Tool not found: ${params.name}`
+                    },
+                    id: id || null
+                });
+            }
+
+            console.error(`[${name}] Executing tool: ${params.name}`);
+
+            // Execute the tool directly
+            const args = params.arguments || {};
+            const result = await tool.handler(args);
+
+            // Return MCP-style response
+            res.json({
+                jsonrpc: '2.0',
+                result: {
+                    content: [
+                        {
+                            type: 'text',
+                            text: JSON.stringify(result)
+                        }
+                    ]
+                },
+                id: id || null
+            });
+
+            console.error(`[${name}] Tool ${params.name} completed successfully`);
+
+        } catch (error) {
+            console.error(`[${name}] Error executing tool:`, error);
+            res.status(500).json({
+                jsonrpc: '2.0',
+                error: {
+                    code: -32603,
+                    message: 'Internal error',
+                    data: error.message
+                },
+                id: req.body.id || null
             });
         }
     });
