@@ -21,3 +21,7 @@ backups/
 *.sql
 *.sql.gz
 *-manifest.json
+
+# Exception: Allow SQL files in migrations directory
+!migrations/*.sql
+!init.sql
