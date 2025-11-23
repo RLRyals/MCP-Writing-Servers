@@ -58,9 +58,11 @@ export class DatabaseManager {
             this.pool = new Pool({
                 connectionString: process.env.DATABASE_URL,
                 ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-                // Connection pool optimization
-                max: 20,                        // Maximum pool size
-                min: 2,                         // Keep 2 connections always ready
+                // Connection pool optimization (reduced for PGBouncer compatibility)
+                // When using PGBouncer, each application instance should use fewer connections
+                // since PGBouncer handles connection multiplexing
+                max: 10,                        // Maximum pool size (reduced from 20)
+                min: 1,                         // Keep 1 connection always ready (reduced from 2)
                 idleTimeoutMillis: 30000,       // Close idle connections after 30s
                 connectionTimeoutMillis: 5000,  // Increased from 2s to 5s for slower systems
                 // Performance optimizations
