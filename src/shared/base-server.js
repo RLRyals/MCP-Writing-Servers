@@ -2,7 +2,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, InitializeRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { DatabaseManager } from './database.js';
+import { DatabaseManager, getSharedDatabasePool } from './database.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -75,10 +75,10 @@ export class BaseMCPServer {
                 console.error(`[${serverName}] MCP Server initialized`);
                 console.error(`[${serverName}] Initializing database...`);
             }
-            
-            // Initialize database (only once)
-            this.db = new DatabaseManager();
-            
+
+            // Initialize database (shared singleton)
+            this.db = getSharedDatabasePool();
+
             if (process.env.MCP_STDIO_MODE !== 'true') {
                 console.error(`[${serverName}] Database manager created`);
             }

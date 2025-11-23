@@ -173,3 +173,13 @@ export class DatabaseManager {
         return result.rows[0];
     }
 }
+
+// Singleton instance - shared across all MCP servers
+let sharedPoolInstance = null;
+
+export function getSharedDatabasePool() {
+    if (!sharedPoolInstance) {
+        sharedPoolInstance = new DatabaseManager();
+    }
+    return sharedPoolInstance;
+}
