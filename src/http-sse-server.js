@@ -15,6 +15,18 @@ dotenv.config();
 // Active SSE transports Map - tracks sessions by sessionId
 const activeTransports = new Map();
 
+// Reusable MCP server instances - one per server type (singleton pattern)
+const serverInstances = new Map();
+
+async function getServerInstance(serverClass, name) {
+    if (!serverInstances.has(name)) {
+        console.error(`[${name}] Creating singleton MCP server instance...`);
+        const instance = new serverClass();
+        serverInstances.set(name, instance);
+    }
+    return serverInstances.get(name);
+}
+
 // Dynamically import all MCP servers
 async function loadServers() {
     const servers = [];
@@ -174,8 +186,8 @@ function createServerEndpoint(serverConfig) {
         console.error(`[${name}] New SSE connection - Session: ${sessionId}`);
 
         try {
-            // Create a new instance of the MCP server
-            const mcpServer = new serverClass();
+            // Get singleton instance of the MCP server
+            const mcpServer = await getServerInstance(serverClass, name);
 
             // Create SSE transport with session endpoint
             const transport = new SSEServerTransport(`/${sessionId}`, res);
@@ -233,7 +245,7 @@ function createServerEndpoint(serverConfig) {
     // Health check endpoint
     app.get('/health', async (req, res) => {
         try {
-            const mcpServer = new serverClass();
+            const mcpServer = await getServerInstance(serverClass, name);
             const health = await mcpServer.db.healthCheck();
             res.json({
                 server: name,
@@ -257,7 +269,7 @@ function createServerEndpoint(serverConfig) {
     // Info endpoint - lists available tools
     app.get('/info', async (req, res) => {
         try {
-            const mcpServer = new serverClass();
+            const mcpServer = await getServerInstance(serverClass, name);
             res.json({
                 server: name,
                 port: port,
@@ -323,8 +335,8 @@ function createServerEndpoint(serverConfig) {
                 });
             }
 
-            // Create a temporary MCP server instance
-            const mcpServer = new serverClass();
+            // Get singleton MCP server instance
+            const mcpServer = await getServerInstance(serverClass, name);
 
             // Find the requested tool (for validation)
             const tool = mcpServer.tools.find(t => t.name === params.name);
@@ -439,7 +451,7 @@ async function startServer() {
     }
 
     // Create and start Express app for each server on its dedicated port
-    const serverInstances = [];
+    const httpServerInstances = [];
 
     for (const serverConfig of servers) {
         const app = createServerEndpoint(serverConfig);
@@ -449,7 +461,7 @@ async function startServer() {
                 // Silently start - table will show all at once
             });
 
-            serverInstances.push({
+            httpServerInstances.push({
                 ...serverConfig,
                 instance: serverInstance
             });
@@ -462,21 +474,39 @@ async function startServer() {
     displayStartupTable(servers);
 
     // Graceful shutdown handler
-    const shutdown = () => {
+    const shutdown = async () => {
         console.error('\n\n🛑 Shutting down Multi-Port HTTP/SSE server...\n');
 
         // Close all active transports
         console.error(`   Closing ${activeTransports.size} active session(s)...`);
         activeTransports.clear();
 
-        // Close all server instances
+        // Close the shared database pool (only once, not per MCP server instance)
+        if (serverInstances.size > 0) {
+            try {
+                // Get any MCP server instance to access the shared db
+                const anyInstance = serverInstances.values().next().value;
+                if (anyInstance && anyInstance.db) {
+                    await anyInstance.db.close();
+                    console.error(`   ✓ Shared database pool closed`);
+                }
+            } catch (error) {
+                console.error(`   ✗ Error closing shared database pool:`, error.message);
+            }
+        }
+
+        // Clear MCP server instance cache
+        console.error(`   Clearing ${serverInstances.size} MCP server instance(s)...`);
+        serverInstances.clear();
+
+        // Close all HTTP server instances
         let shutdownCount = 0;
-        serverInstances.forEach(({ name, instance }) => {
+        httpServerInstances.forEach(({ name, instance }) => {
             instance.close(() => {
                 shutdownCount++;
-                console.error(`   ✓ ${name} server closed`);
+                console.error(`   ✓ ${name} HTTP server closed`);
 
-                if (shutdownCount === serverInstances.length) {
+                if (shutdownCount === httpServerInstances.length) {
                     console.error('\n✅ All servers shut down gracefully\n');
                     process.exit(0);
                 }
