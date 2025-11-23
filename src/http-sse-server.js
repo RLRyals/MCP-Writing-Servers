@@ -451,7 +451,7 @@ async function startServer() {
     }
 
     // Create and start Express app for each server on its dedicated port
-    const serverInstances = [];
+    const httpServerInstances = [];
 
     for (const serverConfig of servers) {
         const app = createServerEndpoint(serverConfig);
@@ -461,7 +461,7 @@ async function startServer() {
                 // Silently start - table will show all at once
             });
 
-            serverInstances.push({
+            httpServerInstances.push({
                 ...serverConfig,
                 instance: serverInstance
             });
@@ -481,27 +481,32 @@ async function startServer() {
         console.error(`   Closing ${activeTransports.size} active session(s)...`);
         activeTransports.clear();
 
-        // Close singleton server instances
-        for (const [name, instance] of serverInstances.entries()) {
+        // Close the shared database pool (only once, not per MCP server instance)
+        if (serverInstances.size > 0) {
             try {
-                if (instance.db) {
-                    await instance.db.close();
-                    console.error(`   ✓ ${name} database pool closed`);
+                // Get any MCP server instance to access the shared db
+                const anyInstance = serverInstances.values().next().value;
+                if (anyInstance && anyInstance.db) {
+                    await anyInstance.db.close();
+                    console.error(`   ✓ Shared database pool closed`);
                 }
             } catch (error) {
-                console.error(`   ✗ Error closing ${name} database pool:`, error.message);
+                console.error(`   ✗ Error closing shared database pool:`, error.message);
             }
         }
+
+        // Clear MCP server instance cache
+        console.error(`   Clearing ${serverInstances.size} MCP server instance(s)...`);
         serverInstances.clear();
 
-        // Close all server instances
+        // Close all HTTP server instances
         let shutdownCount = 0;
-        serverInstances.forEach(({ name, instance }) => {
+        httpServerInstances.forEach(({ name, instance }) => {
             instance.close(() => {
                 shutdownCount++;
-                console.error(`   ✓ ${name} server closed`);
+                console.error(`   ✓ ${name} HTTP server closed`);
 
-                if (shutdownCount === serverInstances.length) {
+                if (shutdownCount === httpServerInstances.length) {
                     console.error('\n✅ All servers shut down gracefully\n');
                     process.exit(0);
                 }
