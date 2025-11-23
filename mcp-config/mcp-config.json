@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "book-planning": {
+      "url": "http://mcp-writing-servers:3001/"
+    },
+    "series-planning": {
+      "url": "http://mcp-writing-servers:3002/"
+    },
+    "chapter-planning": {
+      "url": "http://mcp-writing-servers:3003/"
+    },
+    "character-planning": {
+      "url": "http://mcp-writing-servers:3004/"
+    },
+    "scene": {
+      "url": "http://mcp-writing-servers:3005/"
+    },
+    "core-continuity": {
+      "url": "http://mcp-writing-servers:3006/"
+    },
+    "review": {
+      "url": "http://mcp-writing-servers:3007/"
+    },
+    "reporting": {
+      "url": "http://mcp-writing-servers:3008/"
+    },
+    "author": {
+      "url": "http://mcp-writing-servers:3009/"
+    }
+  }
+}
