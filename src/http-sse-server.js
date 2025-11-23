@@ -146,6 +146,20 @@ async function loadServers() {
     }
 
     try {
+        // Author Server
+        const { AuthorMCPServer } = await import('./config-mcps/author-server/index.js');
+        servers.push({
+            name: 'author',
+            path: '/author',
+            serverClass: AuthorMCPServer,
+            port: 3009
+        });
+        console.error('✓ Author Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Author Server:', error.message);
+    }
+
+    try {
         // Database Admin Server
         const { DatabaseAdminMCPServer } = await import('./mcps/database-admin-server/index.js');
         servers.push({
