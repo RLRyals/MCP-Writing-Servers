@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // src/http-sse-server.js
 // Multi-Port HTTP/SSE server for all MCP Writing Servers
-// Each server runs on its own dedicated port (3001-3009) with SSE session management
+// Each server runs on its own dedicated port (3001-3011) with SSE session management
 
 import express from 'express';
 import cors from 'cors';
@@ -173,7 +173,21 @@ async function loadServers() {
         console.error('✗ Failed to load Database Admin Server:', error.message);
     }
 
-    console.error(`\n✅ Successfully loaded ${servers.length}/10 servers\n`);
+    try {
+        // NPE (Narrative Physics Engine) Server
+        const { NPEConfigMCPServer } = await import('./config-mcps/npe-server/index.js');
+        servers.push({
+            name: 'npe',
+            path: '/npe',
+            serverClass: NPEConfigMCPServer,
+            port: 3011
+        });
+        console.error('✓ NPE Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load NPE Server:', error.message);
+    }
+
+    console.error(`\n✅ Successfully loaded ${servers.length}/11 servers\n`);
     return servers;
 }
 
