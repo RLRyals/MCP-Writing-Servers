@@ -5,7 +5,7 @@
 // Protect stdout from debug logging in MCP stdio mode
 if (process.env.MCP_STDIO_MODE === 'true') {
     const originalConsoleError = console.error;
-    console.error = function() {
+    console.error = function () {
         process.stderr.write(Array.from(arguments).join(' ') + '\n');
     };
 }
@@ -21,6 +21,7 @@ import { PlotThreadHandlers } from '../../mcps/plot-server/handlers/plot-thread-
 import { RelationshipHandlers } from '../../mcps/relationship-server/handlers/relationship-handlers.js';
 import { EventChapterMappingHandlers } from '../../mcps/timeline-server/handlers/timeline-chapter-mapping-handler.js';
 import { LookupManagementHandlers } from '../../mcps/metadata-server/handlers/lookup-management-handlers.js';
+import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
 
 class CoreContinuityMCPServer extends BaseMCPServer {
     constructor() {
@@ -45,6 +46,7 @@ class CoreContinuityMCPServer extends BaseMCPServer {
         this.relationshipHandlers = new RelationshipHandlers(this.db);
         this.eventChapterMappingHandlers = new EventChapterMappingHandlers(this.db);
         this.lookupHandlers = new LookupManagementHandlers(this.db);
+        this.tropeHandlers = new TropeHandlers(this.db);
 
         console.error('[CORE-CONTINUITY-SERVER] Handlers initialized with shared DB');
     }
@@ -146,6 +148,20 @@ class CoreContinuityMCPServer extends BaseMCPServer {
             });
         }
 
+        // TROPE TOOLS - Read-only access to trope definitions and instances
+        const tropeTools = this.tropeHandlers.getTropeTools();
+        const neededTropeTools = ['get_trope', 'list_tropes', 'get_trope_instance', 'list_trope_instances'];
+        neededTropeTools.forEach(toolName => {
+            const tool = tropeTools.find(t => t.name === toolName);
+            if (tool) {
+                tools.push({
+                    ...tool,
+                    name: toolName,
+                    description: `${tool.description}`
+                });
+            }
+        });
+
         return tools;
     }
 
@@ -169,7 +185,13 @@ class CoreContinuityMCPServer extends BaseMCPServer {
             'get_event_mappings': (args) => this.eventChapterMappingHandlers.handleGetEventMappings(args),
 
             // Lookup handlers
-            'get_available_options': (args) => this.lookupHandlers.handleGetAvailableOptions(args)
+            'get_available_options': (args) => this.lookupHandlers.handleGetAvailableOptions(args),
+
+            // Trope handlers - Read-only
+            'get_trope': (args) => this.tropeHandlers.handleGetTrope(args),
+            'list_tropes': (args) => this.tropeHandlers.handleListTropes(args),
+            'get_trope_instance': (args) => this.tropeHandlers.handleGetTropeInstance(args),
+            'list_trope_instances': (args) => this.tropeHandlers.handleListTropeInstances(args)
         };
 
         return handlerMap[toolName] || null;

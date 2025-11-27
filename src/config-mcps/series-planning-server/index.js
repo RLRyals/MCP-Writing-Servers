@@ -5,7 +5,7 @@
 // Protect stdout from debug logging in MCP stdio mode
 if (process.env.MCP_STDIO_MODE === 'true') {
     const originalConsoleError = console.error;
-    console.error = function() {
+    console.error = function () {
         process.stderr.write(Array.from(arguments).join(' ') + '\n');
     };
 }
@@ -25,6 +25,7 @@ import { LocationHandlers } from '../../mcps/world-server/handlers/location-hand
 import { OrganizationHandlers } from '../../mcps/world-server/handlers/organization-handlers.js';
 import { WorldElementHandlers } from '../../mcps/world-server/handlers/world-element-handlers.js';
 import { GenreExtensions } from '../../mcps/plot-server/handlers/genre-extensions.js';
+import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
 
 class SeriesPlanningMCPServer extends BaseMCPServer {
     constructor() {
@@ -51,6 +52,9 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
 
         // Plot/Genre extension handlers
         this.genreExtensions = new GenreExtensions(this.db);
+
+        // Trope handlers
+        this.tropeHandlers = new TropeHandlers(this.db);
 
         console.error('[SERIES-PLANNING-SERVER] Handlers initialized with shared DB');
     }
@@ -123,6 +127,18 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
                 });
             });
 
+        // Trope tools - series-level trope definition
+        const neededTropeTools = ['create_trope', 'list_tropes', 'get_trope'];
+        this.tropeHandlers.getTropeTools()
+            .filter(tool => neededTropeTools.includes(tool.name))
+            .forEach(tool => {
+                tools.push({
+                    ...tool,
+                    name: `${tool.name}`,
+                    description: `${tool.description}`
+                });
+            });
+
         return tools;
     }
 
@@ -151,7 +167,12 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
             'get_world_elements': this.worldElementHandlers.handleGetWorldElements.bind(this.worldElementHandlers),
 
             // Plot/Genre extension handlers
-            'define_world_system': this.genreExtensions.handleDefineWorldSystem.bind(this.genreExtensions)
+            'define_world_system': this.genreExtensions.handleDefineWorldSystem.bind(this.genreExtensions),
+
+            // Trope handlers
+            'create_trope': this.tropeHandlers.handleCreateTrope.bind(this.tropeHandlers),
+            'list_tropes': this.tropeHandlers.handleListTropes.bind(this.tropeHandlers),
+            'get_trope': this.tropeHandlers.handleGetTrope.bind(this.tropeHandlers)
         };
 
         return handlerMap[toolName] || null;

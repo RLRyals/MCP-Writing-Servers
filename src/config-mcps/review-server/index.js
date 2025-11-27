@@ -5,7 +5,7 @@
 // Protect stdout from debug logging in MCP stdio mode
 if (process.env.MCP_STDIO_MODE === 'true') {
     const originalConsoleError = console.error;
-    console.error = function() {
+    console.error = function () {
         process.stderr.write(Array.from(arguments).join(' ') + '\n');
     };
 }
@@ -21,6 +21,7 @@ import { EventChapterMappingHandlers } from '../../mcps/timeline-server/handlers
 import { WorldElementHandlers } from '../../mcps/world-server/handlers/world-element-handlers.js';
 import { WorldManagementHandlers } from '../../mcps/world-server/handlers/world-management-handlers.js';
 import { SessionHandlers } from '../../mcps/writing-server/handlers/session-handlers.js';
+import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
 
 
 class ReviewMCPServer extends BaseMCPServer {
@@ -46,6 +47,7 @@ class ReviewMCPServer extends BaseMCPServer {
         this.worldElementHandlers = new WorldElementHandlers(this.db);
         this.worldManagementHandlers = new WorldManagementHandlers(this.db);
         this.sessionHandlers = new SessionHandlers(this.db);
+        this.tropeHandlers = new TropeHandlers(this.db);
 
         console.error('[REVISION-SERVER] Handlers initialized with shared DB');
     }
@@ -141,6 +143,20 @@ class ReviewMCPServer extends BaseMCPServer {
             });
         }
 
+        // Trope - Analysis Tools
+        const tropeTools = this.tropeHandlers.getTropeTools();
+        const neededTropeTools = ['get_trope_progress', 'analyze_trope_patterns'];
+        neededTropeTools.forEach(toolName => {
+            const tool = tropeTools.find(t => t.name === toolName);
+            if (tool) {
+                tools.push({
+                    ...tool,
+                    name: toolName,
+                    description: `${tool.description}`
+                });
+            }
+        });
+
         return tools;
     }
 
@@ -158,7 +174,11 @@ class ReviewMCPServer extends BaseMCPServer {
             'get_productivity_analytics': (args) => this.sessionHandlers.handleGetProductivityAnalytics(args),
 
             // World Server - Setting Consistency
-            'check_world_consistency': this.worldManagementHandlers.handleCheckWorldConsistency.bind(this.worldManagementHandlers)
+            'check_world_consistency': this.worldManagementHandlers.handleCheckWorldConsistency.bind(this.worldManagementHandlers),
+
+            // Trope - Analysis Tools
+            'get_trope_progress': (args) => this.tropeHandlers.handleGetTropeProgress(args),
+            'analyze_trope_patterns': (args) => this.tropeHandlers.handleAnalyzeTropePatterns(args)
         };
 
         return handlerMap[toolName] || null;

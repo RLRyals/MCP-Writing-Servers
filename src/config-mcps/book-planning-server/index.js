@@ -5,7 +5,7 @@
 // Protect stdout from debug logging in MCP stdio mode
 if (process.env.MCP_STDIO_MODE === 'true') {
     const originalConsoleError = console.error;
-    console.error = function() {
+    console.error = function () {
         process.stderr.write(Array.from(arguments).join(' ') + '\n');
     };
 }
@@ -22,6 +22,7 @@ import { LocationHandlers } from '../../mcps/world-server/handlers/location-hand
 import { OrganizationHandlers } from '../../mcps/world-server/handlers/organization-handlers.js';
 import { PlotThreadHandlers } from '../../mcps/plot-server/handlers/plot-thread-handlers.js';
 import { LookupManagementHandlers } from '../../mcps/metadata-server/handlers/lookup-management-handlers.js';
+import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
 
 // Import phase-specific schemas directly to reduce token usage
 import { bookPlanningSchemas } from '../../mcps/book-server/schemas/book-planning-schemas.js';
@@ -47,6 +48,7 @@ class BookPlanningMCPServer extends BaseMCPServer {
         this.organizationHandlers = new OrganizationHandlers(this.db);
         this.plotThreadHandlers = new PlotThreadHandlers(this.db);
         this.lookupHandlers = new LookupManagementHandlers(this.db);
+        this.tropeHandlers = new TropeHandlers(this.db);
 
         console.error('[BOOK-PLANNING-SERVER] Phase-specific handlers initialized');
     }
@@ -103,7 +105,7 @@ class BookPlanningMCPServer extends BaseMCPServer {
                 description: `${updatePlotThread.description}`
             });
         }
-        
+
         // =============================================
         // 4. TIMELINE EVENT CREATION (Phase-specific)
         // =============================================
@@ -130,6 +132,22 @@ class BookPlanningMCPServer extends BaseMCPServer {
             });
         }
 
+        // =============================================
+        // 6. TROPE INSTANCE TOOLS (Phase-specific)
+        // =============================================
+        const tropeTools = this.tropeHandlers.getTropeTools();
+        const neededTropeTools = ['create_trope_instance', 'list_trope_instances', 'get_trope_instance'];
+        neededTropeTools.forEach(toolName => {
+            const tool = tropeTools.find(t => t.name === toolName);
+            if (tool) {
+                tools.push({
+                    ...tool,
+                    name: toolName,
+                    description: `${tool.description}`
+                });
+            }
+        });
+
         return tools;
     }
 
@@ -150,7 +168,12 @@ class BookPlanningMCPServer extends BaseMCPServer {
             'create_timeline_event': (args) => this.timelineEventHandlers.handleCreateTimelineEvent(args),
 
             // Metadata handlers
-            'assign_book_genres': (args) => this.lookupHandlers.handleAssignBookGenres(args)
+            'assign_book_genres': (args) => this.lookupHandlers.handleAssignBookGenres(args),
+
+            // Trope instance handlers
+            'create_trope_instance': (args) => this.tropeHandlers.handleCreateTropeInstance(args),
+            'list_trope_instances': (args) => this.tropeHandlers.handleListTropeInstances(args),
+            'get_trope_instance': (args) => this.tropeHandlers.handleGetTropeInstance(args)
         };
 
         return handlerMap[toolName] || null;

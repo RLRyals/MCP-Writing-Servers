@@ -5,7 +5,7 @@
 // Protect stdout from debug logging in MCP stdio mode
 if (process.env.MCP_STDIO_MODE === 'true') {
     const originalConsoleError = console.error;
-    console.error = function() {
+    console.error = function () {
         process.stderr.write(Array.from(arguments).join(' ') + '\n');
     };
 }
@@ -20,6 +20,7 @@ import { CharacterTimelineHandlers } from '../../mcps/character-server/handlers/
 import { ValidationHandlers } from '../../mcps/writing-server/handlers/validation-handlers.js';
 import { SessionHandlers } from '../../mcps/writing-server/handlers/session-handlers.js';
 import { ExportHandlers } from '../../mcps/writing-server/handlers/export-handlers.js';
+import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
 
 // Import phase-specific schemas directly to reduce token usage
 import { minimalSceneWritingSchemas } from '../../mcps/book-server/schemas/scene-writing-schemas.js';
@@ -46,6 +47,7 @@ class SceneWritingMCPServer extends BaseMCPServer {
         this.validationHandlers = new ValidationHandlers(this.db);
         this.sessionHandlers = new SessionHandlers(this.db);
         this.exportHandlers = new ExportHandlers(this.db);
+        this.tropeHandlers = new TropeHandlers(this.db);
 
         console.error('[SCENE-WRITING-SERVER] Handlers initialized with shared DB');
     }
@@ -88,7 +90,7 @@ class SceneWritingMCPServer extends BaseMCPServer {
                 description: 'See who is supposed to appear in the chapter'
             });
         }
-        
+
         // WRITING - Validation Tools
         const validationTools = this.validationHandlers.getValidationTools();
         const validateChapterStructure = validationTools.find(t => t.name === 'validate_chapter_structure');
@@ -148,6 +150,19 @@ class SceneWritingMCPServer extends BaseMCPServer {
             });
         }
 
+        // TROPE - Scene Implementation Tools
+        const tropeTools = this.tropeHandlers.getTropeTools();
+        const neededTropeTools = ['implement_trope_scene', 'get_trope_scenes'];
+        neededTropeTools.forEach(toolName => {
+            const tool = tropeTools.find(t => t.name === toolName);
+            if (tool) {
+                tools.push({
+                    ...tool,
+                    name: toolName,
+                    description: `${tool.description}`
+                });
+            }
+        });
 
         return tools;
     }
@@ -174,8 +189,12 @@ class SceneWritingMCPServer extends BaseMCPServer {
 
             // WRITING - Session & Export Tools
             'word_count_tracking': (args) => this.exportHandlers.handleWordCountTracking(args),
-            'log_writing_session': (args) => this.sessionHandlers.handleLogWritingSession(args)
-         };
+            'log_writing_session': (args) => this.sessionHandlers.handleLogWritingSession(args),
+
+            // TROPE - Scene Implementation Tools
+            'implement_trope_scene': (args) => this.tropeHandlers.handleImplementTropeScene(args),
+            'get_trope_scenes': (args) => this.tropeHandlers.handleGetTropeScenes(args)
+        };
 
         return handlerMap[toolName] || null;
     }
