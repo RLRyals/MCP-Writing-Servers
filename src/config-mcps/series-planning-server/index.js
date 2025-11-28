@@ -127,8 +127,8 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
                 });
             });
 
-        // Trope tools - series-level trope definition
-        const neededTropeTools = ['create_trope', 'list_tropes', 'get_trope'];
+        // Trope tools - series-level trope definition (create only; lookups in core-continuity)
+        const neededTropeTools = ['create_trope'];
         this.tropeHandlers.getTropeTools()
             .filter(tool => neededTropeTools.includes(tool.name))
             .forEach(tool => {
@@ -169,10 +169,8 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
             // Plot/Genre extension handlers
             'define_world_system': this.genreExtensions.handleDefineWorldSystem.bind(this.genreExtensions),
 
-            // Trope handlers
-            'create_trope': this.tropeHandlers.handleCreateTrope.bind(this.tropeHandlers),
-            'list_tropes': this.tropeHandlers.handleListTropes.bind(this.tropeHandlers),
-            'get_trope': this.tropeHandlers.handleGetTrope.bind(this.tropeHandlers)
+            // Trope handlers (create only; lookups in core-continuity)
+            'create_trope': this.tropeHandlers.handleCreateTrope.bind(this.tropeHandlers)
         };
 
         return handlerMap[toolName] || null;
