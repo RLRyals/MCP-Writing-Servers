@@ -32,9 +32,9 @@ export class TropeHandlers {
                         description: { type: 'string', description: 'Detailed description of the trope' },
                         common_elements: { type: 'array', items: { type: 'string' }, description: 'Common elements that appear in this trope' },
                         typical_trajectory: { type: 'string', description: 'How this trope typically unfolds in a narrative' },
-                        scene_types: { 
-                            type: 'array', 
-                            items: { 
+                        scene_types: {
+                            type: 'array',
+                            items: {
                                 type: 'object',
                                 properties: {
                                     scene_function: { type: 'string', description: 'Function of this scene in the trope (opening, revelation, obstacle, etc.)' },
@@ -70,7 +70,8 @@ export class TropeHandlers {
                     type: 'object',
                     properties: {
                         series_id: { type: 'integer', description: 'Filter by series ID (optional)' },
-                        trope_category: { type: 'string', description: 'Filter by trope category (optional)' }
+                        trope_category: { type: 'string', description: 'Filter by trope category (optional)' },
+                        search_query: { type: 'string', description: 'Search by trope name or description' }
                     }
                 }
             },
@@ -85,8 +86,8 @@ export class TropeHandlers {
                         book_id: { type: 'integer', description: 'ID of the book where the trope appears' },
                         instance_notes: { type: 'string', description: 'Notes on how this trope is used in this book' },
                         subversion_notes: { type: 'string', description: 'How this instance might subvert the typical trope pattern' },
-                        completion_status: { 
-                            type: 'string', 
+                        completion_status: {
+                            type: 'string',
                             enum: ['planned', 'in_progress', 'complete', 'subverted'],
                             description: 'Current status of this trope implementation',
                             default: 'in_progress'
@@ -114,8 +115,8 @@ export class TropeHandlers {
                     required: ['book_id'],
                     properties: {
                         book_id: { type: 'integer', description: 'Book ID to list tropes for' },
-                        status: { 
-                            type: 'string', 
+                        status: {
+                            type: 'string',
                             enum: ['planned', 'in_progress', 'complete', 'subverted'],
                             description: 'Filter by completion status (optional)'
                         }
@@ -135,16 +136,16 @@ export class TropeHandlers {
                         chapter_id: { type: 'integer', description: 'Chapter where this scene appears' },
                         scene_number: { type: 'integer', description: 'Scene number within the chapter' },
                         scene_summary: { type: 'string', description: 'Summary of how this scene implements the trope' },
-                        effectiveness_rating: { 
-                            type: 'integer', 
+                        effectiveness_rating: {
+                            type: 'integer',
                             minimum: 1,
                             maximum: 10,
                             description: 'Rating of how effectively this scene implements the trope (1-10)',
                             default: 7
                         },
                         variation_notes: { type: 'string', description: 'How this implementation varies from the typical pattern' },
-                        scene_elements: { 
-                            type: 'array', 
+                        scene_elements: {
+                            type: 'array',
                             items: { type: 'string' },
                             description: 'Genre-specific elements featured (investigation techniques, magic types, themes, etc.)'
                         },
@@ -200,8 +201,8 @@ export class TropeHandlers {
                     required: ['series_id'],
                     properties: {
                         series_id: { type: 'integer', description: 'Series ID to analyze' },
-                        analysis_type: { 
-                            type: 'string', 
+                        analysis_type: {
+                            type: 'string',
                             enum: ['frequency', 'subversion', 'effectiveness', 'all'],
                             description: 'Type of analysis to perform',
                             default: 'all'
@@ -218,37 +219,47 @@ export class TropeHandlers {
      * @returns {Object} Created trope information
      */
     async handleCreateTrope(args) {
-        const { 
-            series_id, 
-            trope_name, 
-            trope_category, 
-            description, 
-            common_elements, 
+        const {
+            series_id,
+            trope_name,
+            trope_category,
+            description,
+            common_elements,
             typical_trajectory,
-            scene_types 
+            scene_types
         } = args;
-        
+
         try {
+            // Check for existing trope with same name in series
+            const existingTrope = await this.db.query(
+                'SELECT id FROM tropes WHERE series_id = $1 AND LOWER(trope_name) = LOWER($2)',
+                [series_id, trope_name]
+            );
+
+            if (existingTrope.rows.length > 0) {
+                throw new Error(`Trope "${trope_name}" already exists in this series (ID: ${existingTrope.rows[0].id})`);
+            }
+
             // Start a transaction
             await this.db.query('BEGIN');
-            
+
             // First, create the trope
             const tropeResult = await this.db.query(
                 `INSERT INTO tropes 
                  (series_id, trope_name, trope_category, description, common_elements, typical_trajectory) 
                  VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
                 [
-                    series_id, 
-                    trope_name, 
-                    trope_category, 
-                    description, 
-                    common_elements || [], 
+                    series_id,
+                    trope_name,
+                    trope_category,
+                    description,
+                    common_elements || [],
                     typical_trajectory
                 ]
             );
-            
+
             const tropeId = tropeResult.rows[0].id;
-            
+
             // Then, create all the scene types for this trope
             if (scene_types && scene_types.length > 0) {
                 for (const sceneType of scene_types) {
@@ -258,8 +269,8 @@ export class TropeHandlers {
                           required, narrative_purpose, emotional_beats)
                          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                         [
-                            tropeId, 
-                            sceneType.scene_function, 
+                            tropeId,
+                            sceneType.scene_function,
                             sceneType.scene_description,
                             sceneType.typical_placement || 'middle',
                             sceneType.required || false,
@@ -269,10 +280,10 @@ export class TropeHandlers {
                     );
                 }
             }
-            
+
             // Commit transaction
             await this.db.query('COMMIT');
-            
+
             // Return formatted trope with its scene types
             return {
                 trope_id: tropeId,
@@ -282,7 +293,7 @@ export class TropeHandlers {
                 scene_types: scene_types ? scene_types.length : 0,
                 message: `Successfully created "${trope_name}" trope with ${scene_types ? scene_types.length : 0} scene types`
             };
-        } 
+        }
         catch (error) {
             // Rollback transaction on error
             await this.db.query('ROLLBACK');
@@ -297,7 +308,7 @@ export class TropeHandlers {
      */
     async handleGetTrope(args) {
         const { trope_id, include_scene_types = true } = args;
-        
+
         try {
             // Get the trope details
             const tropeResult = await this.db.query(
@@ -307,13 +318,13 @@ export class TropeHandlers {
                  WHERE t.id = $1`,
                 [trope_id]
             );
-            
+
             if (tropeResult.rows.length === 0) {
                 throw new Error(`Trope with ID ${trope_id} not found`);
             }
-            
+
             const trope = tropeResult.rows[0];
-            
+
             // Get scene types if requested
             let sceneTypes = [];
             if (include_scene_types) {
@@ -331,10 +342,10 @@ export class TropeHandlers {
                         END`,
                     [trope_id]
                 );
-                
+
                 sceneTypes = sceneTypesResult.rows;
             }
-            
+
             // Format the response
             return {
                 trope_id: trope.trope_id,
@@ -359,7 +370,7 @@ export class TropeHandlers {
                 created_at: trope.created_at,
                 updated_at: trope.updated_at
             };
-        } 
+        }
         catch (error) {
             throw new Error(`Failed to get trope: ${error.message}`);
         }
@@ -371,28 +382,34 @@ export class TropeHandlers {
      * @returns {Array} List of tropes
      */
     async handleListTropes(args) {
-        const { series_id, trope_category } = args;
-        
+        const { series_id, trope_category, search_query } = args;
+
         try {
             // Build query conditions based on parameters
             let conditions = [];
             let params = [];
             let paramCounter = 1;
-            
+
             if (series_id) {
                 conditions.push(`t.series_id = $${paramCounter}`);
                 params.push(series_id);
                 paramCounter++;
             }
-            
+
             if (trope_category) {
                 conditions.push(`t.trope_category = $${paramCounter}`);
                 params.push(trope_category);
                 paramCounter++;
             }
-            
+
+            if (search_query) {
+                conditions.push(`(t.trope_name ILIKE $${paramCounter} OR t.description ILIKE $${paramCounter})`);
+                params.push(`%${search_query}%`);
+                paramCounter++;
+            }
+
             const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
-            
+
             // Execute the query
             const result = await this.db.query(
                 `SELECT t.*, s.title as series_title,
@@ -404,7 +421,7 @@ export class TropeHandlers {
                  ORDER BY t.trope_name`,
                 params
             );
-            
+
             // Format the response
             return result.rows.map(trope => ({
                 trope_id: trope.trope_id,
@@ -419,7 +436,7 @@ export class TropeHandlers {
                 usage_count: parseInt(trope.usage_count),
                 created_at: trope.created_at
             }));
-        } 
+        }
         catch (error) {
             throw new Error(`Failed to list tropes: ${error.message}`);
         }
@@ -431,14 +448,14 @@ export class TropeHandlers {
      * @returns {Object} Created trope instance information
      */
     async handleCreateTropeInstance(args) {
-        const { 
-            trope_id, 
-            book_id, 
-            instance_notes, 
-            subversion_notes, 
-            completion_status = 'in_progress' 
+        const {
+            trope_id,
+            book_id,
+            instance_notes,
+            subversion_notes,
+            completion_status = 'in_progress'
         } = args;
-        
+
         try {
             // Validate that trope and book exist
             const validation = await this.db.query(
@@ -447,7 +464,7 @@ export class TropeHandlers {
                  WHERE t.id = $1 AND b.id = $2`,
                 [trope_id, book_id]
             );
-            
+
             if (validation.rows.length === 0) {
                 // Check which one is invalid
                 const tropeCheck = await this.db.query('SELECT id FROM tropes WHERE id = $1', [trope_id]);
@@ -461,7 +478,7 @@ export class TropeHandlers {
                 }
                 throw new Error('Invalid trope_id or book_id');
             }
-            
+
             // Create the trope instance
             const instanceResult = await this.db.query(
                 `INSERT INTO trope_instances
@@ -469,12 +486,12 @@ export class TropeHandlers {
                  VALUES ($1, $2, $3, $4, $5) RETURNING id`,
                 [trope_id, book_id, instance_notes, subversion_notes, completion_status]
             );
-            
+
             const instanceId = instanceResult.rows[0].id;
-            
+
             // Get the trope details for the response
             const tropeInfo = validation.rows[0];
-            
+
             // Get scene types that need to be implemented
             const sceneTypesResult = await this.db.query(
                 `SELECT id, scene_function, scene_description, required
@@ -490,7 +507,7 @@ export class TropeHandlers {
                     END`,
                 [trope_id]
             );
-            
+
             // Format and return the response
             return {
                 instance_id: instanceId,
@@ -515,7 +532,7 @@ export class TropeHandlers {
                         implemented: false
                     }))
             };
-        } 
+        }
         catch (error) {
             throw new Error(`Failed to create trope instance: ${error.message}`);
         }
@@ -528,7 +545,7 @@ export class TropeHandlers {
      */
     async handleGetTropeInstance(args) {
         const { instance_id, include_scenes = true } = args;
-        
+
         try {
             // Get the instance details
             const instanceResult = await this.db.query(
@@ -539,13 +556,13 @@ export class TropeHandlers {
                  WHERE i.id = $1`,
                 [instance_id]
             );
-            
+
             if (instanceResult.rows.length === 0) {
                 throw new Error(`Trope instance with ID ${instance_id} not found`);
             }
-            
+
             const instance = instanceResult.rows[0];
-            
+
             // Get all scene types for this trope
             const sceneTypesResult = await this.db.query(
                 `SELECT st.* , st.id as scene_type_id
@@ -561,7 +578,7 @@ export class TropeHandlers {
                     END`,
                 [instance.trope_id]
             );
-            
+
             // Get implemented scenes if requested
             let implementedScenes = [];
             if (include_scenes) {
@@ -572,19 +589,19 @@ export class TropeHandlers {
                      WHERE ts.instance_id = $1`,
                     [instance_id]
                 );
-                
+
                 implementedScenes = scenesResult.rows;
             }
-            
+
             // Map scene types to their implementation status
             const implementedSceneIds = new Set(implementedScenes.map(s => s.scene_type_id));
-            
+
             const sceneTypes = sceneTypesResult.rows.map(st => {
                 const isImplemented = implementedSceneIds.has(st.scene_type_id);
-                const implementedScene = isImplemented 
+                const implementedScene = isImplemented
                     ? implementedScenes.find(s => s.scene_type_id === st.scene_type_id)
                     : null;
-                
+
                 return {
                     scene_type_id: st.scene_type_id,
                     function: st.scene_function,
@@ -601,21 +618,21 @@ export class TropeHandlers {
                     } : null
                 };
             });
-            
+
             // Calculate progress statistics
             const requiredScenes = sceneTypes.filter(st => st.required);
             const implementedRequiredScenes = requiredScenes.filter(st => st.implemented);
             const optionalScenes = sceneTypes.filter(st => !st.required);
             const implementedOptionalScenes = optionalScenes.filter(st => st.implemented);
-            
+
             const progress = {
                 required: `${implementedRequiredScenes.length}/${requiredScenes.length}`,
                 optional: `${implementedOptionalScenes.length}/${optionalScenes.length}`,
-                percentage: requiredScenes.length > 0 
+                percentage: requiredScenes.length > 0
                     ? Math.round((implementedRequiredScenes.length / requiredScenes.length) * 100)
                     : 100
             };
-            
+
             // Format the response
             return {
                 instance_id: instance.instance_id,
@@ -636,7 +653,7 @@ export class TropeHandlers {
                 created_at: instance.created_at,
                 updated_at: instance.updated_at
             };
-        } 
+        }
         catch (error) {
             throw new Error(`Failed to get trope instance: ${error.message}`);
         }
@@ -649,21 +666,21 @@ export class TropeHandlers {
      */
     async handleListTropeInstances(args) {
         const { book_id, status } = args;
-        
+
         try {
             // Build query conditions based on parameters
             let conditions = ['i.book_id = $1'];
             let params = [book_id];
             let paramCounter = 2;
-            
+
             if (status) {
                 conditions.push(`i.completion_status = $${paramCounter}`);
                 params.push(status);
                 paramCounter++;
             }
-            
+
             const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
-            
+
             // Get trope instances with basic implementation stats
             const query = `
                 WITH scene_counts AS (
@@ -701,19 +718,19 @@ export class TropeHandlers {
                     JOIN scene_counts sc ON i.id = sc.instance_id
                 ${whereClause}
                 ORDER BY t.trope_name`;
-            
+
             const result = await this.db.query(query, params);
-            
+
             // Get book title for the response
             const bookResult = await this.db.query(
                 'SELECT title FROM books WHERE id = $1',
                 [book_id]
             );
-            
+
             if (bookResult.rows.length === 0) {
                 throw new Error(`Book with ID ${book_id} not found`);
             }
-            
+
             // Format the response
             return {
                 book_id,
@@ -738,7 +755,7 @@ export class TropeHandlers {
                     updated_at: row.updated_at
                 }))
             };
-        } 
+        }
         catch (error) {
             throw new Error(`Failed to list trope instances: ${error.message}`);
         }
@@ -750,19 +767,19 @@ export class TropeHandlers {
      * @returns {Object} Result of the implementation
      */
     async handleImplementTropeScene(args) {
-        const { 
-            trope_instance_id: instance_id, 
-            scene_type_id, 
+        const {
+            trope_instance_id: instance_id,
+            scene_type_id,
             scene_id,
-            chapter_id, 
-            scene_number, 
-            scene_summary, 
+            chapter_id,
+            scene_number,
+            scene_summary,
             effectiveness_rating = 7,
             variation_notes,
             scene_elements,
             implementation_notes
         } = args;
-        
+
         try {
             // Validate that the instance and scene type exist and match
             const validationResult = await this.db.query(
@@ -776,7 +793,7 @@ export class TropeHandlers {
                  WHERE i.id = $1 AND st.id = $2`,
                 [instance_id, scene_type_id]
             );
-            
+
             if (validationResult.rows.length === 0) {
                 // Check what's wrong
                 const instanceCheck = await this.db.query('SELECT id, trope_id FROM trope_instances WHERE id = $1', [instance_id]);
@@ -791,9 +808,9 @@ export class TropeHandlers {
                 // Both exist but don't match
                 throw new Error(`Scene type ${scene_type_id} does not belong to the trope associated with instance ${instance_id}. Instance is for trope ${instanceCheck.rows[0].trope_id} but scene type is for trope ${sceneTypeCheck.rows[0].trope_id}.`);
             }
-            
+
             const sceneInfo = validationResult.rows[0];
-            
+
             // Insert or update the trope scene implementation
             await this.db.query(
                 `INSERT INTO trope_scenes
@@ -812,19 +829,19 @@ export class TropeHandlers {
                     scene_elements = $9,
                     implementation_notes = $10`,
                 [
-                    instance_id, 
-                    scene_type_id, 
+                    instance_id,
+                    scene_type_id,
                     scene_id || null,
-                    chapter_id, 
+                    chapter_id,
                     scene_number,
-                    scene_summary, 
-                    effectiveness_rating, 
+                    scene_summary,
+                    effectiveness_rating,
                     variation_notes || null,
                     scene_elements || [],
                     implementation_notes || null
                 ]
             );
-            
+
             // Check if all required scenes are implemented
             const implementationStatusResult = await this.db.query(
                 `WITH required_scenes AS (
@@ -845,10 +862,10 @@ export class TropeHandlers {
                     ) AS matched`,
                 [instance_id]
             );
-            
+
             const status = implementationStatusResult.rows[0];
             const completionPercentage = Math.round((status.matched / status.total_required) * 100);
-            
+
             // Get the latest implemented scene details
             const sceneDetailsResult = await this.db.query(
                 `SELECT ts.*, tst.scene_function, tst.scene_description
@@ -857,29 +874,29 @@ export class TropeHandlers {
                  WHERE ts.instance_id = $1 AND ts.scene_type_id = $2`,
                 [instance_id, scene_type_id]
             );
-            
+
             const sceneDetails = sceneDetailsResult.rows[0];
-            
+
             // Format and return the response
             return {
                 content: [
                     {
                         type: 'text',
                         text: `# Trope Scene Implemented\n\n` +
-                              `**Trope:** ${sceneInfo.trope_name}\n` +
-                              `**Book:** ${sceneInfo.book_title}\n` +
-                              `**Scene Function:** ${sceneInfo.scene_function}\n\n` +
-                              `### Implementation Details\n` +
-                              `- **Chapter:** ${chapter_id ? chapter_id : 'Not specified'}\n` +
-                              `- **Scene Number:** ${scene_number ? scene_number : 'Not specified'}\n` +
-                              `- **Effectiveness Rating:** ${effectiveness_rating}/10\n` +
-                              `${scene_elements && scene_elements.length > 0 ? `- **Scene Elements:** ${scene_elements.join(', ')}\n` : ''}` +
-                              `${variation_notes ? `- **Variation Notes:** ${variation_notes}\n` : ''}` +
-                              `${implementation_notes ? `- **Implementation Notes:** ${implementation_notes}\n` : ''}` +
-                              `\n### Scene Summary\n${scene_summary}\n\n` +
-                              `### Implementation Status\n` +
-                              `- **Completion:** ${completionPercentage}% (${status.matched}/${status.total_required} scenes implemented)\n` +
-                              `- **Status:** ${completionPercentage === 100 ? '✅ Complete' : '⏳ In Progress'}`
+                            `**Trope:** ${sceneInfo.trope_name}\n` +
+                            `**Book:** ${sceneInfo.book_title}\n` +
+                            `**Scene Function:** ${sceneInfo.scene_function}\n\n` +
+                            `### Implementation Details\n` +
+                            `- **Chapter:** ${chapter_id ? chapter_id : 'Not specified'}\n` +
+                            `- **Scene Number:** ${scene_number ? scene_number : 'Not specified'}\n` +
+                            `- **Effectiveness Rating:** ${effectiveness_rating}/10\n` +
+                            `${scene_elements && scene_elements.length > 0 ? `- **Scene Elements:** ${scene_elements.join(', ')}\n` : ''}` +
+                            `${variation_notes ? `- **Variation Notes:** ${variation_notes}\n` : ''}` +
+                            `${implementation_notes ? `- **Implementation Notes:** ${implementation_notes}\n` : ''}` +
+                            `\n### Scene Summary\n${scene_summary}\n\n` +
+                            `### Implementation Status\n` +
+                            `- **Completion:** ${completionPercentage}% (${status.matched}/${status.total_required} scenes implemented)\n` +
+                            `- **Status:** ${completionPercentage === 100 ? '✅ Complete' : '⏳ In Progress'}`
                     }
                 ],
                 status: 'success',
@@ -889,7 +906,7 @@ export class TropeHandlers {
                     completionPercentage: completionPercentage
                 }
             };
-            
+
         } catch (error) {
             throw new Error(`Failed to implement trope scene: ${error.message}`);
         }
@@ -902,121 +919,103 @@ export class TropeHandlers {
      */
     async handleGetTropeProgress(args) {
         const { book_id, trope_id } = args;
-        
+
         try {
             // Validate book exists
             const bookResult = await this.db.query(
                 'SELECT title FROM books WHERE id = $1',
                 [book_id]
             );
-            
+
             if (bookResult.rows.length === 0) {
                 throw new Error(`Book with ID ${book_id} not found`);
             }
-            
+
             const bookTitle = bookResult.rows[0].title;
-            
+
             // Build query conditions
             const conditions = ['i.book_id = $1'];
             const params = [book_id];
-            
+
             if (trope_id) {
                 conditions.push('i.trope_id = $2');
                 params.push(trope_id);
             }
-            
+
             const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-            
+
             // Get progress for all trope instances in the book
             const query = `
                 WITH scene_requirements AS (
                     SELECT 
                         i.id as instance_id,
-                        COUNT(CASE WHEN st.required = TRUE THEN 1 END) AS required_scenes,
-                        COUNT(CASE WHEN st.required = FALSE THEN 1 END) AS optional_scenes
-                    FROM 
-                        trope_instances i
-                        JOIN tropes t ON i.trope_id = t.id
-                        JOIN trope_scene_types st ON t.id = st.trope_id
+                        COUNT(DISTINCT st.id) FILTER (WHERE st.required = true) as total_required,
+                        COUNT(DISTINCT st.id) FILTER (WHERE st.required = false) as total_optional
+                    FROM trope_instances i
+                    JOIN tropes t ON i.trope_id = t.id
+                    JOIN trope_scene_types st ON t.id = st.trope_id
                     ${whereClause}
                     GROUP BY i.id
                 ),
                 scene_implementations AS (
                     SELECT 
-                        ts.instance_id,
-                        COUNT(DISTINCT CASE WHEN st.required = TRUE THEN ts.scene_type_id END) AS required_implemented,
-                        COUNT(DISTINCT CASE WHEN st.required = FALSE THEN ts.scene_type_id END) AS optional_implemented,
-                        AVG(ts.effectiveness_rating) AS avg_effectiveness
-                    FROM 
-                        trope_scenes ts
-                        JOIN trope_scene_types st ON ts.scene_type_id = st.id
-                    WHERE 
-                        ts.instance_id IN (SELECT instance_id FROM scene_requirements)
-                    GROUP BY ts.instance_id
+                        i.id as instance_id,
+                        COUNT(DISTINCT ts.scene_type_id) FILTER (
+                            WHERE st.required = true
+                        ) as implemented_required,
+                        COUNT(DISTINCT ts.scene_type_id) FILTER (
+                            WHERE st.required = false
+                        ) as implemented_optional
+                    FROM trope_instances i
+                    JOIN tropes t ON i.trope_id = t.id
+                    JOIN trope_scene_types st ON t.id = st.trope_id
+                    LEFT JOIN trope_scenes ts ON ts.instance_id = i.id AND ts.scene_type_id = st.id
+                    ${whereClause}
+                    GROUP BY i.id
                 )
                 SELECT 
                     i.id as instance_id,
-                    i.trope_id,
                     t.trope_name,
                     t.trope_category,
                     i.completion_status,
-                    i.instance_notes,
-                    i.subversion_notes,
-                    COALESCE(sr.required_scenes, 0) AS required_total,
-                    COALESCE(sr.optional_scenes, 0) AS optional_total,
-                    COALESCE(si.required_implemented, 0) AS required_implemented,
-                    COALESCE(si.optional_implemented, 0) AS optional_implemented,
-                    COALESCE(si.avg_effectiveness, 0) AS avg_effectiveness,
-                    i.created_at,
-                    i.updated_at
-                FROM 
-                    trope_instances i
-                    JOIN tropes t ON i.trope_id = t.id
-                    LEFT JOIN scene_requirements sr ON i.id = sr.instance_id
-                    LEFT JOIN scene_implementations si ON i.id = si.instance_id
+                    sr.total_required,
+                    sr.total_optional,
+                    si.implemented_required,
+                    si.implemented_optional
+                FROM trope_instances i
+                JOIN tropes t ON i.trope_id = t.id
+                JOIN scene_requirements sr ON i.id = sr.instance_id
+                JOIN scene_implementations si ON i.id = si.instance_id
                 ${whereClause}
                 ORDER BY t.trope_name`;
-            
+
             const result = await this.db.query(query, params);
-            
-            // Calculate overall book progress
-            const totalRequiredScenes = result.rows.reduce((sum, row) => sum + parseInt(row.required_total), 0);
-            const implementedRequiredScenes = result.rows.reduce((sum, row) => sum + parseInt(row.required_implemented), 0);
-            const overallPercentage = totalRequiredScenes > 0
-                ? Math.round((implementedRequiredScenes / totalRequiredScenes) * 100)
-                : 100;
-            
+
             // Format the response
             return {
                 book_id,
                 book_title: bookTitle,
                 trope_count: result.rows.length,
-                overall_progress: {
-                    required_scenes: `${implementedRequiredScenes}/${totalRequiredScenes}`,
-                    percentage: overallPercentage,
-                    status: overallPercentage === 100 ? 'complete' : 'in_progress'
-                },
-                tropes: result.rows.map(row => ({
+                progress: result.rows.map(row => ({
                     instance_id: row.instance_id,
-                    trope_id: row.trope_id,
                     trope_name: row.trope_name,
-                    trope_category: row.trope_category,
+                    category: row.trope_category,
                     status: row.completion_status,
-                    progress: {
-                        required: `${row.required_implemented}/${row.required_total}`,
-                        optional: `${row.optional_implemented}/${row.optional_total}`,
-                        percentage: row.required_total > 0
-                            ? Math.round((row.required_implemented / row.required_total) * 100)
-                            : 100
+                    required_scenes: {
+                        total: parseInt(row.total_required),
+                        implemented: parseInt(row.implemented_required),
+                        remaining: parseInt(row.total_required) - parseInt(row.implemented_required)
                     },
-                    effectiveness: parseFloat(row.avg_effectiveness).toFixed(1),
-                    notes: row.instance_notes,
-                    subversion_notes: row.subversion_notes,
-                    created_at: row.created_at,
-                    updated_at: row.updated_at
+                    optional_scenes: {
+                        total: parseInt(row.total_optional),
+                        implemented: parseInt(row.implemented_optional)
+                    },
+                    completion_percentage: parseInt(row.total_required) > 0
+                        ? Math.round((parseInt(row.implemented_required) / parseInt(row.total_required)) * 100)
+                        : 100
                 }))
             };
-        } 
+        }
         catch (error) {
             throw new Error(`Failed to get trope progress: ${error.message}`);
         }
@@ -1025,356 +1024,109 @@ export class TropeHandlers {
     /**
      * Analyze trope usage patterns across a series
      * @param {Object} args - Function arguments
-     * @returns {Object} Analysis of trope patterns in the series
+     * @returns {Object} Analysis results
      */
     async handleAnalyzeTropePatterns(args) {
-        const { series_id, analysis_type = 'all' } = args;
-        
+        const { series_id, trope_category, analysis_type = 'all' } = args;
+
         try {
             // Validate series exists
             const seriesResult = await this.db.query(
-                'SELECT title as series_name FROM series WHERE id = $1',
+                'SELECT title FROM series WHERE id = $1',
                 [series_id]
             );
-            
+
             if (seriesResult.rows.length === 0) {
                 throw new Error(`Series with ID ${series_id} not found`);
             }
-            
-            const seriesName = seriesResult.rows[0].series_name;
-            const analyses = {};
-            
-            // Frequency analysis
-            if (analysis_type === 'frequency' || analysis_type === 'all') {
+
+            const seriesTitle = seriesResult.rows[0].title;
+
+            const result = {
+                series_id,
+                series_title: seriesTitle,
+                analysis_type,
+                timestamp: new Date().toISOString()
+            };
+
+            // 1. Frequency Analysis
+            if (analysis_type === 'all' || analysis_type === 'frequency') {
+                let categoryFilter = '';
+                let params = [series_id];
+
+                if (trope_category) {
+                    categoryFilter = 'AND t.trope_category = $2';
+                    params.push(trope_category);
+                }
+
                 const frequencyQuery = `
                     SELECT 
-                        t.id as trope_id,
                         t.trope_name,
                         t.trope_category,
-                        COUNT(DISTINCT i.book_id) AS book_count,
-                        COUNT(i.id) AS instance_count,
-                        ARRAY_AGG(DISTINCT b.title) AS book_titles
-                    FROM 
-                        tropes t
-                        JOIN trope_instances i ON t.id = i.trope_id
-                        JOIN books b ON i.book_id = b.id
-                    WHERE 
-                        t.series_id = $1
-                    GROUP BY 
-                        t.id, t.trope_name, t.trope_category
-                    ORDER BY 
-                        book_count DESC, instance_count DESC`;
-                
-                const frequencyResult = await this.db.query(frequencyQuery, [series_id]);
-                
-                analyses.frequency = {
-                    total_tropes: frequencyResult.rows.length,
-                    tropes: frequencyResult.rows.map(row => ({
-                        trope_id: row.trope_id,
-                        trope_name: row.trope_name,
-                        trope_category: row.trope_category,
-                        book_count: parseInt(row.book_count),
-                        instance_count: parseInt(row.instance_count),
-                        books: row.book_titles
-                    }))
-                };
+                        COUNT(i.id) as usage_count,
+                        STRING_AGG(b.title, ', ') as books_used
+                    FROM tropes t
+                    LEFT JOIN trope_instances i ON t.id = i.trope_id
+                    LEFT JOIN books b ON i.book_id = b.id
+                    WHERE t.series_id = $1 ${categoryFilter}
+                    GROUP BY t.id, t.trope_name, t.trope_category
+                    ORDER BY usage_count DESC
+                    LIMIT 20`;
+
+                const frequencyResult = await this.db.query(frequencyQuery, params);
+                result.frequency_analysis = frequencyResult.rows.map(row => ({
+                    trope: row.trope_name,
+                    category: row.trope_category,
+                    count: parseInt(row.usage_count),
+                    books: row.books_used
+                }));
             }
-            
-            // Subversion analysis
-            if (analysis_type === 'subversion' || analysis_type === 'all') {
+
+            // 2. Subversion Analysis
+            if (analysis_type === 'all' || analysis_type === 'subversion') {
                 const subversionQuery = `
                     SELECT 
-                        t.id AS trope_id,
                         t.trope_name,
-                        t.trope_category,
-                        COUNT(CASE WHEN i.completion_status = 'subverted' THEN 1 END) AS subversion_count,
-                        COUNT(i.id) AS total_instances,
-                        ARRAY_AGG(DISTINCT CASE WHEN i.completion_status = 'subverted' THEN b.title END) 
-                            FILTER (WHERE i.completion_status = 'subverted') AS subverted_in_books
-                    FROM 
-                        tropes t
-                        JOIN trope_instances i ON t.id = i.trope_id
-                        JOIN books b ON i.book_id = b.id
-                    WHERE 
-                        t.series_id = $1
-                    GROUP BY 
-                        t.id, t.trope_name, t.trope_category
-                    HAVING 
-                        COUNT(CASE WHEN i.completion_status = 'subverted' THEN 1 END) > 0
-                    ORDER BY 
-                        subversion_count DESC`;
-                
-                const subversionResult = await this.db.query(subversionQuery, [series_id]);
-                
-                analyses.subversion = {
-                    total_subverted_tropes: subversionResult.rows.length,
-                    tropes: subversionResult.rows.map(row => ({
-                        trope_id: row.trope_id,
-                        trope_name: row.trope_name,
-                        trope_category: row.trope_category,
-                        subversion_count: parseInt(row.subversion_count),
-                        total_instances: parseInt(row.total_instances),
-                        subversion_rate: `${Math.round((row.subversion_count / row.total_instances) * 100)}%`,
-                        subverted_in_books: row.subverted_in_books
-                    }))
-                };
-            }
-            
-            // Effectiveness analysis
-            if (analysis_type === 'effectiveness' || analysis_type === 'all') {
-                const effectivenessQuery = `
-                    SELECT 
-                        t.id AS trope_id,
-                        t.trope_name,
-                        t.trope_category,
-                        AVG(ts.effectiveness_rating) AS avg_effectiveness,
-                        COUNT(ts.id) AS scene_count
-                    FROM 
-                        tropes t
-                        JOIN trope_instances i ON t.id = i.trope_id
-                        JOIN trope_scenes ts ON i.id = ts.id
-                        JOIN books b ON i.book_id = b.id
-                    WHERE 
-                        t.series_id = $1
-                    GROUP BY 
-                        t.id, t.trope_name, t.trope_category
-                    HAVING 
-                        COUNT(ts.id) > 0
-                    ORDER BY 
-                        avg_effectiveness DESC`;
-                
-                const effectivenessResult = await this.db.query(effectivenessQuery, [series_id]);
-                
-                analyses.effectiveness = {
-                    trope_count: effectivenessResult.rows.length,
-                    tropes: effectivenessResult.rows.map(row => ({
-                        trope_id: row.trope_id,
-                        trope_name: row.trope_name,
-                        trope_category: row.trope_category,
-                        avg_effectiveness: parseFloat(row.avg_effectiveness).toFixed(1),
-                        scene_count: parseInt(row.scene_count),
-                        rating_category: getRatingCategory(parseFloat(row.avg_effectiveness))
-                    }))
-                };
-            }
-            
-            // Format the response
-            return {
-                series_id,
-                series_name: seriesName,
-                analysis_type,
-                analysis_date: new Date().toISOString(),
-                analyses
-            };
-        } 
-        catch (error) {
-            throw new Error(`Failed to analyze trope patterns: ${error.message}`);
-        }
-        
-        // Helper function to categorize effectiveness ratings
-        function getRatingCategory(rating) {
-            if (rating >= 9) return 'exceptional';
-            if (rating >= 7.5) return 'excellent';
-            if (rating >= 6) return 'good';
-            if (rating >= 4) return 'average';
-            return 'needs improvement';
-        }
-    }
-
-    /**
-     * Get all trope scene implementations for an instance or series
-     * @param {Object} args - Function arguments
-     * @returns {Object} Trope scene implementations with filtering
-     */
-    async handleGetTropeScenes(args) {
-        const {
-            instance_id,
-            series_id,
-            trope_category,
-            kinks_filter: scene_elements_filter,
-            written_only = false,
-            unwritten_only = false
-        } = args;
-
-        try {
-            let query = `
-                SELECT
-                    ts.id,
-                    ts.instance_id,
-                    ts.scene_type_id,
-                    ts.scene_id,
-                    ts.chapter_id,
-                    ts.scene_number,
-                    ts.scene_summary,
-                    ts.effectiveness_rating,
-                    ts.variation_notes,
-                    ts.scene_elements,
-                    ts.implementation_notes,
-                    ts.created_at,
-                    ts.updated_at,
-                    tst.scene_function,
-                    tst.scene_description,
-                    tst.typical_placement,
-                    t.id as trope_id,
-                    t.trope_name,
-                    t.trope_category,
-                    b.id as book_id,
-                    b.title as book_title,
-                    b.book_number,
-                    i.completion_status as instance_status
-                FROM
-                    trope_scenes ts
-                    JOIN trope_scene_types tst ON ts.scene_type_id = tst.id
-                    JOIN trope_instances i ON ts.instance_id = i.id
+                        b.title as book_title,
+                        i.subversion_notes
+                    FROM trope_instances i
                     JOIN tropes t ON i.trope_id = t.id
                     JOIN books b ON i.book_id = b.id
-            `;
+                    WHERE t.series_id = $1 
+                    AND (i.completion_status = 'subverted' OR LENGTH(i.subversion_notes) > 0)
+                    ORDER BY b.series_order`;
 
-            const conditions = [];
-            const params = [];
-            let paramCount = 0;
-
-            // Filter by instance_id
-            if (instance_id) {
-                paramCount++;
-                conditions.push(`ts.instance_id = $${paramCount}`);
-                params.push(instance_id);
+                const subversionResult = await this.db.query(subversionQuery, [series_id]);
+                result.subversion_analysis = subversionResult.rows;
             }
 
-            // Filter by series_id
-            if (series_id) {
-                paramCount++;
-                conditions.push(`t.series_id = $${paramCount}`);
-                params.push(series_id);
+            // 3. Effectiveness Analysis
+            if (analysis_type === 'all' || analysis_type === 'effectiveness') {
+                const effectivenessQuery = `
+                    SELECT 
+                        t.trope_name,
+                        AVG(ts.effectiveness_rating) as avg_rating,
+                        COUNT(ts.id) as scene_count
+                    FROM trope_scenes ts
+                    JOIN trope_instances i ON ts.instance_id = i.id
+                    JOIN tropes t ON i.trope_id = t.id
+                    WHERE t.series_id = $1
+                    GROUP BY t.id, t.trope_name
+                    HAVING COUNT(ts.id) > 0
+                    ORDER BY avg_rating DESC`;
+
+                const effectivenessResult = await this.db.query(effectivenessQuery, [series_id]);
+                result.effectiveness_analysis = effectivenessResult.rows.map(row => ({
+                    trope: row.trope_name,
+                    average_rating: parseFloat(row.avg_rating).toFixed(1),
+                    scenes_analyzed: parseInt(row.scene_count)
+                }));
             }
 
-            // Filter by trope_category
-            if (trope_category) {
-                paramCount++;
-                conditions.push(`t.trope_category = $${paramCount}`);
-                params.push(trope_category);
-            }
-
-            // Filter by scene_elements (kinks)
-            if (scene_elements_filter && scene_elements_filter.length > 0) {
-                paramCount++;
-                conditions.push(`ts.scene_elements && $${paramCount}`);
-                params.push(scene_elements_filter);
-            }
-
-            // Filter by written status
-            if (written_only) {
-                conditions.push(`ts.scene_id IS NOT NULL`);
-            }
-
-            if (unwritten_only) {
-                conditions.push(`ts.scene_id IS NULL`);
-            }
-
-            if (conditions.length > 0) {
-                query += ` WHERE ${conditions.join(' AND ')}`;
-            }
-
-            query += `
-                ORDER BY
-                    b.book_number,
-                    ts.chapter_id,
-                    ts.scene_number
-            `;
-
-            const result = await this.db.query(query, params);
-
-            if (result.rows.length === 0) {
-                return {
-                    content: [{
-                        type: 'text',
-                        text: 'No trope scenes found matching the specified criteria.'
-                    }]
-                };
-            }
-
-            // Group by trope for better organization
-            const scenesByTrope = result.rows.reduce((acc, scene) => {
-                const key = `${scene.trope_id}_${scene.trope_name}`;
-                if (!acc[key]) {
-                    acc[key] = {
-                        trope_id: scene.trope_id,
-                        trope_name: scene.trope_name,
-                        trope_category: scene.trope_category,
-                        scenes: []
-                    };
-                }
-                acc[key].scenes.push(scene);
-                return acc;
-            }, {});
-
-            // Collect all unique scene elements
-            const allElements = new Set();
-            result.rows.forEach(scene => {
-                if (scene.scene_elements && scene.scene_elements.length > 0) {
-                    scene.scene_elements.forEach(element => allElements.add(element));
-                }
-            });
-
-            // Format response
-            let responseText = `# Trope Scene Implementations\n\n`;
-            responseText += `**Total Scenes Found:** ${result.rows.length}\n`;
-
-            if (scene_elements_filter && scene_elements_filter.length > 0) {
-                responseText += `**Filtered by Elements:** ${scene_elements_filter.join(', ')}\n`;
-            }
-            if (trope_category) {
-                responseText += `**Filtered by Category:** ${trope_category}\n`;
-            }
-
-            if (allElements.size > 0) {
-                responseText += `**Elements Used:** ${Array.from(allElements).sort().join(', ')}\n`;
-            }
-
-            responseText += `\n---\n\n`;
-
-            // Display scenes grouped by trope
-            Object.values(scenesByTrope).forEach(tropeGroup => {
-                responseText += `## ${tropeGroup.trope_name}\n`;
-                responseText += `**Category:** ${tropeGroup.trope_category}\n\n`;
-
-                tropeGroup.scenes.forEach((scene, index) => {
-                    const isWritten = scene.scene_id !== null;
-                    const statusEmoji = isWritten ? '✅' : '📝';
-
-                    responseText += `### ${statusEmoji} Scene ${index + 1}: ${scene.scene_function}\n`;
-                    responseText += `**Book:** ${scene.book_title} (Book ${scene.book_number})\n`;
-                    responseText += `**Location:** Chapter ${scene.chapter_id}, Scene ${scene.scene_number}\n`;
-                    responseText += `**Status:** ${isWritten ? 'Written (linked to scene #' + scene.scene_id + ')' : 'Planned (not yet written)'}\n`;
-                    responseText += `**Effectiveness:** ${scene.effectiveness_rating}/10\n`;
-
-                    if (scene.scene_elements && scene.scene_elements.length > 0) {
-                        responseText += `**Scene Elements:** ${scene.scene_elements.join(', ')}\n`;
-                    }
-
-                    if (scene.variation_notes) {
-                        responseText += `**Variation:** ${scene.variation_notes}\n`;
-                    }
-
-                    responseText += `\n**Summary:** ${scene.scene_summary}\n`;
-
-                    if (scene.implementation_notes) {
-                        responseText += `**Notes:** ${scene.implementation_notes}\n`;
-                    }
-
-                    responseText += `\n---\n\n`;
-                });
-            });
-
-            return {
-                content: [{
-                    type: 'text',
-                    text: responseText
-                }]
-            };
-
-        } catch (error) {
-            throw new Error(`Failed to get trope scenes: ${error.message}`);
+            return result;
+        }
+        catch (error) {
+            throw new Error(`Failed to analyze trope patterns: ${error.message}`);
         }
     }
 }

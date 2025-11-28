@@ -91,7 +91,8 @@ export const tropeToolsSchema = [
             type: 'object',
             properties: {
                 series_id: { type: 'integer', description: 'Series filter?' },
-                trope_category: { type: 'string', description: 'Category filter?' }
+                trope_category: { type: 'string', description: 'Category filter?' },
+                search_query: { type: 'string', description: 'Search by trope name or description' }
             }
         }
     },
