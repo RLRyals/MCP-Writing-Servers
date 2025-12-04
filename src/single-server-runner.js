@@ -33,7 +33,8 @@ const serverConfigs = {
     'review': { path: './config-mcps/review-server/index.js', className: 'ReviewMCPServer' },
     'reporting': { path: './config-mcps/reporting-server/index.js', className: 'ReportingMCPServer' },
     'author': { path: './mcps/author-server/index.js', className: 'AuthorMCPServer' },
-    'database-admin': { path: './mcps/database-admin-server/index.js', className: 'DatabaseAdminMCPServer' }
+    'database-admin': { path: './mcps/database-admin-server/index.js', className: 'DatabaseAdminMCPServer' },
+    'workflow-manager': { path: './mcps/workflow-manager-server/index.js', className: 'WorkflowManagerMCPServer' }
 };
 
 // Active SSE transports Map

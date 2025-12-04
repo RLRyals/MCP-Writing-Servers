@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // server.js
-// MCP Server Orchestrator - Manages all 9 MCP servers as child processes
+// MCP Server Orchestrator - Manages all 11 MCP servers as child processes
 // Provides centralized logging, process management, and graceful shutdown
 
 import { spawn } from 'child_process';
@@ -21,7 +21,8 @@ const servers = [
     { name: 'review', port: 3007 },
     { name: 'reporting', port: 3008 },
     { name: 'author', port: 3009 },
-    { name: 'database-admin', port: 3010 }
+    { name: 'database-admin', port: 3010 },
+    { name: 'workflow-manager', port: 3012 }
 ];
 
 // Store child process references
@@ -58,6 +59,7 @@ function log(serverName, message, level = 'info') {
         'reporting': colors.magenta,
         'author': colors.cyan,
         'database-admin': colors.green,
+        'workflow-manager': colors.yellow,
         'orchestrator': colors.bright + colors.white
     };
 
