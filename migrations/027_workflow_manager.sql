@@ -5,7 +5,7 @@
 DO $$
 BEGIN
     -- Check if migration was already applied
-    IF EXISTS (SELECT 1 FROM migrations WHERE filename = '027_workflow_manager.sql') THEN
+    IF EXISTS (SELECT 1 FROM migrations WHERE name = '027_workflow_manager.sql') THEN
         RAISE NOTICE 'Migration 027_workflow_manager.sql already applied, skipping.';
         RETURN;
     END IF;
@@ -306,8 +306,8 @@ COMMENT ON COLUMN production_metrics.metric_type IS 'Metric type: words_written,
 COMMENT ON COLUMN revision_passes.pass_name IS '6 passes: structural, continuity, dialogue, emotional, line_edit, final_qa';
 
 -- Record this migration
-INSERT INTO migrations (filename) VALUES ('027_workflow_manager.sql')
-ON CONFLICT (filename) DO NOTHING;
+INSERT INTO migrations (name) VALUES ('027_workflow_manager.sql')
+ON CONFLICT DO NOTHING;
 
 RAISE NOTICE 'Migration 027_workflow_manager.sql completed successfully.';
 END $$;
