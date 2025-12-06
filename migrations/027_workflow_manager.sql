@@ -5,7 +5,7 @@
 DO $$
 BEGIN
     -- Check if migration was already applied
-    IF EXISTS (SELECT 1 FROM migrations WHERE name = '027_workflow_manager.sql') THEN
+    IF EXISTS (SELECT 1 FROM migrations WHERE filename = '027_workflow_manager.sql') THEN
         RAISE NOTICE 'Migration 027_workflow_manager.sql already applied, skipping.';
         RETURN;
     END IF;
