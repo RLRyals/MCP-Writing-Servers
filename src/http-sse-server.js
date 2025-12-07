@@ -187,6 +187,20 @@ async function loadServers() {
         console.error('✗ Failed to load NPE Server:', error.message);
     }
 
+    try {
+        // Workflow Manager Server
+        const { WorkflowManagerMCPServer } = await import('./mcps/workflow-manager-server/index.js');
+        servers.push({
+            name: 'workflow-manager',
+            path: '/workflow-manager',
+            serverClass: WorkflowManagerMCPServer,
+            port: 3012
+        });
+        console.error('✓ Workflow Manager Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Workflow Manager Server:', error.message);
+    }
+
     console.error(`\n✅ Successfully loaded ${servers.length}/11 servers\n`);
     return servers;
 }

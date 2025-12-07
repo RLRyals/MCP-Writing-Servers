@@ -122,6 +122,7 @@ services:
       - "3008:3008"  # reporting
       - "3009:3009"  # author
       - "3010:3010"  # database-admin
+      - "3011:3011"  # npe
       - "3012:3012"  # workflow-manager
     depends_on:
       pgbouncer:

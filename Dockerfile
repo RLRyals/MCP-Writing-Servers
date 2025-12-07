@@ -81,7 +81,7 @@ USER nodejs:1001
 # 3001: book-planning, 3002: series-planning, 3003: chapter-planning
 # 3004: character-planning, 3005: scene, 3006: core-continuity
 # 3007: review, 3008: reporting, 3009: author, 3010: database-admin
-EXPOSE 3001 3002 3003 3004 3005 3006 3007 3008 3009 3010
+EXPOSE 3001 3002 3003 3004 3005 3006 3007 3008 3009 3010 3011 3012
 
 # Health check - verifies the HTTP/SSE server is responsive
 # Checks all critical services including database-admin on port 3010
