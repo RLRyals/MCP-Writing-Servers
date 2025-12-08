@@ -324,12 +324,28 @@ function createServerEndpoint(serverConfig) {
                     sse: `http://localhost:${port}/`,
                     health: `http://localhost:${port}/health`,
                     info: `http://localhost:${port}/info`,
+                    tools: `http://localhost:${port}/tools`,
                     api: `http://localhost:${port}/api/tool-call`
                 }
             });
         } catch (error) {
             res.status(500).json({
                 error: 'Failed to get server info',
+                message: error.message
+            });
+        }
+    });
+
+    // Tools endpoint for Typing Mind and generic HTTP clients
+    app.get('/tools', async (req, res) => {
+        try {
+            const mcpServer = await getServerInstance(serverClass, name);
+            res.json({
+                tools: mcpServer.tools
+            });
+        } catch (error) {
+            res.status(500).json({
+                error: 'Failed to get tools',
                 message: error.message
             });
         }
