@@ -180,12 +180,28 @@ async function startServer() {
                         sse: `http://localhost:${port}/`,
                         health: `http://localhost:${port}/health`,
                         info: `http://localhost:${port}/info`,
+                        tools: `http://localhost:${port}/tools`,
                         mcp: `http://localhost:${port}/mcp`
                     }
                 });
             } catch (error) {
                 res.status(500).json({
                     error: 'Failed to get server info',
+                    message: error.message
+                });
+            }
+        });
+
+        // Tools endpoint for Typing Mind and other HTTP clients
+        app.get('/tools', async (req, res) => {
+            try {
+                // Return the raw tools array as expected by some clients
+                res.json({
+                    tools: sharedMCPServer.tools
+                });
+            } catch (error) {
+                res.status(500).json({
+                    error: 'Failed to get tools',
                     message: error.message
                 });
             }
