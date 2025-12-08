@@ -130,8 +130,8 @@ if [ -f ".env" ]; then
                 print_status "ok" "Database connection successful ($DB_NAME @ $DB_HOST:$DB_PORT)"
             else
                 print_status "warn" "Cannot connect to database ($DB_NAME @ $DB_HOST:$DB_PORT)"
-                print_status "info" "To start database: docker-compose up -d postgres"
-                print_status "info" "To initialize: docker-compose exec postgres psql -U writer -d mcp_series -f /docker-entrypoint-initdb.d/init.sql"
+                print_status "info" "To start database: docker compose up -d postgres"
+                print_status "info" "To initialize: docker compose exec postgres psql -U writer -d mcp_series -f /docker-entrypoint-initdb.d/init.sql"
             fi
         else
             # Try with docker if psql not available
@@ -140,7 +140,7 @@ if [ -f ".env" ]; then
                     print_status "ok" "PostgreSQL container is running"
                 else
                     print_status "warn" "PostgreSQL container not running"
-                    print_status "info" "To start: docker-compose up -d postgres"
+                    print_status "info" "To start: docker compose up -d postgres"
                 fi
             else
                 print_status "warn" "Cannot verify database (psql or docker not found)"
@@ -158,7 +158,7 @@ if command -v docker &> /dev/null; then
     if docker info &> /dev/null; then
         print_status "ok" "Docker is running"
 
-        # Check if docker-compose file exists
+        # Check if docker compose file exists
         if [ -f "docker-compose.yml" ]; then
             print_status "ok" "docker-compose.yml found"
         fi
@@ -191,8 +191,8 @@ echo "Quick Reference Commands"
 echo "======================================"
 echo ""
 echo "Database:"
-echo "  Start:      docker-compose up -d postgres"
-echo "  Initialize: docker-compose exec postgres psql -U writer -d mcp_series -f /docker-entrypoint-initdb.d/init.sql"
+echo "  Start:      docker compose up -d postgres"
+echo "  Initialize: docker compose exec postgres psql -U writer -d mcp_series -f /docker-entrypoint-initdb.d/init.sql"
 echo "  Connect:    psql \$DATABASE_URL"
 echo ""
 echo "Servers:"
