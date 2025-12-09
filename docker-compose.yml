@@ -66,6 +66,7 @@ services:
       POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-your_secure_password2025}
       POSTGRESQL_DATABASE: ${POSTGRES_DB:-mcp_series}
       PGBOUNCER_DATABASE: ${POSTGRES_DB:-mcp_series}
+      PGBOUNCER_PORT: ${PGBOUNCER_PORT:-6432}
       PGBOUNCER_POOL_MODE: transaction
       PGBOUNCER_MAX_CLIENT_CONN: 1000
       # Increased from 25 to 100 to handle 10 MCP servers × 20 connections each = 200 client connections
@@ -74,7 +75,7 @@ services:
       PGBOUNCER_MIN_POOL_SIZE: 20
       PGBOUNCER_RESERVE_POOL_SIZE: 20
     ports:
-      - "6432:6432"
+      - "${PGBOUNCER_PORT:-6432}:${PGBOUNCER_PORT:-6432}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,7 +99,7 @@ services:
     container_name: mcp-writing-servers
     environment:
       # Database connection through PgBouncer
-      DATABASE_URL: postgresql://${POSTGRES_USER:-writer}:${POSTGRES_PASSWORD:-your_secure_password2025}@pgbouncer:6432/${POSTGRES_DB:-mcp_series}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-writer}:${POSTGRES_PASSWORD:-your_secure_password2025}@pgbouncer:${PGBOUNCER_PORT:-6432}/${POSTGRES_DB:-mcp_series}
       NODE_ENV: ${NODE_ENV:-production}
       # MCP Configuration
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
