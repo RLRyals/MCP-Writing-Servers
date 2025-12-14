@@ -43,12 +43,9 @@ export const reportingToolsSchema = [
                     }
                 }
             },
-            oneOf: [
-                { required: ['series_id'] },
-                { required: ['book_id'] },
-                { required: ['series_name'] },
-                { required: ['book_name'] }
-            ]
+            required: []
+            // Note: Requires at least one of: series_id, book_id, series_name, or book_name
+            // Validation handled by the handler, not the schema
         }
     }
 ];
