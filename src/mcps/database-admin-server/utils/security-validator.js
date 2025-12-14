@@ -69,7 +69,7 @@ export const WHITELIST = {
     workflow_imports: ['id', 'workflow_def_id', 'source_type', 'source_path', 'imported_at', 'imported_by', 'installation_log'],
 
     // Database management tables
-    migrations: ['id', 'filename', 'run_on']
+    migrations: ['id', 'filename', 'applied_at']
 };
 
 /**
