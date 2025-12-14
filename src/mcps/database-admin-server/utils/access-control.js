@@ -15,7 +15,17 @@ export const ACCESS_CONTROL = {
         'plot_threads', 'tropes', 'genres', 'lookup_values',
         'series_genres', 'book_genres', 'book_tropes', 'character_scenes',
         'writing_sessions', 'exports',
-        'audit_logs'  // Audit logs can be read for compliance
+        'audit_logs',  // Audit logs can be read for compliance
+        'migrations',  // Migration tracking
+        // NPE tables
+        'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
+        'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
+        'npe_compliance_summary',
+        // Workflow tables
+        'workflow_instances', 'workflow_phase_history', 'workflow_approvals', 'workflow_quality_gates',
+        'production_metrics', 'daily_writing_stats', 'phase_performance', 'revision_passes', 'qa_reports',
+        'workflow_definitions', 'workflow_versions', 'workflow_version_locks', 'sub_workflow_executions',
+        'workflow_imports'
     ],
 
     // Tables that allow WRITE operations (INSERT/UPDATE)
@@ -25,7 +35,16 @@ export const ACCESS_CONTROL = {
         'locations', 'world_elements', 'organizations',
         'plot_threads',
         'series_genres', 'book_genres', 'book_tropes', 'character_scenes',
-        'writing_sessions', 'exports'
+        'writing_sessions', 'exports',
+        // NPE tables
+        'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
+        'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
+        'npe_compliance_summary',
+        // Workflow tables
+        'workflow_instances', 'workflow_phase_history', 'workflow_approvals', 'workflow_quality_gates',
+        'production_metrics', 'daily_writing_stats', 'phase_performance', 'revision_passes', 'qa_reports',
+        'workflow_definitions', 'workflow_versions', 'workflow_version_locks', 'sub_workflow_executions',
+        'workflow_imports'
     ],
 
     // Tables that allow DELETE operations
@@ -35,7 +54,16 @@ export const ACCESS_CONTROL = {
         'locations', 'world_elements', 'organizations',
         'plot_threads',
         'series_genres', 'book_genres', 'book_tropes', 'character_scenes',
-        'writing_sessions', 'exports'
+        'writing_sessions', 'exports',
+        // NPE tables
+        'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
+        'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
+        'npe_compliance_summary',
+        // Workflow tables
+        'workflow_instances', 'workflow_phase_history', 'workflow_approvals', 'workflow_quality_gates',
+        'production_metrics', 'daily_writing_stats', 'phase_performance', 'revision_passes', 'qa_reports',
+        'workflow_definitions', 'workflow_versions', 'workflow_version_locks', 'sub_workflow_executions',
+        'workflow_imports'
     ],
 
     // Restricted tables - cannot be accessed at all
