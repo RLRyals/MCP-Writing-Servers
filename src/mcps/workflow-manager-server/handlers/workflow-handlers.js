@@ -1167,6 +1167,225 @@ export class WorkflowHandlers {
         };
     }
 
+    async handleExportWorkflowPackage(args) {
+        const {
+            workflow_def_id,
+            version,
+            include_agents = true,
+            include_skills = true,
+            export_format = 'yaml',
+            output_path
+        } = args;
+
+        // Get workflow definition
+        let versionClause = '';
+        const params = [workflow_def_id];
+
+        if (version) {
+            versionClause = 'AND version = $2';
+            params.push(version);
+        } else {
+            // Get latest version
+            versionClause = `AND version = (
+                SELECT version FROM workflow_definitions
+                WHERE id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+            )`;
+        }
+
+        const result = await this.db.query(`
+            SELECT * FROM workflow_definitions
+            WHERE id = $1 ${versionClause}
+        `, params);
+
+        if (result.rows.length === 0) {
+            throw new Error(`Workflow definition ${workflow_def_id}${version ? ' v' + version : ''} not found`);
+        }
+
+        const workflow = result.rows[0];
+
+        // Build export package
+        const exportPackage = {
+            workflow: {
+                id: workflow.id,
+                name: workflow.name,
+                version: workflow.version,
+                description: workflow.description,
+                tags: workflow.tags,
+                marketplace_metadata: workflow.marketplace_metadata,
+                graph: workflow.graph_json,
+                dependencies: workflow.dependencies_json,
+                phases: workflow.phases_json
+            },
+            format: export_format,
+            exported_at: new Date().toISOString(),
+            exported_by: workflow.created_by || 'system'
+        };
+
+        // Add agents if requested
+        if (include_agents && workflow.dependencies_json.agents) {
+            exportPackage.agents = workflow.dependencies_json.agents.map(agent => ({
+                name: agent,
+                filename: `${agent}.md`,
+                note: 'Agent markdown file should be in agents/ directory'
+            }));
+        }
+
+        // Add skills if requested
+        if (include_skills && workflow.dependencies_json.skills) {
+            exportPackage.skills = workflow.dependencies_json.skills.map(skill => ({
+                name: skill,
+                filename: `${skill}.md`,
+                note: 'Skill markdown file should be in skills/ directory'
+            }));
+        }
+
+        // Add MCP servers list
+        if (workflow.dependencies_json.mcpServers) {
+            exportPackage.mcpServers = workflow.dependencies_json.mcpServers;
+        }
+
+        // Add sub-workflows if any
+        if (workflow.dependencies_json.subWorkflows && workflow.dependencies_json.subWorkflows.length > 0) {
+            exportPackage.subWorkflows = workflow.dependencies_json.subWorkflows;
+        }
+
+        // Generate README content
+        const readmeContent = this.generateReadme(workflow);
+        exportPackage.readme = readmeContent;
+
+        // Generate manifest for marketplace
+        const manifest = {
+            id: workflow.id,
+            name: workflow.name,
+            version: workflow.version,
+            description: workflow.description,
+            author: workflow.marketplace_metadata?.author || workflow.created_by || 'Unknown',
+            category: workflow.marketplace_metadata?.category || 'Workflow',
+            difficulty: workflow.marketplace_metadata?.difficulty || 'Intermediate',
+            tags: workflow.tags || [],
+            phase_count: workflow.phases_json.length,
+            requires: {
+                agents: workflow.dependencies_json.agents || [],
+                skills: workflow.dependencies_json.skills || [],
+                mcpServers: workflow.dependencies_json.mcpServers || [],
+                subWorkflows: workflow.dependencies_json.subWorkflows || []
+            },
+            exported_at: exportPackage.exported_at
+        };
+        exportPackage.manifest = manifest;
+
+        // Return the complete package
+        return {
+            success: true,
+            workflow_id: workflow.id,
+            version: workflow.version,
+            format: export_format,
+            package: exportPackage,
+            output_path: output_path || null,
+            message: `Workflow package exported successfully`,
+            instructions: {
+                structure: [
+                    'Create folder structure:',
+                    `  /${workflow.id}/`,
+                    `    ├── workflow.${export_format}`,
+                    '    ├── manifest.json',
+                    '    ├── README.md',
+                    '    ├── agents/',
+                    ...workflow.dependencies_json.agents.map(a => `    │   └── ${a}.md`),
+                    '    ├── skills/',
+                    ...workflow.dependencies_json.skills.map(s => `    │   └── ${s}.md`)
+                ],
+                next_steps: [
+                    '1. Save package.workflow to workflow.yaml or workflow.json',
+                    '2. Save package.manifest to manifest.json',
+                    '3. Save package.readme to README.md',
+                    '4. Copy agent .md files to agents/ directory',
+                    '5. Copy skill .md files to skills/ directory',
+                    '6. Zip folder for distribution'
+                ]
+            }
+        };
+    }
+
+    // Helper function to generate README
+    generateReadme(workflow) {
+        const readme = `# ${workflow.name}
+
+**Version:** ${workflow.version}
+**Author:** ${workflow.marketplace_metadata?.author || workflow.created_by || 'Unknown'}
+**Category:** ${workflow.marketplace_metadata?.category || 'Workflow'}
+**Difficulty:** ${workflow.marketplace_metadata?.difficulty || 'Intermediate'}
+
+## Description
+
+${workflow.description || 'No description provided.'}
+
+## Workflow Overview
+
+This workflow consists of **${workflow.phases_json.length} phases**:
+
+${workflow.phases_json.map((phase, idx) => {
+    let phaseType = '';
+    if (phase.gate) phaseType = ' 🚪 (Quality Gate)';
+    else if (phase.type === 'subworkflow') phaseType = ' 🔄 (Sub-Workflow)';
+    else if (phase.requiresApproval) phaseType = ' ✋ (Approval Required)';
+
+    return `${idx + 1}. **${phase.name}**${phaseType}
+   - Type: ${phase.type}
+   - Agent: ${phase.agent}${phase.skill ? `\n   - Skill: ${phase.skill}` : ''}${phase.gateCondition ? `\n   - Condition: ${phase.gateCondition}` : ''}`;
+}).join('\n\n')}
+
+## Dependencies
+
+### Agents Required (${workflow.dependencies_json.agents.length})
+${workflow.dependencies_json.agents.map(a => `- ${a}`).join('\n')}
+
+### Skills Required (${workflow.dependencies_json.skills.length})
+${workflow.dependencies_json.skills.map(s => `- ${s}`).join('\n')}
+
+### MCP Servers Required (${workflow.dependencies_json.mcpServers.length})
+${workflow.dependencies_json.mcpServers.map(m => `- ${m}`).join('\n')}
+
+${workflow.dependencies_json.subWorkflows && workflow.dependencies_json.subWorkflows.length > 0 ? `
+### Sub-Workflows (${workflow.dependencies_json.subWorkflows.length})
+${workflow.dependencies_json.subWorkflows.map(sw => `- ${sw}`).join('\n')}
+` : ''}
+
+## Installation
+
+1. Import this workflow using FictionLab's workflow importer
+2. The importer will automatically install:
+   - Agent definitions to your agents directory
+   - Skills to your ~/.claude/skills directory
+   - Required MCP servers (if not already installed)
+
+## Usage
+
+1. Open FictionLab
+2. Navigate to Workflows
+3. Select "${workflow.name}"
+4. Click "Start Workflow"
+5. Follow the phase-by-phase execution
+
+## Tags
+
+${workflow.tags.map(t => `\`${t}\``).join(', ')}
+
+## Support
+
+For issues or questions about this workflow, please contact ${workflow.marketplace_metadata?.author || 'the workflow author'}.
+
+---
+
+*Exported from FictionLab Workflow Manager*
+*Export Date: ${new Date().toISOString()}*
+`;
+
+        return readme;
+    }
+
     // =============================================
     // QA VALIDATION HELPER FUNCTIONS
     // =============================================

@@ -476,5 +476,26 @@ export const workflowToolsSchema = [
             },
             required: ['workflow_id', 'phase_number']
         }
+    },
+    {
+        name: 'export_workflow_package',
+        description: 'Exports a complete workflow package with all dependencies for sharing/marketplace',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID to export' },
+                version: { type: 'string', description: 'Specific version (optional, defaults to latest)' },
+                include_agents: { type: 'boolean', description: 'Include agent markdown files', default: true },
+                include_skills: { type: 'boolean', description: 'Include skill markdown files', default: true },
+                export_format: {
+                    type: 'string',
+                    enum: ['json', 'yaml'],
+                    description: 'Export format for workflow.yaml/json',
+                    default: 'yaml'
+                },
+                output_path: { type: 'string', description: 'Optional output directory path' }
+            },
+            required: ['workflow_def_id']
+        }
     }
 ];

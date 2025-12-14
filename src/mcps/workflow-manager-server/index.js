@@ -99,7 +99,8 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
             'start_sub_workflow': this.workflowHandlers.handleStartSubWorkflow.bind(this.workflowHandlers),
             'complete_sub_workflow': this.workflowHandlers.handleCompleteSubWorkflow.bind(this.workflowHandlers),
             'get_sub_workflow_status': this.workflowHandlers.handleGetSubWorkflowStatus.bind(this.workflowHandlers),
-            'update_phase_execution': this.workflowHandlers.handleUpdatePhaseExecution.bind(this.workflowHandlers)
+            'update_phase_execution': this.workflowHandlers.handleUpdatePhaseExecution.bind(this.workflowHandlers),
+            'export_workflow_package': this.workflowHandlers.handleExportWorkflowPackage.bind(this.workflowHandlers)
         };
         return handlers[toolName];
     }
