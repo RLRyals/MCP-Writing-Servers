@@ -963,6 +963,53 @@ export class WorkflowHandlers {
         return result.rows[0];
     }
 
+    async handleUpdateWorkflowPositions(args) {
+        const { workflow_def_id, positions } = args;
+
+        // Get the latest version of the workflow
+        const workflowResult = await this.db.query(
+            `SELECT id, version, phases_json FROM workflow_definitions
+            WHERE id = $1
+            ORDER BY created_at DESC
+            LIMIT 1`,
+            [workflow_def_id]
+        );
+
+        if (workflowResult.rows.length === 0) {
+            throw new Error(`Workflow definition ${workflow_def_id} not found`);
+        }
+
+        const workflow = workflowResult.rows[0];
+        const phasesJson = workflow.phases_json;
+
+        // Update position for each phase
+        const updatedPhases = phasesJson.map(phase => {
+            const phaseId = phase.id.toString();
+            if (positions[phaseId]) {
+                return {
+                    ...phase,
+                    position: positions[phaseId]
+                };
+            }
+            return phase;
+        });
+
+        // Update the workflow definition with new positions
+        await this.db.query(
+            `UPDATE workflow_definitions
+            SET phases_json = $1, updated_at = NOW()
+            WHERE id = $2 AND version = $3`,
+            [JSON.stringify(updatedPhases), workflow_def_id, workflow.version]
+        );
+
+        return {
+            workflow_def_id,
+            version: workflow.version,
+            updated_phases: updatedPhases.length,
+            message: 'Node positions updated successfully'
+        };
+    }
+
     async handleCreateWorkflowVersion(args) {
         const {
             workflow_def_id,

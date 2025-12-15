@@ -92,6 +92,7 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
             'import_workflow_definition': this.workflowHandlers.handleImportWorkflowDefinition.bind(this.workflowHandlers),
             'get_workflow_definitions': this.workflowHandlers.handleGetWorkflowDefinitions.bind(this.workflowHandlers),
             'get_workflow_definition': this.workflowHandlers.handleGetWorkflowDefinition.bind(this.workflowHandlers),
+            'update_workflow_positions': this.workflowHandlers.handleUpdateWorkflowPositions.bind(this.workflowHandlers),
             'create_workflow_version': this.workflowHandlers.handleCreateWorkflowVersion.bind(this.workflowHandlers),
             'get_workflow_versions': this.workflowHandlers.handleGetWorkflowVersions.bind(this.workflowHandlers),
             'lock_workflow_version': this.workflowHandlers.handleLockWorkflowVersion.bind(this.workflowHandlers),

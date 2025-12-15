@@ -372,6 +372,29 @@ export const workflowToolsSchema = [
         }
     },
     {
+        name: 'update_workflow_positions',
+        description: 'Updates node positions in a workflow definition for visual layout',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                positions: {
+                    type: 'object',
+                    description: 'Map of phase IDs to {x, y} positions',
+                    additionalProperties: {
+                        type: 'object',
+                        properties: {
+                            x: { type: 'number', description: 'X coordinate' },
+                            y: { type: 'number', description: 'Y coordinate' }
+                        },
+                        required: ['x', 'y']
+                    }
+                }
+            },
+            required: ['workflow_def_id', 'positions']
+        }
+    },
+    {
         name: 'create_workflow_version',
         description: 'Creates a new version of a workflow definition',
         inputSchema: {
