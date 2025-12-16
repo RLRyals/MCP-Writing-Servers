@@ -76,7 +76,7 @@ export const ACCESS_CONTROL = {
 
     // Admin-only tables (future: will require admin role)
     adminOnly: [
-        'migrations', 'system_settings'
+        'system_settings'
     ]
 };
 
