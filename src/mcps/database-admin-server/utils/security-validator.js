@@ -67,7 +67,7 @@ export const WHITELIST = {
     workflow_phase_history: ['id', 'instance_id', 'phase_number', 'phase_name', 'started_at', 'completed_at', 'status', 'output', 'error', 'claude_code_session', 'skill_invoked', 'output_json'],
     sub_workflow_executions: ['id', 'parent_instance_id', 'parent_phase_number', 'sub_workflow_def_id', 'sub_workflow_version', 'status', 'started_at', 'completed_at', 'output_json', 'error', 'created_at'],
     workflow_imports: ['id', 'workflow_def_id', 'source_type', 'source_path', 'imported_at', 'imported_by', 'installation_log'],
-
+    project_folders: ['id', 'project_name', 'folder_location', 'description', 'author_id', 'series_id', 'book_id', 'created_at', 'updated_at'],
     // Database management tables
     migrations: ['id', 'filename', 'applied_at']
 };
