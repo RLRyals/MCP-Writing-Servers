@@ -15,6 +15,7 @@ export const ACCESS_CONTROL = {
         'plot_threads', 'tropes', 'genres', 'lookup_values',
         'series_genres', 'book_genres', 'book_tropes', 'character_scenes',
         'writing_sessions', 'exports',
+        'projects',  // Project folder references
         'audit_logs',  // Audit logs can be read for compliance
         'migrations',  // Migration tracking
         // NPE tables
@@ -36,6 +37,7 @@ export const ACCESS_CONTROL = {
         'plot_threads',
         'series_genres', 'book_genres', 'book_tropes', 'character_scenes',
         'writing_sessions', 'exports',
+        'projects',  // Project folder references
         // NPE tables
         'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
         'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
@@ -55,6 +57,7 @@ export const ACCESS_CONTROL = {
         'plot_threads',
         'series_genres', 'book_genres', 'book_tropes', 'character_scenes',
         'writing_sessions', 'exports',
+        'projects',  // Project folder references
         // NPE tables
         'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
         'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
