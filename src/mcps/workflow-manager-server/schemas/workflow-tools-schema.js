@@ -1,328 +1,8 @@
 // src/mcps/workflow-manager-server/schemas/workflow-tools-schema.js
-// Centralized tool schema definitions for the Workflow Manager MCP Server
+// Tool schema definitions for Workflow Manager MCP Server
+// Graph-based workflow system (Migrations 028 + 030)
 
 export const workflowToolsSchema = [
-    {
-        name: 'create_workflow',
-        description: 'Creates a new workflow instance for a series',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                series_id: { type: 'number', description: 'Series ID' },
-                user_id: { type: 'number', description: 'User/Author ID' },
-                concept: { type: 'string', description: 'Initial concept for the series' }
-            },
-            required: ['series_id', 'user_id', 'concept']
-        }
-    },
-    {
-        name: 'get_workflow_state',
-        description: 'Retrieves the current state of a workflow',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' }
-            },
-            required: ['workflow_id']
-        }
-    },
-    {
-        name: 'advance_to_phase',
-        description: 'Advances the workflow to a specific phase',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                target_phase: { type: 'number', description: 'Target phase number (0-12)' }
-            },
-            required: ['workflow_id', 'target_phase']
-        }
-    },
-    {
-        name: 'complete_current_phase',
-        description: 'Marks the current phase as completed and advances to the next',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                output: {
-                    type: 'object',
-                    properties: {
-                        summary: { type: 'string', description: 'Summary of phase completion' },
-                        artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact paths' },
-                        metadata: { type: 'object', description: 'Additional metadata' }
-                    },
-                    required: ['summary']
-                }
-            },
-            required: ['workflow_id', 'output']
-        }
-    },
-    {
-        name: 'execute_phase',
-        description: 'Executes a specific phase with input data',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                phase_number: { type: 'number', description: 'Phase number to execute' },
-                input: { type: 'object', description: 'Input data for the phase' }
-            },
-            required: ['workflow_id', 'phase_number', 'input']
-        }
-    },
-    {
-        name: 'record_quality_gate',
-        description: 'Records the result of a quality gate validation',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                gate_type: { type: 'string', enum: ['npe_series', 'npe_scene', 'commercial'], description: 'Type of quality gate' },
-                score: { type: 'number', description: 'Quality score' },
-                passed: { type: 'boolean', description: 'Whether the gate passed' },
-                violations: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            category: { type: 'string' },
-                            severity: { type: 'string' },
-                            message: { type: 'string' },
-                            suggestion: { type: 'string' }
-                        }
-                    },
-                    description: 'List of violations'
-                }
-            },
-            required: ['workflow_id', 'gate_type', 'score', 'passed', 'violations']
-        }
-    },
-    {
-        name: 'request_approval',
-        description: 'Requests user approval for a phase',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                approval_type: { type: 'string', enum: ['series_plan', 'book_completion', 'chapter_plan'], description: 'Type of approval' },
-                artifacts: { type: 'array', items: { type: 'string' }, description: 'Artifact paths to review' }
-            },
-            required: ['workflow_id', 'approval_type', 'artifacts']
-        }
-    },
-    {
-        name: 'submit_approval',
-        description: 'Submits an approval decision',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                approval_id: { type: 'number', description: 'Approval ID' },
-                decision: { type: 'string', enum: ['approved', 'rejected', 'revision_requested'], description: 'Approval decision' },
-                feedback: { type: 'string', description: 'Optional feedback' }
-            },
-            required: ['approval_id', 'decision']
-        }
-    },
-    {
-        name: 'get_pending_approvals',
-        description: 'Gets all pending approvals for a workflow',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' }
-            },
-            required: ['workflow_id']
-        }
-    },
-    {
-        name: 'start_book_iteration',
-        description: 'Starts a new book iteration in the production loop',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                book_number: { type: 'number', description: 'Book number (2-5)' }
-            },
-            required: ['workflow_id', 'book_number']
-        }
-    },
-    {
-        name: 'complete_book_iteration',
-        description: 'Completes a book iteration and requests approval',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                book_number: { type: 'number', description: 'Book number' }
-            },
-            required: ['workflow_id', 'book_number']
-        }
-    },
-    {
-        name: 'get_series_progress',
-        description: 'Gets the overall progress of the series',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' }
-            },
-            required: ['workflow_id']
-        }
-    },
-    // =============================================
-    // REVISION WORKFLOW TOOLS
-    // =============================================
-    {
-        name: 'start_revision_pass',
-        description: 'Start a revision pass for a book',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                book_number: { type: 'number', description: 'Book number' },
-                pass_number: { type: 'number', minimum: 1, maximum: 6, description: 'Pass number (1-6)' },
-                pass_name: { type: 'string', description: 'Pass name (structural, continuity, dialogue, emotional, line_edit, final_qa)' }
-            },
-            required: ['workflow_id', 'book_number', 'pass_number', 'pass_name']
-        }
-    },
-    {
-        name: 'complete_revision_pass',
-        description: 'Complete a revision pass with findings',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                book_number: { type: 'number', description: 'Book number' },
-                pass_number: { type: 'number', description: 'Pass number' },
-                findings_summary: { type: 'string', description: 'Summary of findings' },
-                edits_made: { type: 'boolean', description: 'Whether edits were made' },
-                user_approved: { type: 'boolean', description: 'Whether user approved' }
-            },
-            required: ['workflow_id', 'book_number', 'pass_number']
-        }
-    },
-    {
-        name: 'get_revision_status',
-        description: 'Get status of all revision passes for a book',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                book_number: { type: 'number', description: 'Book number' }
-            },
-            required: ['workflow_id', 'book_number']
-        }
-    },
-    {
-        name: 'run_qa_checklist',
-        description: 'Run automated QA checklist for publishing readiness',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                book_number: { type: 'number', description: 'Book number' }
-            },
-            required: ['workflow_id', 'book_number']
-        }
-    },
-    {
-        name: 'mark_ready_to_publish',
-        description: 'Mark a book as ready to publish',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                book_number: { type: 'number', description: 'Book number' }
-            },
-            required: ['workflow_id', 'book_number']
-        }
-    },
-    // =============================================
-    // PRODUCTION METRICS TOOLS
-    // =============================================
-    {
-        name: 'record_production_metric',
-        description: 'Record a production metric',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                metric_type: { type: 'string', description: 'Metric type (words_written, chapters_completed, etc.)' },
-                metric_value: { type: 'number', description: 'Metric value' },
-                context: {
-                    type: 'object',
-                    properties: {
-                        phase_number: { type: 'number' },
-                        book_number: { type: 'number' },
-                        chapter_number: { type: 'number' },
-                        metadata: { type: 'object' }
-                    }
-                }
-            },
-            required: ['workflow_id', 'metric_type', 'metric_value']
-        }
-    },
-    {
-        name: 'get_workflow_metrics',
-        description: 'Get aggregated metrics for a workflow',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                metric_types: { type: 'array', items: { type: 'string' }, description: 'Optional metric types to filter' },
-                date_range: {
-                    type: 'object',
-                    properties: {
-                        start: { type: 'string', description: 'Start date (ISO format)' },
-                        end: { type: 'string', description: 'End date (ISO format)' }
-                    }
-                }
-            },
-            required: ['workflow_id']
-        }
-    },
-    {
-        name: 'get_workflow_velocity',
-        description: 'Calculate writing velocity and projections',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                time_window: { type: 'string', enum: ['day', 'week', 'all'], description: 'Time window for calculation' }
-            },
-            required: ['workflow_id']
-        }
-    },
-    {
-        name: 'get_daily_writing_stats',
-        description: 'Get daily writing statistics',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_id: { type: 'number', description: 'Workflow ID' },
-                author_id: { type: 'number', description: 'Author ID (alternative to workflow_id)' },
-                date_range: {
-                    type: 'object',
-                    properties: {
-                        start: { type: 'string', description: 'Start date' },
-                        end: { type: 'string', description: 'End date' }
-                    }
-                }
-            }
-        }
-    },
-    {
-        name: 'get_phase_analytics',
-        description: 'Get phase performance analytics',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                phase_number: { type: 'number', description: 'Optional phase number to filter' }
-            }
-        }
-    },
     // =============================================
     // WORKFLOW DEFINITION MANAGEMENT (Migration 028)
     // =============================================
@@ -448,6 +128,45 @@ export const workflowToolsSchema = [
         }
     },
     {
+        name: 'update_phase_execution',
+        description: 'Updates phase execution with Claude Code session and skill invoked',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_id: { type: 'number', description: 'Workflow instance ID' },
+                phase_number: { type: 'number', description: 'Phase number' },
+                claude_code_session: { type: 'string', description: 'Claude Code session ID' },
+                skill_invoked: { type: 'string', description: 'Name of skill invoked' },
+                output_json: { type: 'object', description: 'Structured output from phase' }
+            },
+            required: ['workflow_id', 'phase_number']
+        }
+    },
+    {
+        name: 'export_workflow_package',
+        description: 'Exports a complete workflow package with all dependencies for sharing/marketplace',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID to export' },
+                version: { type: 'string', description: 'Specific version (optional, defaults to latest)' },
+                include_agents: { type: 'boolean', description: 'Include agent markdown files', default: true },
+                include_skills: { type: 'boolean', description: 'Include skill markdown files', default: true },
+                export_format: {
+                    type: 'string',
+                    enum: ['json', 'yaml'],
+                    description: 'Export format for workflow.yaml/json',
+                    default: 'yaml'
+                },
+                output_path: { type: 'string', description: 'Optional output directory path' }
+            },
+            required: ['workflow_def_id']
+        }
+    },
+    // =============================================
+    // SUB-WORKFLOW SUPPORT (Migration 028)
+    // =============================================
+    {
         name: 'start_sub_workflow',
         description: 'Starts execution of a sub-workflow (nested workflow)',
         inputSchema: {
@@ -485,40 +204,88 @@ export const workflowToolsSchema = [
             }
         }
     },
+    // =============================================
+    // GRAPH-BASED WORKFLOW OPERATIONS (Migration 030)
+    // =============================================
     {
-        name: 'update_phase_execution',
-        description: 'Updates phase execution with Claude Code session and skill invoked',
+        name: 'add_node',
+        description: 'Adds a new node to the workflow graph',
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_id: { type: 'number', description: 'Workflow instance ID' },
-                phase_number: { type: 'number', description: 'Phase number' },
-                claude_code_session: { type: 'string', description: 'Claude Code session ID' },
-                skill_invoked: { type: 'string', description: 'Name of skill invoked' },
-                output_json: { type: 'object', description: 'Structured output from phase' }
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                node_id: { type: 'string', description: 'Unique node ID' },
+                node_type: { type: 'string', description: 'Node type (planning, writing, gate, user-input, code, http, file, conditional, loop, subworkflow)' },
+                node_data: { type: 'object', description: 'Complete node configuration data' }
             },
-            required: ['workflow_id', 'phase_number']
+            required: ['workflow_def_id', 'node_id', 'node_type', 'node_data']
         }
     },
     {
-        name: 'export_workflow_package',
-        description: 'Exports a complete workflow package with all dependencies for sharing/marketplace',
+        name: 'update_node',
+        description: 'Updates an existing node in the workflow graph',
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID to export' },
-                version: { type: 'string', description: 'Specific version (optional, defaults to latest)' },
-                include_agents: { type: 'boolean', description: 'Include agent markdown files', default: true },
-                include_skills: { type: 'boolean', description: 'Include skill markdown files', default: true },
-                export_format: {
-                    type: 'string',
-                    enum: ['json', 'yaml'],
-                    description: 'Export format for workflow.yaml/json',
-                    default: 'yaml'
-                },
-                output_path: { type: 'string', description: 'Optional output directory path' }
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                node_id: { type: 'string', description: 'Node ID to update' },
+                updates: { type: 'object', description: 'Fields to update' }
             },
-            required: ['workflow_def_id']
+            required: ['workflow_def_id', 'node_id', 'updates']
+        }
+    },
+    {
+        name: 'delete_node',
+        description: 'Deletes a node from the workflow graph',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                node_id: { type: 'string', description: 'Node ID to delete' }
+            },
+            required: ['workflow_def_id', 'node_id']
+        }
+    },
+    {
+        name: 'create_edge',
+        description: 'Creates an edge (connection) between two nodes',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                edge_id: { type: 'string', description: 'Unique edge ID' },
+                source_node_id: { type: 'string', description: 'Source node ID' },
+                target_node_id: { type: 'string', description: 'Target node ID' },
+                edge_type: { type: 'string', description: 'Edge type (default, conditional, loop-back)' },
+                label: { type: 'string', description: 'Optional edge label' },
+                condition: { type: 'string', description: 'Conditional expression (for conditional edges)' }
+            },
+            required: ['workflow_def_id', 'edge_id', 'source_node_id', 'target_node_id']
+        }
+    },
+    {
+        name: 'update_edge',
+        description: 'Updates an existing edge in the workflow graph',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                edge_id: { type: 'string', description: 'Edge ID to update' },
+                updates: { type: 'object', description: 'Fields to update (label, condition, type)' }
+            },
+            required: ['workflow_def_id', 'edge_id', 'updates']
+        }
+    },
+    {
+        name: 'delete_edge',
+        description: 'Deletes an edge from the workflow graph',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                edge_id: { type: 'string', description: 'Edge ID to delete' }
+            },
+            required: ['workflow_def_id', 'edge_id']
         }
     }
 ];
