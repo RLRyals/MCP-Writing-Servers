@@ -18,14 +18,14 @@ export const workflowToolsSchema = [
                 description: { type: 'string', description: 'Workflow description' },
                 graph_json: { type: 'object', description: 'WorkflowGraph with nodes, edges, metadata' },
                 dependencies_json: { type: 'object', description: 'Required agents, skills, mcpServers, subWorkflows' },
-                phases_json: { type: 'array', description: 'Array of WorkflowPhase objects' },
+                phases_json: { type: 'array', description: '[LEGACY] Array of WorkflowPhase objects (optional, use graph_json instead)' },
                 tags: { type: 'array', items: { type: 'string' }, description: 'Tags for categorization' },
                 marketplace_metadata: { type: 'object', description: 'Marketplace display metadata' },
                 source_type: { type: 'string', description: 'Import source: marketplace, folder, file, url' },
                 source_path: { type: 'string', description: 'Where it was imported from' },
                 created_by: { type: 'string', description: 'Author/creator' }
             },
-            required: ['id', 'name', 'graph_json', 'dependencies_json', 'phases_json']
+            required: ['id', 'name', 'graph_json', 'dependencies_json']
         }
     },
     {
@@ -60,7 +60,7 @@ export const workflowToolsSchema = [
                 workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
                 positions: {
                     type: 'object',
-                    description: 'Map of phase IDs to {x, y} positions',
+                    description: 'Map of node IDs to {x, y} positions',
                     additionalProperties: {
                         type: 'object',
                         properties: {

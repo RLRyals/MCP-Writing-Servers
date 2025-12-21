@@ -14,7 +14,7 @@ export class DefinitionHandlers {
             description,
             graph_json,
             dependencies_json,
-            phases_json,
+            phases_json = [],
             tags = [],
             marketplace_metadata = {},
             source_type,
@@ -26,19 +26,18 @@ export class DefinitionHandlers {
         const defResult = await this.db.query(
             `INSERT INTO workflow_definitions (
                 id, name, version, description, graph_json, dependencies_json,
-                phases_json, tags, marketplace_metadata, created_by, is_system
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE)
+                tags, marketplace_metadata, created_by, is_system
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
             ON CONFLICT (id, version) DO UPDATE SET
                 name = EXCLUDED.name,
                 description = EXCLUDED.description,
                 graph_json = EXCLUDED.graph_json,
                 dependencies_json = EXCLUDED.dependencies_json,
-                phases_json = EXCLUDED.phases_json,
                 tags = EXCLUDED.tags,
                 marketplace_metadata = EXCLUDED.marketplace_metadata,
                 updated_at = NOW()
             RETURNING id, version, created_at`,
-            [id, name, version, description, graph_json, dependencies_json, phases_json, tags, marketplace_metadata, created_by]
+            [id, name, version, description, graph_json, dependencies_json, tags, marketplace_metadata, created_by]
         );
 
         // Record import if source information provided
@@ -140,7 +139,7 @@ export class DefinitionHandlers {
 
         // Get the latest version of the workflow
         const workflowResult = await this.db.query(
-            `SELECT id, version, phases_json FROM workflow_definitions
+            `SELECT id, version, graph_json FROM workflow_definitions
             WHERE id = $1
             ORDER BY created_at DESC
             LIMIT 1`,
@@ -152,32 +151,37 @@ export class DefinitionHandlers {
         }
 
         const workflow = workflowResult.rows[0];
-        const phasesJson = workflow.phases_json;
+        const graphJson = workflow.graph_json || { nodes: [], edges: [] };
 
-        // Update position for each phase
-        const updatedPhases = phasesJson.map(phase => {
-            const phaseId = phase.id.toString();
-            if (positions[phaseId]) {
+        // Update position for each node
+        const updatedNodes = graphJson.nodes.map(node => {
+            const nodeId = node.id;
+            if (positions[nodeId]) {
                 return {
-                    ...phase,
-                    position: positions[phaseId]
+                    ...node,
+                    position: positions[nodeId]
                 };
             }
-            return phase;
+            return node;
         });
 
         // Update the workflow definition with new positions
+        const updatedGraph = {
+            ...graphJson,
+            nodes: updatedNodes
+        };
+
         await this.db.query(
             `UPDATE workflow_definitions
-            SET phases_json = $1, updated_at = NOW()
+            SET graph_json = $1, updated_at = NOW()
             WHERE id = $2 AND version = $3`,
-            [JSON.stringify(updatedPhases), workflow_def_id, workflow.version]
+            [updatedGraph, workflow_def_id, workflow.version]
         );
 
         return {
             workflow_def_id,
             version: workflow.version,
-            updated_phases: updatedPhases.length,
+            updated_nodes: updatedNodes.length,
             message: 'Node positions updated successfully'
         };
     }
@@ -361,8 +365,7 @@ export class DefinitionHandlers {
                 tags: workflow.tags,
                 marketplace_metadata: workflow.marketplace_metadata,
                 graph: workflow.graph_json,
-                dependencies: workflow.dependencies_json,
-                phases: workflow.phases_json
+                dependencies: workflow.dependencies_json
             },
             format: export_format,
             exported_at: new Date().toISOString(),
@@ -411,7 +414,7 @@ export class DefinitionHandlers {
             category: workflow.marketplace_metadata?.category || 'Workflow',
             difficulty: workflow.marketplace_metadata?.difficulty || 'Intermediate',
             tags: workflow.tags || [],
-            phase_count: workflow.phases_json.length,
+            phase_count: workflow.graph_json?.nodes?.length || 0,
             requires: {
                 agents: workflow.dependencies_json.agents || [],
                 skills: workflow.dependencies_json.skills || [],
@@ -470,17 +473,17 @@ ${workflow.description || 'No description provided.'}
 
 ## Workflow Overview
 
-This workflow consists of  **${workflow.phases_json.length} phases**:
+This workflow consists of  **${workflow.graph_json?.nodes?.length || 0} nodes**:
 
-${workflow.phases_json.map((phase, idx) => {
-            let phaseType = '';
-            if (phase.gate) phaseType = ' 🚪 (Quality Gate)';
-            else if (phase.type === 'subworkflow') phaseType = ' 🔄 (Sub-Workflow)';
-            else if (phase.requiresApproval) phaseType = ' ✋ (Approval Required)';
+${(workflow.graph_json?.nodes || []).map((node, idx) => {
+            let nodeType = '';
+            if (node.data?.gate) nodeType = ' 🚪 (Quality Gate)';
+            else if (node.type === 'subworkflow') nodeType = ' 🔄 (Sub-Workflow)';
+            else if (node.data?.requiresApproval) nodeType = ' ✋ (Approval Required)';
 
-            return `${idx + 1}. **${phase.name}**${phaseType}
-   - Type: ${phase.type}
-   - Agent: ${phase.agent}${phase.skill ? `\n   - Skill: ${phase.skill}` : ''}${phase.gateCondition ? `\n   - Condition: ${phase.gateCondition}` : ''}`;
+            return `${idx + 1}. **${node.data?.name || node.id}**${nodeType}
+   - Type: ${node.type}
+   - Agent: ${node.data?.agent || 'N/A'}${node.data?.skill ? `\n   - Skill: ${node.data.skill}` : ''}${node.data?.gateCondition ? `\n   - Condition: ${node.data.gateCondition}` : ''}`;
         }).join('\n\n')}
 
 ## Dependencies
