@@ -11,6 +11,22 @@ BEGIN
     END IF;
 
 -- =============================================
+-- MAKE PHASES_JSON NULLABLE (DEPRECATED FIELD)
+-- =============================================
+
+-- Since we're transitioning to graph_json, make phases_json nullable
+-- New workflows will only use graph_json
+ALTER TABLE workflow_definitions
+    ALTER COLUMN phases_json DROP NOT NULL;
+
+-- Set default empty array for existing workflows that don't have phases_json
+UPDATE workflow_definitions
+SET phases_json = '[]'::jsonb
+WHERE phases_json IS NULL;
+
+COMMENT ON COLUMN workflow_definitions.phases_json IS '[LEGACY] Array of phase definitions. Use graph_json instead for new workflows.';
+
+-- =============================================
 -- UPDATE GRAPH_JSON STRUCTURE
 -- =============================================
 

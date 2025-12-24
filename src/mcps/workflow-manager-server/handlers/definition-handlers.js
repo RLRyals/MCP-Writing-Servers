@@ -23,21 +23,23 @@ export class DefinitionHandlers {
         } = args;
 
         // Insert workflow definition
+        // Note: phases_json is legacy and defaults to empty array for new graph-based workflows
         const defResult = await this.db.query(
             `INSERT INTO workflow_definitions (
                 id, name, version, description, graph_json, dependencies_json,
-                tags, marketplace_metadata, created_by, is_system
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
+                phases_json, tags, marketplace_metadata, created_by, is_system
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE)
             ON CONFLICT (id, version) DO UPDATE SET
                 name = EXCLUDED.name,
                 description = EXCLUDED.description,
                 graph_json = EXCLUDED.graph_json,
                 dependencies_json = EXCLUDED.dependencies_json,
+                phases_json = EXCLUDED.phases_json,
                 tags = EXCLUDED.tags,
                 marketplace_metadata = EXCLUDED.marketplace_metadata,
                 updated_at = NOW()
             RETURNING id, version, created_at`,
-            [id, name, version, description, graph_json, dependencies_json, tags, marketplace_metadata, created_by]
+            [id, name, version, description, graph_json, dependencies_json, phases_json, tags, marketplace_metadata, created_by]
         );
 
         // Record import if source information provided
