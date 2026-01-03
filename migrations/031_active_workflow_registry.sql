@@ -2,6 +2,14 @@
 -- Description: Create table for tracking active workflow instances across all sources
 -- (FictionLab UI, Claude Code, TypingMind)
 
+DO $$
+BEGIN
+    -- Check if migration was already applied
+    IF EXISTS (SELECT 1 FROM migrations WHERE filename = '031_active_workflow_registry.sql') THEN
+        RAISE NOTICE 'Migration 031_active_workflow_registry.sql already applied, skipping.';
+        RETURN;
+    END IF;
+
 -- Active workflow registry table
 CREATE TABLE IF NOT EXISTS active_workflow_registry (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -84,7 +92,7 @@ SELECT
     -- Get available nodes from the workflow definition graph
     COALESCE(
         (SELECT jsonb_agg(jsonb_build_object('id', n->>'id', 'name', n->>'name'))
-         FROM jsonb_array_elements(wd.graph_data->'nodes') n),
+         FROM jsonb_array_elements(wd.graph_json->'nodes') n),
         '[]'::jsonb
     ) as available_nodes
 FROM active_workflow_registry awr
@@ -95,3 +103,10 @@ WHERE awr.status IN ('running', 'paused');
 COMMENT ON TABLE active_workflow_registry IS 'Tracks all active workflow instances across FictionLab UI, Claude Code, and TypingMind';
 COMMENT ON COLUMN active_workflow_registry.source IS 'Origin of the workflow: fictionlab_ui, claude_code, or typingmind';
 COMMENT ON COLUMN active_workflow_registry.status IS 'Current status: running, paused, completed, failed, or cancelled';
+
+-- Record this migration
+INSERT INTO migrations (filename) VALUES ('031_active_workflow_registry.sql')
+ON CONFLICT DO NOTHING;
+
+RAISE NOTICE 'Migration 031_active_workflow_registry.sql completed successfully.';
+END $$;
