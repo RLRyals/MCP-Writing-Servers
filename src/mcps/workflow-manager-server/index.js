@@ -14,6 +14,8 @@ import { DefinitionHandlers } from './handlers/definition-handlers.js';
 import { SubworkflowHandlers } from './handlers/subworkflow-handlers.js';
 import { GraphHandlers } from './handlers/graph-handlers.js';
 import { workflowToolsSchema } from './schemas/workflow-tools-schema.js';
+import { ActiveWorkflowHandlers } from './handlers/active-workflow-handlers.js';
+import { activeWorkflowToolsSchema } from './schemas/active-workflow-tools-schema.js';
 
 class WorkflowManagerMCPServer extends BaseMCPServer {
     constructor() {
@@ -31,6 +33,7 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
         this.definitionHandlers = new DefinitionHandlers(this.db);
         this.subworkflowHandlers = new SubworkflowHandlers(this.db);
         this.graphHandlers = new GraphHandlers(this.db);
+        this.activeWorkflowHandlers = new ActiveWorkflowHandlers(this.db);
 
         // Initialize tools
         this.tools = this.getTools();
@@ -64,7 +67,7 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
     }
 
     getTools() {
-        return workflowToolsSchema;
+        return [...workflowToolsSchema, ...activeWorkflowToolsSchema];
     }
 
     getToolHandler(toolName) {
@@ -90,7 +93,19 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
             'delete_node': this.graphHandlers.handleDeleteNode.bind(this.graphHandlers),
             'create_edge': this.graphHandlers.handleCreateEdge.bind(this.graphHandlers),
             'update_edge': this.graphHandlers.handleUpdateEdge.bind(this.graphHandlers),
-            'delete_edge': this.graphHandlers.handleDeleteEdge.bind(this.graphHandlers)
+            'delete_edge': this.graphHandlers.handleDeleteEdge.bind(this.graphHandlers),
+            // Active Workflow Handlers (11 tools)
+            'list_active_workflows': this.activeWorkflowHandlers.handleListActiveWorkflows.bind(this.activeWorkflowHandlers),
+            'register_active_workflow': this.activeWorkflowHandlers.handleRegisterActiveWorkflow.bind(this.activeWorkflowHandlers),
+            'update_workflow_progress': this.activeWorkflowHandlers.handleUpdateWorkflowProgress.bind(this.activeWorkflowHandlers),
+            'pause_workflow': this.activeWorkflowHandlers.handlePauseWorkflow.bind(this.activeWorkflowHandlers),
+            'resume_workflow': this.activeWorkflowHandlers.handleResumeWorkflow.bind(this.activeWorkflowHandlers),
+            'cancel_workflow': this.activeWorkflowHandlers.handleCancelWorkflow.bind(this.activeWorkflowHandlers),
+            'complete_workflow': this.activeWorkflowHandlers.handleCompleteWorkflow.bind(this.activeWorkflowHandlers),
+            'fail_workflow': this.activeWorkflowHandlers.handleFailWorkflow.bind(this.activeWorkflowHandlers),
+            'jump_to_node': this.activeWorkflowHandlers.handleJumpToNode.bind(this.activeWorkflowHandlers),
+            'get_active_workflow': this.activeWorkflowHandlers.handleGetActiveWorkflow.bind(this.activeWorkflowHandlers),
+            'cleanup_old_workflows': this.activeWorkflowHandlers.handleCleanupOldWorkflows.bind(this.activeWorkflowHandlers)
         };
         return handlers[toolName];
     }
