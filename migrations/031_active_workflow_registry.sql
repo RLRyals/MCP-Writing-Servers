@@ -2,7 +2,7 @@
 -- Description: Create table for tracking active workflow instances across all sources
 -- (FictionLab UI, Claude Code, TypingMind)
 
-DO $$
+DO $migration$
 BEGIN
     -- Check if migration was already applied
     IF EXISTS (SELECT 1 FROM migrations WHERE filename = '031_active_workflow_registry.sql') THEN
@@ -109,4 +109,4 @@ INSERT INTO migrations (filename) VALUES ('031_active_workflow_registry.sql')
 ON CONFLICT DO NOTHING;
 
 RAISE NOTICE 'Migration 031_active_workflow_registry.sql completed successfully.';
-END $$;
+END $migration$;
