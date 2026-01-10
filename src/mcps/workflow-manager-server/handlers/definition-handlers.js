@@ -1,5 +1,5 @@
 // src/mcps/workflow-manager-server/handlers/definition-handlers.js
-// Workflow Definition Management Handlers - Graph-based workflow system (Migration 028)
+// Workflow Definition Management Handlers - Graph-based workflow system (Migration 032 - FictionLab schema)
 
 export class DefinitionHandlers {
     constructor(db) {
@@ -14,7 +14,7 @@ export class DefinitionHandlers {
             description,
             graph_json,
             dependencies_json,
-            phases_json = [],
+            phases_json = [],  // Legacy parameter - ignored, kept for backward compatibility
             tags = [],
             marketplace_metadata = {},
             source_type,
@@ -22,38 +22,38 @@ export class DefinitionHandlers {
             created_by
         } = args;
 
-        // Insert workflow definition
-        // Note: phases_json is legacy and defaults to empty array for new graph-based workflows
+        // Insert workflow definition into fictionlab schema
+        // Column renames: dependencies_json → dependencies, marketplace_metadata → metadata
+        // phases_json removed (legacy phase-based system)
         const defResult = await this.db.query(
-            `INSERT INTO workflow_definitions (
-                id, name, version, description, graph_json, dependencies_json,
-                phases_json, tags, marketplace_metadata, created_by, is_system
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, FALSE)
-            ON CONFLICT (id, version) DO UPDATE SET
+            `INSERT INTO fictionlab.workflow_definitions (
+                workflow_id, name, version, description, graph_json, dependencies,
+                tags, metadata, created_by, is_system
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
+            ON CONFLICT (workflow_id, version) DO UPDATE SET
                 name = EXCLUDED.name,
                 description = EXCLUDED.description,
                 graph_json = EXCLUDED.graph_json,
-                dependencies_json = EXCLUDED.dependencies_json,
-                phases_json = EXCLUDED.phases_json,
+                dependencies = EXCLUDED.dependencies,
                 tags = EXCLUDED.tags,
-                marketplace_metadata = EXCLUDED.marketplace_metadata,
+                metadata = EXCLUDED.metadata,
                 updated_at = NOW()
-            RETURNING id, version, created_at`,
-            [id, name, version, description, graph_json, dependencies_json, phases_json, tags, marketplace_metadata, created_by]
+            RETURNING workflow_id, version, created_at`,
+            [id, name, version, description, graph_json, dependencies_json, tags, marketplace_metadata, created_by]
         );
 
         // Record import if source information provided
         if (source_type && source_path) {
             await this.db.query(
-                `INSERT INTO workflow_imports (
-                    workflow_def_id, source_type, source_path, imported_by, installation_log
+                `INSERT INTO fictionlab.workflow_imports (
+                    workflow_id, source_type, source_path, imported_by, installation_log
                 ) VALUES ($1, $2, $3, $4, $5)`,
                 [id, source_type, source_path, created_by, { timestamp: new Date().toISOString() }]
             );
         }
 
         return {
-            workflow_def_id: defResult.rows[0].id,
+            workflow_id: defResult.rows[0].workflow_id,
             version: defResult.rows[0].version,
             created_at: defResult.rows[0].created_at,
             message: `Workflow definition ${name} v${version} imported successfully`
@@ -85,17 +85,17 @@ export class DefinitionHandlers {
 
         const result = await this.db.query(
             `SELECT
-                id,
+                workflow_id,
                 name,
                 version,
                 description,
                 tags,
-                marketplace_metadata,
+                metadata,
                 created_at,
                 updated_at,
                 is_system,
                 created_by
-            FROM workflow_definitions
+            FROM fictionlab.workflow_definitions
             ${whereClause}
             ORDER BY is_system DESC, created_at DESC`,
             params
@@ -105,10 +105,10 @@ export class DefinitionHandlers {
     }
 
     async handleGetWorkflowDefinition(args) {
-        const { workflow_def_id, version } = args;
+        const { workflow_id, version } = args;
 
         let versionClause = '';
-        const params = [workflow_def_id];
+        const params = [workflow_id];
 
         if (version) {
             versionClause = 'AND version = $2';
@@ -116,40 +116,53 @@ export class DefinitionHandlers {
         } else {
             // Get latest version
             versionClause = `AND version = (
-                SELECT version FROM workflow_definitions
-                WHERE id = $1
+                SELECT version FROM fictionlab.workflow_definitions
+                WHERE workflow_id = $1
                 ORDER BY created_at DESC
                 LIMIT 1
             )`;
         }
 
         const result = await this.db.query(
-            `SELECT * FROM workflow_definitions
-            WHERE id = $1 ${versionClause}`,
+            `SELECT
+                workflow_id,
+                name,
+                version,
+                description,
+                graph_json,
+                dependencies,
+                metadata,
+                created_at,
+                updated_at,
+                created_by,
+                is_system,
+                tags
+            FROM fictionlab.workflow_definitions
+            WHERE workflow_id = $1 ${versionClause}`,
             params
         );
 
         if (result.rows.length === 0) {
-            throw new Error(`Workflow definition ${workflow_def_id}${version ? ' v' + version : ''} not found`);
+            throw new Error(`Workflow definition ${workflow_id}${version ? ' v' + version : ''} not found`);
         }
 
         return result.rows[0];
     }
 
     async handleUpdateWorkflowPositions(args) {
-        const { workflow_def_id, positions } = args;
+        const { workflow_id, positions } = args;
 
         // Get the latest version of the workflow
         const workflowResult = await this.db.query(
-            `SELECT id, version, graph_json FROM workflow_definitions
-            WHERE id = $1
+            `SELECT workflow_id, version, graph_json FROM fictionlab.workflow_definitions
+            WHERE workflow_id = $1
             ORDER BY created_at DESC
             LIMIT 1`,
-            [workflow_def_id]
+            [workflow_id]
         );
 
         if (workflowResult.rows.length === 0) {
-            throw new Error(`Workflow definition ${workflow_def_id} not found`);
+            throw new Error(`Workflow definition ${workflow_id} not found`);
         }
 
         const workflow = workflowResult.rows[0];
@@ -174,14 +187,14 @@ export class DefinitionHandlers {
         };
 
         await this.db.query(
-            `UPDATE workflow_definitions
+            `UPDATE fictionlab.workflow_definitions
             SET graph_json = $1, updated_at = NOW()
-            WHERE id = $2 AND version = $3`,
+            WHERE workflow_id = $2 AND version = $3`,
             [updatedGraph, workflow_def_id, workflow.version]
         );
 
         return {
-            workflow_def_id,
+            workflow_id,
             version: workflow.version,
             updated_nodes: updatedNodes.length,
             message: 'Node positions updated successfully'
@@ -190,7 +203,7 @@ export class DefinitionHandlers {
 
     async handleCreateWorkflowVersion(args) {
         const {
-            workflow_def_id,
+            workflow_id,
             version,
             definition_json,
             changelog,
@@ -198,21 +211,21 @@ export class DefinitionHandlers {
             created_by
         } = args;
 
-        // Insert into workflow_versions
+        // Insert into workflow_versions (using workflow_id column)
         const result = await this.db.query(
-            `INSERT INTO workflow_versions (
-                workflow_def_id, version, definition_json, changelog, parent_version, created_by
+            `INSERT INTO fictionlab.workflow_versions (
+                workflow_id, version, definition_json, changelog, parent_version, created_by
             ) VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (workflow_def_id, version) DO UPDATE SET
+            ON CONFLICT (workflow_id, version) DO UPDATE SET
                 definition_json = EXCLUDED.definition_json,
                 changelog = EXCLUDED.changelog
             RETURNING id, created_at`,
-            [workflow_def_id, version, definition_json, changelog, parent_version, created_by]
+            [workflow_id, version, definition_json, changelog, parent_version, created_by]
         );
 
         return {
             version_id: result.rows[0].id,
-            workflow_def_id,
+            workflow_id,
             version,
             created_at: result.rows[0].created_at,
             message: `Version ${version} created successfully`
@@ -220,63 +233,30 @@ export class DefinitionHandlers {
     }
 
     async handleGetWorkflowVersions(args) {
-        const { workflow_def_id } = args;
+        const { workflow_id } = args;
 
         const result = await this.db.query(
             `SELECT
-                id,
+                workflow_id,
                 version,
                 changelog,
                 parent_version,
                 created_at,
                 created_by
-            FROM workflow_versions
-            WHERE workflow_def_id = $1
+            FROM fictionlab.workflow_versions
+            WHERE workflow_id = $1
             ORDER BY created_at DESC`,
-            [workflow_def_id]
+            [workflow_id]
         );
 
         return result.rows;
     }
 
-    async handleLockWorkflowVersion(args) {
-        const { workflow_def_id, version, instance_id } = args;
+    // REMOVED: handleLockWorkflowVersion - version locking removed in migration 032
+    // Workflows can now run independently across different project instances
 
-        const result = await this.db.query(
-            `INSERT INTO workflow_version_locks (
-                workflow_def_id, version, locked_by_instance_id
-            ) VALUES ($1, $2, $3)
-            ON CONFLICT (workflow_def_id, version, locked_by_instance_id) DO NOTHING
-            RETURNING id, locked_at`,
-            [workflow_def_id, version, instance_id]
-        );
-
-        return {
-            locked: result.rowCount > 0,
-            lock_id: result.rows[0]?.id,
-            locked_at: result.rows[0]?.locked_at,
-            message: result.rowCount > 0
-                ? `Workflow ${workflow_def_id} v${version} locked`
-                : `Already locked`
-        };
-    }
-
-    async handleUnlockWorkflowVersion(args) {
-        const { workflow_def_id, version, instance_id } = args;
-
-        const result = await this.db.query(
-            `DELETE FROM workflow_version_locks
-            WHERE workflow_def_id = $1 AND version = $2 AND locked_by_instance_id = $3`,
-            [workflow_def_id, version, instance_id]
-        );
-
-        return {
-            unlocked: result.rowCount > 0,
-            message: result.rowCount > 0
-                ? `Workflow ${workflow_def_id} v${version} unlocked`
-                : `Lock not found`
-        };
-    }
+    // REMOVED: handleUnlockWorkflowVersion - version locking removed in migration 032
+    // Workflows can now run independently across different project instances
 
     async handleUpdatePhaseExecution(args) {
         const {
@@ -321,7 +301,7 @@ export class DefinitionHandlers {
 
     async handleExportWorkflowPackage(args) {
         const {
-            workflow_def_id,
+            workflow_id,
             version,
             include_agents = true,
             include_skills = true,
@@ -331,7 +311,7 @@ export class DefinitionHandlers {
 
         // Get workflow definition
         let versionClause = '';
-        const params = [workflow_def_id];
+        const params = [workflow_id];
 
         if (version) {
             versionClause = 'AND version = $2';
@@ -339,20 +319,30 @@ export class DefinitionHandlers {
         } else {
             // Get latest version
             versionClause = `AND version = (
-                SELECT version FROM workflow_definitions
-                WHERE id = $1
+                SELECT version FROM fictionlab.workflow_definitions
+                WHERE workflow_id = $1
                 ORDER BY created_at DESC
                 LIMIT 1
             )`;
         }
 
         const result = await this.db.query(`
-            SELECT * FROM workflow_definitions
-            WHERE id = $1 ${versionClause}
+            SELECT
+                workflow_id,
+                name,
+                version,
+                description,
+                graph_json,
+                dependencies,
+                metadata,
+                tags,
+                created_by
+            FROM fictionlab.workflow_definitions
+            WHERE workflow_id = $1 ${versionClause}
         `, params);
 
         if (result.rows.length === 0) {
-            throw new Error(`Workflow definition ${workflow_def_id}${version ? ' v' + version : ''} not found`);
+            throw new Error(`Workflow definition ${workflow_id}${version ? ' v' + version : ''} not found`);
         }
 
         const workflow = result.rows[0];
@@ -360,14 +350,14 @@ export class DefinitionHandlers {
         // Build export package
         const exportPackage = {
             workflow: {
-                id: workflow.id,
+                id: workflow.workflow_id,
                 name: workflow.name,
                 version: workflow.version,
                 description: workflow.description,
                 tags: workflow.tags,
-                marketplace_metadata: workflow.marketplace_metadata,
+                marketplace_metadata: workflow.metadata,
                 graph: workflow.graph_json,
-                dependencies: workflow.dependencies_json
+                dependencies: workflow.dependencies
             },
             format: export_format,
             exported_at: new Date().toISOString(),
@@ -375,8 +365,8 @@ export class DefinitionHandlers {
         };
 
         // Add agents if requested
-        if (include_agents && workflow.dependencies_json.agents) {
-            exportPackage.agents = workflow.dependencies_json.agents.map(agent => ({
+        if (include_agents && workflow.dependencies.agents) {
+            exportPackage.agents = workflow.dependencies.agents.map(agent => ({
                 name: agent,
                 filename: `${agent}.md`,
                 note: 'Agent markdown file should be in agents/ directory'
@@ -384,8 +374,8 @@ export class DefinitionHandlers {
         }
 
         // Add skills if requested
-        if (include_skills && workflow.dependencies_json.skills) {
-            exportPackage.skills = workflow.dependencies_json.skills.map(skill => ({
+        if (include_skills && workflow.dependencies.skills) {
+            exportPackage.skills = workflow.dependencies.skills.map(skill => ({
                 name: skill,
                 filename: `${skill}.md`,
                 note: 'Skill markdown file should be in skills/ directory'
@@ -393,13 +383,13 @@ export class DefinitionHandlers {
         }
 
         // Add MCP servers list
-        if (workflow.dependencies_json.mcpServers) {
-            exportPackage.mcpServers = workflow.dependencies_json.mcpServers;
+        if (workflow.dependencies.mcpServers) {
+            exportPackage.mcpServers = workflow.dependencies.mcpServers;
         }
 
         // Add sub-workflows if any
-        if (workflow.dependencies_json.subWorkflows && workflow.dependencies_json.subWorkflows.length > 0) {
-            exportPackage.subWorkflows = workflow.dependencies_json.subWorkflows;
+        if (workflow.dependencies.subWorkflows && workflow.dependencies.subWorkflows.length > 0) {
+            exportPackage.subWorkflows = workflow.dependencies.subWorkflows;
         }
 
         // Generate README content
@@ -408,20 +398,20 @@ export class DefinitionHandlers {
 
         // Generate manifest for marketplace
         const manifest = {
-            id: workflow.id,
+            id: workflow.workflow_id,
             name: workflow.name,
             version: workflow.version,
             description: workflow.description,
-            author: workflow.marketplace_metadata?.author || workflow.created_by || 'Unknown',
-            category: workflow.marketplace_metadata?.category || 'Workflow',
-            difficulty: workflow.marketplace_metadata?.difficulty || 'Intermediate',
+            author: workflow.metadata?.author || workflow.created_by || 'Unknown',
+            category: workflow.metadata?.category || 'Workflow',
+            difficulty: workflow.metadata?.difficulty || 'Intermediate',
             tags: workflow.tags || [],
             phase_count: workflow.graph_json?.nodes?.length || 0,
             requires: {
-                agents: workflow.dependencies_json.agents || [],
-                skills: workflow.dependencies_json.skills || [],
-                mcpServers: workflow.dependencies_json.mcpServers || [],
-                subWorkflows: workflow.dependencies_json.subWorkflows || []
+                agents: workflow.dependencies.agents || [],
+                skills: workflow.dependencies.skills || [],
+                mcpServers: workflow.dependencies.mcpServers || [],
+                subWorkflows: workflow.dependencies.subWorkflows || []
             },
             exported_at: exportPackage.exported_at
         };
@@ -430,7 +420,7 @@ export class DefinitionHandlers {
         // Return the complete package
         return {
             success: true,
-            workflow_id: workflow.id,
+            workflow_id: workflow.workflow_id,
             version: workflow.version,
             format: export_format,
             package: exportPackage,
@@ -439,14 +429,14 @@ export class DefinitionHandlers {
             instructions: {
                 structure: [
                     'Create folder structure:',
-                    `  /${workflow.id}/`,
+                    `  /${workflow.workflow_id}/`,
                     `    ├── workflow.${export_format}`,
                     '    ├── manifest.json',
                     '    ├── README.md',
                     '    ├── agents/',
-                    ...workflow.dependencies_json.agents.map(a => `    │   └── ${a}.md`),
+                    ...workflow.dependencies.agents.map(a => `    │   └── ${a}.md`),
                     '    ├── skills/',
-                    ...workflow.dependencies_json.skills.map(s => `    │   └── ${s}.md`)
+                    ...workflow.dependencies.skills.map(s => `    │   └── ${s}.md`)
                 ],
                 next_steps: [
                     '1. Save package.workflow to workflow.yaml or workflow.json',
@@ -465,9 +455,9 @@ export class DefinitionHandlers {
         const readme = `# ${workflow.name}
 
 **Version:** ${workflow.version}
-**Author:** ${workflow.marketplace_metadata?.author || workflow.created_by || 'Unknown'}
-**Category:** ${workflow.marketplace_metadata?.category || 'Workflow'}
-**Difficulty:** ${workflow.marketplace_metadata?.difficulty || 'Intermediate'}
+**Author:** ${workflow.metadata?.author || workflow.created_by || 'Unknown'}
+**Category:** ${workflow.metadata?.category || 'Workflow'}
+**Difficulty:** ${workflow.metadata?.difficulty || 'Intermediate'}
 
 ## Description
 
@@ -490,24 +480,24 @@ ${(workflow.graph_json?.nodes || []).map((node, idx) => {
 
 ## Dependencies
 
-### Agents Required (${workflow.dependencies_json.agents.length})
-${workflow.dependencies_json.agents.map(a => `- ${a}`).join('\n')}
+### Agents Required (${workflow.dependencies.agents.length})
+${workflow.dependencies.agents.map(a => `- ${a}`).join('\n')}
 
-### Skills Required (${workflow.dependencies_json.skills.length})
-${workflow.dependencies_json.skills.map(s => `- ${s}`).join('\n')}
+### Skills Required (${workflow.dependencies.skills.length})
+${workflow.dependencies.skills.map(s => `- ${s}`).join('\n')}
 
-### MCP Servers Required (${workflow.dependencies_json.mcpServers.length})
-${workflow.dependencies_json.mcpServers.map(m => `- ${m}`).join('\n')}
+### MCP Servers Required (${workflow.dependencies.mcpServers.length})
+${workflow.dependencies.mcpServers.mcpServers.map(m => `- ${m}`).join('\n')}
 
-${workflow.dependencies_json.subWorkflows && workflow.dependencies_json.subWorkflows.length > 0 ? `
-### Sub-Workflows (${workflow.dependencies_json.subWorkflows.length})
-${workflow.dependencies_json.subWorkflows.map(sw => `- ${sw}`).join('\n')}
+${workflow.dependencies.subWorkflows && workflow.dependencies.subWorkflows.length > 0 ? `
+### Sub-Workflows (${workflow.dependencies.subWorkflows.length})
+${workflow.dependencies.subWorkflows.map(sw => `- ${sw}`).join('\n')}
 ` : ''}
 
 ## Installation
 
 1. Import this workflow using FictionLab's workflow importer
-2. The importer will automatically install:  
+2. The importer will automatically install:
    - Agent definitions to your agents directory
    - Skills to your ~/.claude/skills directory
    - Required MCP servers (if not already installed)
@@ -526,7 +516,7 @@ ${workflow.tags.map(t => `\`${t}\``).join(', ')}
 
 ## Support
 
-For issues or questions about this workflow, please contact ${workflow.marketplace_metadata?.author || 'the workflow author'}.
+For issues or questions about this workflow, please contact ${workflow.metadata?.author || 'the workflow author'}.
 
 ---
 

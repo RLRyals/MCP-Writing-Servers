@@ -1,5 +1,5 @@
 // src/mcps/workflow-manager-server/handlers/active-workflow-handlers.js
-// Active Workflow Registry Management Handlers (Migration 031)
+// Active Workflow Registry Management Handlers (Migration 032 - FictionLab schema)
 
 export class ActiveWorkflowHandlers {
     constructor(db) {
@@ -41,7 +41,7 @@ export class ActiveWorkflowHandlers {
         const result = await this.db.query(
             `SELECT
                 awr.id,
-                awr.workflow_def_id,
+                awr.workflow_id,
                 COALESCE(awr.workflow_name, wd.name) as workflow_name,
                 awr.source,
                 awr.project_folder,
@@ -60,8 +60,8 @@ export class ActiveWorkflowHandlers {
                      FROM jsonb_array_elements(wd.graph_json->'nodes') n),
                     '[]'::jsonb
                 ) as available_nodes
-            FROM active_workflow_registry awr
-            LEFT JOIN workflow_definitions wd ON awr.workflow_def_id = wd.id
+            FROM fictionlab.active_workflows awr
+            LEFT JOIN fictionlab.workflow_definitions wd ON awr.workflow_id = wd.workflow_id
             ${whereClause}
             ORDER BY awr.started_at DESC`,
             params
@@ -75,7 +75,7 @@ export class ActiveWorkflowHandlers {
      */
     async handleRegisterActiveWorkflow(args) {
         const {
-            workflow_def_id,
+            workflow_id,
             workflow_name,
             source,
             project_folder,
@@ -96,8 +96,8 @@ export class ActiveWorkflowHandlers {
 
         if (!resolvedWorkflowName || resolvedTotalNodes === 0) {
             const defResult = await this.db.query(
-                `SELECT name, graph_json FROM workflow_definitions WHERE id = $1 LIMIT 1`,
-                [workflow_def_id]
+                `SELECT name, graph_json FROM fictionlab.workflow_definitions WHERE workflow_id = $1 LIMIT 1`,
+                [workflow_id]
             );
 
             if (defResult.rows.length > 0) {
@@ -111,8 +111,8 @@ export class ActiveWorkflowHandlers {
         }
 
         const result = await this.db.query(
-            `INSERT INTO active_workflow_registry (
-                workflow_def_id,
+            `INSERT INTO fictionlab.active_workflows (
+                workflow_id,
                 workflow_name,
                 source,
                 project_folder,
@@ -122,12 +122,12 @@ export class ActiveWorkflowHandlers {
                 status
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'running')
             RETURNING id, started_at`,
-            [workflow_def_id, resolvedWorkflowName, source, project_folder, project_name, resolvedTotalNodes, metadata]
+            [workflow_id, resolvedWorkflowName, source, project_folder, project_name, resolvedTotalNodes, metadata]
         );
 
         return {
             registry_id: result.rows[0].id,
-            workflow_def_id,
+            workflow_id,
             workflow_name: resolvedWorkflowName,
             source,
             started_at: result.rows[0].started_at,
@@ -188,7 +188,7 @@ export class ActiveWorkflowHandlers {
         }
 
         const result = await this.db.query(
-            `UPDATE active_workflow_registry
+            `UPDATE fictionlab.active_workflows
             SET ${updates.join(', ')}
             WHERE id = $1 AND status IN ('running', 'paused')
             RETURNING id, current_node_id, current_node_name, progress_percent, completed_nodes, updated_at`,
@@ -213,7 +213,7 @@ export class ActiveWorkflowHandlers {
         const { registry_id } = args;
 
         const result = await this.db.query(
-            `UPDATE active_workflow_registry
+            `UPDATE fictionlab.active_workflows
             SET status = 'paused'
             WHERE id = $1 AND status = 'running'
             RETURNING id, workflow_name, status, updated_at`,
@@ -240,7 +240,7 @@ export class ActiveWorkflowHandlers {
         const { registry_id } = args;
 
         const result = await this.db.query(
-            `UPDATE active_workflow_registry
+            `UPDATE fictionlab.active_workflows
             SET status = 'running'
             WHERE id = $1 AND status = 'paused'
             RETURNING id, workflow_name, status, updated_at`,
@@ -267,7 +267,7 @@ export class ActiveWorkflowHandlers {
         const { registry_id, reason } = args;
 
         const result = await this.db.query(
-            `UPDATE active_workflow_registry
+            `UPDATE fictionlab.active_workflows
             SET status = 'cancelled',
                 completed_at = NOW(),
                 metadata = metadata || $2
@@ -296,7 +296,7 @@ export class ActiveWorkflowHandlers {
         const { registry_id, final_metadata } = args;
 
         const result = await this.db.query(
-            `UPDATE active_workflow_registry
+            `UPDATE fictionlab.active_workflows
             SET status = 'completed',
                 progress_percent = 100,
                 completed_at = NOW(),
@@ -330,7 +330,7 @@ export class ActiveWorkflowHandlers {
         const metadata = error_details ? { error_details } : {};
 
         const result = await this.db.query(
-            `UPDATE active_workflow_registry
+            `UPDATE fictionlab.active_workflows
             SET status = 'failed',
                 error_message = $2,
                 completed_at = NOW(),
@@ -364,9 +364,9 @@ export class ActiveWorkflowHandlers {
 
         // First verify the node exists in the workflow
         const workflowResult = await this.db.query(
-            `SELECT awr.id, awr.workflow_def_id, wd.graph_json
-            FROM active_workflow_registry awr
-            LEFT JOIN workflow_definitions wd ON awr.workflow_def_id = wd.id
+            `SELECT awr.id, awr.workflow_id, wd.graph_json
+            FROM fictionlab.active_workflows awr
+            LEFT JOIN fictionlab.workflow_definitions wd ON awr.workflow_id = wd.workflow_id
             WHERE awr.id = $1 AND awr.status IN ('running', 'paused')`,
             [registry_id]
         );
@@ -391,7 +391,7 @@ export class ActiveWorkflowHandlers {
 
         // Update current position
         const result = await this.db.query(
-            `UPDATE active_workflow_registry
+            `UPDATE fictionlab.active_workflows
             SET current_node_id = $2,
                 current_node_name = $3,
                 metadata = metadata || $4
@@ -425,8 +425,8 @@ export class ActiveWorkflowHandlers {
                      FROM jsonb_array_elements(wd.graph_json->'nodes') n),
                     '[]'::jsonb
                 ) as available_nodes
-            FROM active_workflow_registry awr
-            LEFT JOIN workflow_definitions wd ON awr.workflow_def_id = wd.id
+            FROM fictionlab.active_workflows awr
+            LEFT JOIN fictionlab.workflow_definitions wd ON awr.workflow_id = wd.workflow_id
             WHERE awr.id = $1`,
             [registry_id]
         );
@@ -446,7 +446,7 @@ export class ActiveWorkflowHandlers {
         const { older_than_days = 30 } = args || {};
 
         const result = await this.db.query(
-            `DELETE FROM active_workflow_registry
+            `DELETE FROM fictionlab.active_workflows
             WHERE status IN ('completed', 'failed', 'cancelled')
             AND completed_at < NOW() - INTERVAL '1 day' * $1
             RETURNING id`,

@@ -1,6 +1,6 @@
 // src/mcps/workflow-manager-server/schemas/workflow-tools-schema.js
 // Tool schema definitions for Workflow Manager MCP Server
-// Graph-based workflow system (Migrations 028 + 030)
+// Graph-based workflow system (Migration 032 - FictionLab schema)
 
 export const workflowToolsSchema = [
     // =============================================
@@ -45,10 +45,10 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 version: { type: 'string', description: 'Specific version (optional, defaults to latest)' }
             },
-            required: ['workflow_def_id']
+            required: ['workflow_id']
         }
     },
     {
@@ -57,7 +57,7 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 positions: {
                     type: 'object',
                     description: 'Map of node IDs to {x, y} positions',
@@ -71,7 +71,7 @@ export const workflowToolsSchema = [
                     }
                 }
             },
-            required: ['workflow_def_id', 'positions']
+            required: ['workflow_id', 'positions']
         }
     },
     {
@@ -80,14 +80,14 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 version: { type: 'string', description: 'New version number' },
                 definition_json: { type: 'object', description: 'Complete workflow definition' },
                 changelog: { type: 'string', description: 'What changed in this version' },
                 parent_version: { type: 'string', description: 'Previous version' },
                 created_by: { type: 'string', description: 'Who created this version' }
             },
-            required: ['workflow_def_id', 'version', 'definition_json']
+            required: ['workflow_id', 'version', 'definition_json']
         }
     },
     {
@@ -96,37 +96,13 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' }
+                workflow_id: { type: 'string', description: 'Workflow definition ID' }
             },
-            required: ['workflow_def_id']
+            required: ['workflow_id']
         }
     },
-    {
-        name: 'lock_workflow_version',
-        description: 'Locks a workflow version during execution (prevents editing)',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
-                version: { type: 'string', description: 'Version to lock' },
-                instance_id: { type: 'number', description: 'Workflow instance ID that is locking it' }
-            },
-            required: ['workflow_def_id', 'version', 'instance_id']
-        }
-    },
-    {
-        name: 'unlock_workflow_version',
-        description: 'Unlocks a workflow version after execution completes',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
-                version: { type: 'string', description: 'Version to unlock' },
-                instance_id: { type: 'number', description: 'Workflow instance ID that locked it' }
-            },
-            required: ['workflow_def_id', 'version', 'instance_id']
-        }
-    },
+    // REMOVED: lock_workflow_version - version locking removed in migration 032
+    // REMOVED: unlock_workflow_version - version locking removed in migration 032
     {
         name: 'update_phase_execution',
         description: 'Updates phase execution with Claude Code session and skill invoked',
@@ -148,7 +124,7 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID to export' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID to export' },
                 version: { type: 'string', description: 'Specific version (optional, defaults to latest)' },
                 include_agents: { type: 'boolean', description: 'Include agent markdown files', default: true },
                 include_skills: { type: 'boolean', description: 'Include skill markdown files', default: true },
@@ -160,7 +136,7 @@ export const workflowToolsSchema = [
                 },
                 output_path: { type: 'string', description: 'Optional output directory path' }
             },
-            required: ['workflow_def_id']
+            required: ['workflow_id']
         }
     },
     // =============================================
@@ -174,10 +150,10 @@ export const workflowToolsSchema = [
             properties: {
                 parent_instance_id: { type: 'number', description: 'Parent workflow instance ID' },
                 parent_phase_number: { type: 'number', description: 'Phase number in parent workflow' },
-                sub_workflow_def_id: { type: 'string', description: 'Sub-workflow definition ID' },
+                sub_workflow_id: { type: 'string', description: 'Sub-workflow definition ID' },
                 sub_workflow_version: { type: 'string', description: 'Sub-workflow version' }
             },
-            required: ['parent_instance_id', 'parent_phase_number', 'sub_workflow_def_id', 'sub_workflow_version']
+            required: ['parent_instance_id', 'parent_phase_number', 'sub_workflow_id', 'sub_workflow_version']
         }
     },
     {
@@ -213,12 +189,12 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 node_id: { type: 'string', description: 'Unique node ID' },
                 node_type: { type: 'string', description: 'Node type (planning, writing, gate, user-input, code, http, file, conditional, loop, subworkflow)' },
                 node_data: { type: 'object', description: 'Complete node configuration data' }
             },
-            required: ['workflow_def_id', 'node_id', 'node_type', 'node_data']
+            required: ['workflow_id', 'node_id', 'node_type', 'node_data']
         }
     },
     {
@@ -227,11 +203,11 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 node_id: { type: 'string', description: 'Node ID to update' },
                 updates: { type: 'object', description: 'Fields to update' }
             },
-            required: ['workflow_def_id', 'node_id', 'updates']
+            required: ['workflow_id', 'node_id', 'updates']
         }
     },
     {
@@ -240,10 +216,10 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 node_id: { type: 'string', description: 'Node ID to delete' }
             },
-            required: ['workflow_def_id', 'node_id']
+            required: ['workflow_id', 'node_id']
         }
     },
     {
@@ -252,7 +228,7 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 edge_id: { type: 'string', description: 'Unique edge ID' },
                 source_node_id: { type: 'string', description: 'Source node ID' },
                 target_node_id: { type: 'string', description: 'Target node ID' },
@@ -260,7 +236,7 @@ export const workflowToolsSchema = [
                 label: { type: 'string', description: 'Optional edge label' },
                 condition: { type: 'string', description: 'Conditional expression (for conditional edges)' }
             },
-            required: ['workflow_def_id', 'edge_id', 'source_node_id', 'target_node_id']
+            required: ['workflow_id', 'edge_id', 'source_node_id', 'target_node_id']
         }
     },
     {
@@ -269,11 +245,11 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 edge_id: { type: 'string', description: 'Edge ID to update' },
                 updates: { type: 'object', description: 'Fields to update (label, condition, type)' }
             },
-            required: ['workflow_def_id', 'edge_id', 'updates']
+            required: ['workflow_id', 'edge_id', 'updates']
         }
     },
     {
@@ -282,10 +258,10 @@ export const workflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 edge_id: { type: 'string', description: 'Edge ID to delete' }
             },
-            required: ['workflow_def_id', 'edge_id']
+            required: ['workflow_id', 'edge_id']
         }
     }
 ];

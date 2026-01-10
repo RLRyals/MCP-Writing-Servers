@@ -72,15 +72,15 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
 
     getToolHandler(toolName) {
         const handlers = {
-            // Definition Handlers (10 tools)
+            // Definition Handlers (8 tools)
             'import_workflow_definition': this.definitionHandlers.handleImportWorkflowDefinition.bind(this.definitionHandlers),
             'get_workflow_definitions': this.definitionHandlers.handleGetWorkflowDefinitions.bind(this.definitionHandlers),
             'get_workflow_definition': this.definitionHandlers.handleGetWorkflowDefinition.bind(this.definitionHandlers),
             'update_workflow_positions': this.definitionHandlers.handleUpdateWorkflowPositions.bind(this.definitionHandlers),
             'create_workflow_version': this.definitionHandlers.handleCreateWorkflowVersion.bind(this.definitionHandlers),
             'get_workflow_versions': this.definitionHandlers.handleGetWorkflowVersions.bind(this.definitionHandlers),
-            'lock_workflow_version': this.definitionHandlers.handleLockWorkflowVersion.bind(this.definitionHandlers),
-            'unlock_workflow_version': this.definitionHandlers.handleUnlockWorkflowVersion.bind(this.definitionHandlers),
+            // REMOVED: lock_workflow_version - version locking removed in migration 032
+            // REMOVED: unlock_workflow_version - version locking removed in migration 032
             'update_phase_execution': this.definitionHandlers.handleUpdatePhaseExecution.bind(this.definitionHandlers),
             'export_workflow_package': this.definitionHandlers.handleExportWorkflowPackage.bind(this.definitionHandlers),
             // Subworkflow Handlers (3 tools)
