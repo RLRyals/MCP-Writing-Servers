@@ -33,7 +33,7 @@ export const activeWorkflowToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                workflow_def_id: { type: 'string', description: 'Workflow definition ID' },
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
                 workflow_name: { type: 'string', description: 'Workflow name (optional, will be fetched from definition if not provided)' },
                 source: {
                     type: 'string',
@@ -45,7 +45,7 @@ export const activeWorkflowToolsSchema = [
                 total_nodes: { type: 'number', description: 'Total number of nodes in workflow (optional, will be calculated if not provided)' },
                 metadata: { type: 'object', description: 'Additional metadata' }
             },
-            required: ['workflow_def_id', 'source']
+            required: ['workflow_id', 'source']
         }
     },
     {
