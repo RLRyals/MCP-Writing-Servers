@@ -55,6 +55,8 @@ export class ActiveWorkflowHandlers {
                 awr.started_at,
                 awr.updated_at,
                 awr.metadata,
+                awr.breadcrumb,
+                awr.parent_workflow_id,
                 COALESCE(
                     (SELECT jsonb_agg(jsonb_build_object('id', n->>'id', 'name', COALESCE(n->'data'->>'name', n->>'id')))
                      FROM jsonb_array_elements(wd.graph_json->'nodes') n),
@@ -81,6 +83,7 @@ export class ActiveWorkflowHandlers {
             project_folder,
             project_name,
             total_nodes = 0,
+            parent_workflow_id,
             metadata = {}
         } = args;
 
@@ -118,11 +121,12 @@ export class ActiveWorkflowHandlers {
                 project_folder,
                 project_name,
                 total_nodes,
+                parent_workflow_id,
                 metadata,
                 status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'running')
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'running')
             RETURNING id, started_at`,
-            [workflow_id, resolvedWorkflowName, source, project_folder, project_name, resolvedTotalNodes, metadata]
+            [workflow_id, resolvedWorkflowName, source, project_folder, project_name, resolvedTotalNodes, parent_workflow_id || null, metadata]
         );
 
         return {
@@ -130,13 +134,14 @@ export class ActiveWorkflowHandlers {
             workflow_id,
             workflow_name: resolvedWorkflowName,
             source,
+            parent_workflow_id: parent_workflow_id || null,
             started_at: result.rows[0].started_at,
             message: `Workflow registered successfully from ${source}`
         };
     }
 
     /**
-     * Update workflow progress (current node, percent complete, etc.)
+     * Update workflow progress (current node, percent complete, breadcrumb for nested workflows)
      */
     async handleUpdateWorkflowProgress(args) {
         const {
@@ -145,6 +150,7 @@ export class ActiveWorkflowHandlers {
             current_node_name,
             progress_percent,
             completed_nodes,
+            breadcrumb,
             metadata
         } = args;
 
@@ -177,6 +183,15 @@ export class ActiveWorkflowHandlers {
             paramIndex++;
         }
 
+        // Handle breadcrumb - can be JSON string or already parsed
+        if (breadcrumb !== undefined) {
+            updates.push(`breadcrumb = $${paramIndex}`);
+            // Parse if string, otherwise use as-is
+            const breadcrumbValue = typeof breadcrumb === 'string' ? JSON.parse(breadcrumb) : breadcrumb;
+            params.push(JSON.stringify(breadcrumbValue));
+            paramIndex++;
+        }
+
         if (metadata !== undefined) {
             updates.push(`metadata = metadata || $${paramIndex}`);
             params.push(metadata);
@@ -191,7 +206,7 @@ export class ActiveWorkflowHandlers {
             `UPDATE fictionlab.active_workflows
             SET ${updates.join(', ')}
             WHERE id = $1 AND status IN ('running', 'paused')
-            RETURNING id, current_node_id, current_node_name, progress_percent, completed_nodes, updated_at`,
+            RETURNING id, current_node_id, current_node_name, progress_percent, completed_nodes, breadcrumb, updated_at`,
             params
         );
 
@@ -417,8 +432,25 @@ export class ActiveWorkflowHandlers {
 
         const result = await this.db.query(
             `SELECT
-                awr.*,
+                awr.id,
+                awr.workflow_id,
                 COALESCE(awr.workflow_name, wd.name) as workflow_name,
+                awr.source,
+                awr.project_folder,
+                awr.project_name,
+                awr.current_node_id,
+                awr.current_node_name,
+                awr.status,
+                awr.progress_percent,
+                awr.total_nodes,
+                awr.completed_nodes,
+                awr.started_at,
+                awr.updated_at,
+                awr.completed_at,
+                awr.error_message,
+                awr.metadata,
+                awr.breadcrumb,
+                awr.parent_workflow_id,
                 wd.graph_json,
                 COALESCE(
                     (SELECT jsonb_agg(jsonb_build_object('id', n->>'id', 'name', COALESCE(n->'data'->>'name', n->>'id')))

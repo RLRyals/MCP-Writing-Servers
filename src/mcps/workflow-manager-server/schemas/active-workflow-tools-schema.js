@@ -43,6 +43,7 @@ export const activeWorkflowToolsSchema = [
                 project_folder: { type: 'string', description: 'Project folder path' },
                 project_name: { type: 'string', description: 'Project name for display' },
                 total_nodes: { type: 'number', description: 'Total number of nodes in workflow (optional, will be calculated if not provided)' },
+                parent_workflow_id: { type: 'string', description: 'Parent workflow registry ID (UUID) if this is a subworkflow' },
                 metadata: { type: 'object', description: 'Additional metadata' }
             },
             required: ['workflow_id', 'source']
@@ -50,7 +51,7 @@ export const activeWorkflowToolsSchema = [
     },
     {
         name: 'update_workflow_progress',
-        description: 'Updates the progress of an active workflow (current node, percent complete)',
+        description: 'Updates the progress of an active workflow (current node, percent complete, breadcrumb for nested workflows)',
         inputSchema: {
             type: 'object',
             properties: {
@@ -59,6 +60,10 @@ export const activeWorkflowToolsSchema = [
                 current_node_name: { type: 'string', description: 'Current node name for display' },
                 progress_percent: { type: 'number', description: 'Progress percentage (0-100)' },
                 completed_nodes: { type: 'number', description: 'Number of completed nodes' },
+                breadcrumb: {
+                    type: 'string',
+                    description: 'JSON string of breadcrumb array for nested workflow tracking. Each entry: { workflowId, workflowName, nodeId, nodeName, subWorkflowRegistryId? }'
+                },
                 metadata: { type: 'object', description: 'Additional metadata to merge' }
             },
             required: ['registry_id']
