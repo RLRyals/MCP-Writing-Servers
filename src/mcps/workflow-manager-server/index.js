@@ -94,7 +94,7 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
             'create_edge': this.graphHandlers.handleCreateEdge.bind(this.graphHandlers),
             'update_edge': this.graphHandlers.handleUpdateEdge.bind(this.graphHandlers),
             'delete_edge': this.graphHandlers.handleDeleteEdge.bind(this.graphHandlers),
-            // Active Workflow Handlers (11 tools)
+            // Active Workflow Handlers (13 tools)
             'list_active_workflows': this.activeWorkflowHandlers.handleListActiveWorkflows.bind(this.activeWorkflowHandlers),
             'register_active_workflow': this.activeWorkflowHandlers.handleRegisterActiveWorkflow.bind(this.activeWorkflowHandlers),
             'update_workflow_progress': this.activeWorkflowHandlers.handleUpdateWorkflowProgress.bind(this.activeWorkflowHandlers),
@@ -105,7 +105,10 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
             'fail_workflow': this.activeWorkflowHandlers.handleFailWorkflow.bind(this.activeWorkflowHandlers),
             'jump_to_node': this.activeWorkflowHandlers.handleJumpToNode.bind(this.activeWorkflowHandlers),
             'get_active_workflow': this.activeWorkflowHandlers.handleGetActiveWorkflow.bind(this.activeWorkflowHandlers),
-            'cleanup_old_workflows': this.activeWorkflowHandlers.handleCleanupOldWorkflows.bind(this.activeWorkflowHandlers)
+            'cleanup_old_workflows': this.activeWorkflowHandlers.handleCleanupOldWorkflows.bind(this.activeWorkflowHandlers),
+            // NEW: Atomic node status tracking
+            'mark_node_started': this.activeWorkflowHandlers.handleMarkNodeStarted.bind(this.activeWorkflowHandlers),
+            'mark_node_completed': this.activeWorkflowHandlers.handleMarkNodeCompleted.bind(this.activeWorkflowHandlers)
         };
         return handlers[toolName];
     }

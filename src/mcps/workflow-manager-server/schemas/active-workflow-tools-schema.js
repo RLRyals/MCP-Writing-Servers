@@ -165,5 +165,30 @@ export const activeWorkflowToolsSchema = [
                 }
             }
         }
+    },
+    {
+        name: 'mark_node_started',
+        description: 'Marks a node as started (sets it as the current node). Call this BEFORE executing a node.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                registry_id: { type: 'string', description: 'Active workflow registry ID (UUID)' },
+                node_id: { type: 'string', description: 'Node ID being started' },
+                node_name: { type: 'string', description: 'Node name for display' }
+            },
+            required: ['registry_id', 'node_id']
+        }
+    },
+    {
+        name: 'mark_node_completed',
+        description: 'Marks a node as completed (adds to completed_node_ids list). Call this AFTER a node finishes successfully.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                registry_id: { type: 'string', description: 'Active workflow registry ID (UUID)' },
+                node_id: { type: 'string', description: 'Node ID that was completed' }
+            },
+            required: ['registry_id', 'node_id']
+        }
     }
 ];

@@ -52,6 +52,7 @@ export class ActiveWorkflowHandlers {
                 awr.progress_percent,
                 awr.total_nodes,
                 awr.completed_nodes,
+                awr.completed_node_ids,
                 awr.started_at,
                 awr.updated_at,
                 awr.metadata,
@@ -444,6 +445,7 @@ export class ActiveWorkflowHandlers {
                 awr.progress_percent,
                 awr.total_nodes,
                 awr.completed_nodes,
+                awr.completed_node_ids,
                 awr.started_at,
                 awr.updated_at,
                 awr.completed_at,
@@ -488,6 +490,104 @@ export class ActiveWorkflowHandlers {
         return {
             deleted_count: result.rowCount,
             message: `Cleaned up ${result.rowCount} old workflow records older than ${older_than_days} days`
+        };
+    }
+
+    /**
+     * Mark a node as started (sets it as current node)
+     * Called BEFORE executing a node to indicate work is beginning
+     */
+    async handleMarkNodeStarted(args) {
+        const { registry_id, node_id, node_name } = args;
+
+        if (!registry_id || !node_id) {
+            throw new Error('registry_id and node_id are required');
+        }
+
+        const result = await this.db.query(
+            `UPDATE fictionlab.active_workflows
+            SET current_node_id = $2,
+                current_node_name = $3,
+                status = 'running'
+            WHERE id = $1 AND status IN ('running', 'paused')
+            RETURNING id, current_node_id, current_node_name, updated_at`,
+            [registry_id, node_id, node_name || node_id]
+        );
+
+        if (result.rows.length === 0) {
+            throw new Error(`Active workflow ${registry_id} not found or not active`);
+        }
+
+        return {
+            registry_id,
+            node_id,
+            node_name: result.rows[0].current_node_name,
+            updated_at: result.rows[0].updated_at,
+            message: `Node ${node_name || node_id} marked as started`
+        };
+    }
+
+    /**
+     * Mark a node as completed (adds to completed_node_ids array)
+     * Called AFTER a node finishes execution successfully
+     */
+    async handleMarkNodeCompleted(args) {
+        const { registry_id, node_id } = args;
+
+        if (!registry_id || !node_id) {
+            throw new Error('registry_id and node_id are required');
+        }
+
+        // Use jsonb array append, avoiding duplicates
+        const result = await this.db.query(
+            `UPDATE fictionlab.active_workflows
+            SET completed_node_ids = CASE
+                    WHEN NOT (completed_node_ids @> to_jsonb($2::text))
+                    THEN completed_node_ids || to_jsonb($2::text)
+                    ELSE completed_node_ids
+                END,
+                completed_nodes = (
+                    SELECT jsonb_array_length(
+                        CASE
+                            WHEN NOT (completed_node_ids @> to_jsonb($2::text))
+                            THEN completed_node_ids || to_jsonb($2::text)
+                            ELSE completed_node_ids
+                        END
+                    )
+                )
+            WHERE id = $1 AND status IN ('running', 'paused')
+            RETURNING id, completed_node_ids, completed_nodes, updated_at`,
+            [registry_id, node_id]
+        );
+
+        if (result.rows.length === 0) {
+            throw new Error(`Active workflow ${registry_id} not found or not active`);
+        }
+
+        // Calculate progress based on total nodes
+        const totalNodesResult = await this.db.query(
+            `SELECT total_nodes FROM fictionlab.active_workflows WHERE id = $1`,
+            [registry_id]
+        );
+
+        const totalNodes = totalNodesResult.rows[0]?.total_nodes || 1;
+        const completedNodes = result.rows[0].completed_nodes;
+        const progressPercent = Math.round((completedNodes / totalNodes) * 100);
+
+        // Update progress percent
+        await this.db.query(
+            `UPDATE fictionlab.active_workflows SET progress_percent = $2 WHERE id = $1`,
+            [registry_id, Math.min(100, progressPercent)]
+        );
+
+        return {
+            registry_id,
+            node_id,
+            completed_node_ids: result.rows[0].completed_node_ids,
+            completed_nodes: completedNodes,
+            progress_percent: Math.min(100, progressPercent),
+            updated_at: result.rows[0].updated_at,
+            message: `Node ${node_id} marked as completed`
         };
     }
 }
