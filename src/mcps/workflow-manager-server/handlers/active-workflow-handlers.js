@@ -59,7 +59,8 @@ export class ActiveWorkflowHandlers {
                 awr.breadcrumb,
                 awr.parent_workflow_id,
                 COALESCE(
-                    (SELECT jsonb_agg(jsonb_build_object('id', n->>'id', 'name', COALESCE(n->'data'->>'name', n->>'id')))
+                    NULLIF(awr.available_nodes, '[]'::jsonb),
+                    (SELECT jsonb_agg(jsonb_build_object('id', n->>'id', 'name', COALESCE(n->>'name', n->'data'->>'name', n->>'id')))
                      FROM jsonb_array_elements(wd.graph_json->'nodes') n),
                     '[]'::jsonb
                 ) as available_nodes
@@ -84,6 +85,7 @@ export class ActiveWorkflowHandlers {
             project_folder,
             project_name,
             total_nodes = 0,
+            available_nodes,
             parent_workflow_id,
             metadata = {}
         } = args;
@@ -94,22 +96,31 @@ export class ActiveWorkflowHandlers {
             throw new Error(`Invalid source: ${source}. Must be one of: ${validSources.join(', ')}`);
         }
 
-        // Get workflow name from definition if not provided
+        // Get workflow name, total_nodes, and available_nodes from definition if not provided
         let resolvedWorkflowName = workflow_name;
         let resolvedTotalNodes = total_nodes;
+        let resolvedAvailableNodes = available_nodes || [];
 
-        if (!resolvedWorkflowName || resolvedTotalNodes === 0) {
+        if (!resolvedWorkflowName || resolvedTotalNodes === 0 || resolvedAvailableNodes.length === 0) {
             const defResult = await this.db.query(
                 `SELECT name, graph_json FROM fictionlab.workflow_definitions WHERE workflow_id = $1 LIMIT 1`,
                 [workflow_id]
             );
 
             if (defResult.rows.length > 0) {
+                const graphNodes = defResult.rows[0].graph_json?.nodes || [];
+
                 if (!resolvedWorkflowName) {
                     resolvedWorkflowName = defResult.rows[0].name;
                 }
-                if (resolvedTotalNodes === 0 && defResult.rows[0].graph_json?.nodes) {
-                    resolvedTotalNodes = defResult.rows[0].graph_json.nodes.length;
+                if (resolvedTotalNodes === 0) {
+                    resolvedTotalNodes = graphNodes.length;
+                }
+                if (resolvedAvailableNodes.length === 0 && graphNodes.length > 0) {
+                    resolvedAvailableNodes = graphNodes.map(n => ({
+                        id: n.id,
+                        name: n.name || n.data?.name || n.id
+                    }));
                 }
             }
         }
@@ -122,12 +133,13 @@ export class ActiveWorkflowHandlers {
                 project_folder,
                 project_name,
                 total_nodes,
+                available_nodes,
                 parent_workflow_id,
                 metadata,
                 status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'running')
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'running')
             RETURNING id, started_at`,
-            [workflow_id, resolvedWorkflowName, source, project_folder, project_name, resolvedTotalNodes, parent_workflow_id || null, metadata]
+            [workflow_id, resolvedWorkflowName, source, project_folder, project_name, resolvedTotalNodes, JSON.stringify(resolvedAvailableNodes), parent_workflow_id || null, metadata]
         );
 
         return {
@@ -135,6 +147,8 @@ export class ActiveWorkflowHandlers {
             workflow_id,
             workflow_name: resolvedWorkflowName,
             source,
+            total_nodes: resolvedTotalNodes,
+            available_nodes: resolvedAvailableNodes,
             parent_workflow_id: parent_workflow_id || null,
             started_at: result.rows[0].started_at,
             message: `Workflow registered successfully from ${source}`

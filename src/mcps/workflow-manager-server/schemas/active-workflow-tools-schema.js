@@ -43,6 +43,17 @@ export const activeWorkflowToolsSchema = [
                 project_folder: { type: 'string', description: 'Project folder path' },
                 project_name: { type: 'string', description: 'Project name for display' },
                 total_nodes: { type: 'number', description: 'Total number of nodes in workflow (optional, will be calculated if not provided)' },
+                available_nodes: {
+                    type: 'array',
+                    description: 'Array of available nodes with id and name (optional, will be fetched from definition if not provided)',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            id: { type: 'string', description: 'Node ID' },
+                            name: { type: 'string', description: 'Node name' }
+                        }
+                    }
+                },
                 parent_workflow_id: { type: 'string', description: 'Parent workflow registry ID (UUID) if this is a subworkflow' },
                 metadata: { type: 'object', description: 'Additional metadata' }
             },
