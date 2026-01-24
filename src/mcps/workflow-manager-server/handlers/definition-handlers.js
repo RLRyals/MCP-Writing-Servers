@@ -152,6 +152,8 @@ export class DefinitionHandlers {
     async handleUpdateWorkflowPositions(args) {
         const { workflow_id, positions } = args;
 
+        console.log(`[handleUpdateWorkflowPositions] Called with workflow_id=${workflow_id}, positions count=${Object.keys(positions || {}).length}`);
+
         // Get the latest version of the workflow
         const workflowResult = await this.db.query(
             `SELECT workflow_id, version, graph_json FROM fictionlab.workflow_definitions
@@ -186,12 +188,24 @@ export class DefinitionHandlers {
             nodes: updatedNodes
         };
 
-        await this.db.query(
+        // Serialize to JSON string for PostgreSQL JSONB column
+        const graphJsonString = JSON.stringify(updatedGraph);
+
+        const updateResult = await this.db.query(
             `UPDATE fictionlab.workflow_definitions
-            SET graph_json = $1, updated_at = NOW()
-            WHERE workflow_id = $2 AND version = $3`,
-            [updatedGraph, workflow_id, workflow.version]
+            SET graph_json = $1::jsonb, updated_at = NOW()
+            WHERE workflow_id = $2 AND version = $3
+            RETURNING workflow_id`,
+            [graphJsonString, workflow_id, workflow.version]
         );
+
+        // Log if no rows were updated
+        if (updateResult.rowCount === 0) {
+            console.error(`[handleUpdateWorkflowPositions] No rows updated for workflow_id=${workflow_id}, version=${workflow.version}`);
+            throw new Error(`Failed to update positions: workflow ${workflow_id} version ${workflow.version} not found`);
+        }
+
+        console.log(`[handleUpdateWorkflowPositions] Updated ${updateResult.rowCount} row(s) for workflow ${workflow_id}`);
 
         return {
             workflow_id,
