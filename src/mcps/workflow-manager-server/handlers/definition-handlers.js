@@ -190,7 +190,7 @@ export class DefinitionHandlers {
             `UPDATE fictionlab.workflow_definitions
             SET graph_json = $1, updated_at = NOW()
             WHERE workflow_id = $2 AND version = $3`,
-            [updatedGraph, workflow_def_id, workflow.version]
+            [updatedGraph, workflow_id, workflow.version]
         );
 
         return {
