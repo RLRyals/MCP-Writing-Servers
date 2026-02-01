@@ -169,97 +169,114 @@ CREATE TRIGGER trigger_update_active_workflow_timestamp
 RAISE NOTICE 'Created fictionlab.active_workflows table with auto-update trigger';
 
 -- =============================================
--- MIGRATE DATA FROM PUBLIC SCHEMA
+-- MIGRATE DATA FROM PUBLIC SCHEMA (if tables exist)
 -- =============================================
 
 -- Migrate workflow_definitions (exclude phases_json, rename columns)
-INSERT INTO fictionlab.workflow_definitions (
-    workflow_id, name, version, description, graph_json, dependencies,
-    created_at, updated_at, created_by, is_system, tags, metadata
-)
-SELECT
-    id,                   -- Rename id → workflow_id
-    name,
-    version,
-    description,
-    graph_json,
-    dependencies_json,    -- Rename dependencies_json → dependencies
-    created_at,
-    updated_at,
-    created_by,
-    is_system,
-    tags,
-    marketplace_metadata  -- Rename marketplace_metadata → metadata
-FROM public.workflow_definitions
-ON CONFLICT (workflow_id, version) DO NOTHING;
+-- Only if legacy table exists (existing installs)
+IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'workflow_definitions') THEN
+    INSERT INTO fictionlab.workflow_definitions (
+        workflow_id, name, version, description, graph_json, dependencies,
+        created_at, updated_at, created_by, is_system, tags, metadata
+    )
+    SELECT
+        id,                   -- Rename id → workflow_id
+        name,
+        version,
+        description,
+        graph_json,
+        dependencies_json,    -- Rename dependencies_json → dependencies
+        created_at,
+        updated_at,
+        created_by,
+        is_system,
+        tags,
+        marketplace_metadata  -- Rename marketplace_metadata → metadata
+    FROM public.workflow_definitions
+    ON CONFLICT (workflow_id, version) DO NOTHING;
 
-RAISE NOTICE 'Migrated % workflow definitions from public to fictionlab schema',
-    (SELECT COUNT(*) FROM fictionlab.workflow_definitions);
+    RAISE NOTICE 'Migrated % workflow definitions from public to fictionlab schema',
+        (SELECT COUNT(*) FROM fictionlab.workflow_definitions);
+ELSE
+    RAISE NOTICE 'No legacy workflow_definitions table found - fresh install';
+END IF;
 
 -- Migrate workflow_versions (rename workflow_def_id → workflow_id)
-INSERT INTO fictionlab.workflow_versions (
-    workflow_id, version, definition_json, created_at, created_by, changelog, parent_version
-)
-SELECT
-    workflow_def_id,  -- Rename workflow_def_id → workflow_id
-    version,
-    definition_json,
-    created_at,
-    created_by,
-    changelog,
-    parent_version
-FROM public.workflow_versions
-ON CONFLICT (workflow_id, version) DO NOTHING;
+IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'workflow_versions') THEN
+    INSERT INTO fictionlab.workflow_versions (
+        workflow_id, version, definition_json, created_at, created_by, changelog, parent_version
+    )
+    SELECT
+        workflow_def_id,  -- Rename workflow_def_id → workflow_id
+        version,
+        definition_json,
+        created_at,
+        created_by,
+        changelog,
+        parent_version
+    FROM public.workflow_versions
+    ON CONFLICT (workflow_id, version) DO NOTHING;
 
-RAISE NOTICE 'Migrated % workflow versions from public to fictionlab schema',
-    (SELECT COUNT(*) FROM fictionlab.workflow_versions);
+    RAISE NOTICE 'Migrated % workflow versions from public to fictionlab schema',
+        (SELECT COUNT(*) FROM fictionlab.workflow_versions);
+ELSE
+    RAISE NOTICE 'No legacy workflow_versions table found - fresh install';
+END IF;
 
 -- Migrate workflow_imports (rename workflow_def_id → workflow_id)
-INSERT INTO fictionlab.workflow_imports (
-    workflow_id, source_type, source_path, imported_at, imported_by, installation_log
-)
-SELECT
-    workflow_def_id,  -- Rename workflow_def_id → workflow_id
-    source_type,
-    source_path,
-    imported_at,
-    imported_by,
-    installation_log
-FROM public.workflow_imports;
+IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'workflow_imports') THEN
+    INSERT INTO fictionlab.workflow_imports (
+        workflow_id, source_type, source_path, imported_at, imported_by, installation_log
+    )
+    SELECT
+        workflow_def_id,  -- Rename workflow_def_id → workflow_id
+        source_type,
+        source_path,
+        imported_at,
+        imported_by,
+        installation_log
+    FROM public.workflow_imports;
 
-RAISE NOTICE 'Migrated % workflow imports from public to fictionlab schema',
-    (SELECT COUNT(*) FROM fictionlab.workflow_imports);
+    RAISE NOTICE 'Migrated % workflow imports from public to fictionlab schema',
+        (SELECT COUNT(*) FROM fictionlab.workflow_imports);
+ELSE
+    RAISE NOTICE 'No legacy workflow_imports table found - fresh install';
+END IF;
 
 -- Migrate active_workflow_registry → active_workflows (rename workflow_def_id → workflow_id)
-INSERT INTO fictionlab.active_workflows (
-    id, workflow_id, workflow_name, source, project_folder, project_name,
-    current_node_id, current_node_name, status, progress_percent,
-    total_nodes, completed_nodes, started_at, updated_at, completed_at,
-    error_message, metadata
-)
-SELECT
-    id,
-    workflow_def_id,  -- Rename workflow_def_id → workflow_id
-    workflow_name,
-    source,
-    project_folder,
-    project_name,
-    current_node_id,
-    current_node_name,
-    status,
-    progress_percent,
-    total_nodes,
-    completed_nodes,
-    started_at,
-    updated_at,
-    completed_at,
-    error_message,
-    metadata
-FROM public.active_workflow_registry
-ON CONFLICT (id) DO NOTHING;
+IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'active_workflow_registry') THEN
+    INSERT INTO fictionlab.active_workflows (
+        id, workflow_id, workflow_name, source, project_folder, project_name,
+        current_node_id, current_node_name, status, progress_percent,
+        total_nodes, completed_nodes, started_at, updated_at, completed_at,
+        error_message, metadata
+    )
+    SELECT
+        id,
+        workflow_def_id,  -- Rename workflow_def_id → workflow_id
+        workflow_name,
+        source,
+        project_folder,
+        project_name,
+        current_node_id,
+        current_node_name,
+        status,
+        progress_percent,
+        total_nodes,
+        completed_nodes,
+        started_at,
+        updated_at,
+        completed_at,
+        error_message,
+        metadata
+    FROM public.active_workflow_registry
+    ON CONFLICT (id) DO NOTHING;
 
-RAISE NOTICE 'Migrated % active workflows from public to fictionlab schema',
-    (SELECT COUNT(*) FROM fictionlab.active_workflows);
+    RAISE NOTICE 'Migrated % active workflows from public to fictionlab schema',
+        (SELECT COUNT(*) FROM fictionlab.active_workflows);
+ELSE
+    RAISE NOTICE 'No legacy active_workflow_registry table found - fresh install';
+END IF;
 
 -- =============================================
 -- CREATE HELPER FUNCTIONS (Migrated from 030)

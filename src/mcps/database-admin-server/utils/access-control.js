@@ -22,11 +22,8 @@ export const ACCESS_CONTROL = {
         'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
         'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
         'npe_compliance_summary',
-        // Workflow tables
-        'workflow_instances', 'workflow_phase_history', 'workflow_approvals', 'workflow_quality_gates',
-        'production_metrics', 'daily_writing_stats', 'phase_performance', 'revision_passes', 'qa_reports',
-        'workflow_definitions', 'workflow_versions', 'workflow_version_locks', 'sub_workflow_executions',
-        'workflow_imports'
+        // FictionLab Workflow tables
+        'fictionlab.workflow_definitions', 'fictionlab.workflow_versions', 'fictionlab.workflow_imports', 'fictionlab.active_workflows'
     ],
 
     // Tables that allow WRITE operations (INSERT/UPDATE)
@@ -42,11 +39,8 @@ export const ACCESS_CONTROL = {
         'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
         'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
         'npe_compliance_summary',
-        // Workflow tables
-        'workflow_instances', 'workflow_phase_history', 'workflow_approvals', 'workflow_quality_gates',
-        'production_metrics', 'daily_writing_stats', 'phase_performance', 'revision_passes', 'qa_reports',
-        'workflow_definitions', 'workflow_versions', 'workflow_version_locks', 'sub_workflow_executions',
-        'workflow_imports'
+        // FictionLab Workflow tables
+        'fictionlab.workflow_definitions', 'fictionlab.workflow_versions', 'fictionlab.workflow_imports', 'fictionlab.active_workflows'
     ],
 
     // Tables that allow DELETE operations
@@ -62,11 +56,8 @@ export const ACCESS_CONTROL = {
         'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
         'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
         'npe_compliance_summary',
-        // Workflow tables
-        'workflow_instances', 'workflow_phase_history', 'workflow_approvals', 'workflow_quality_gates',
-        'production_metrics', 'daily_writing_stats', 'phase_performance', 'revision_passes', 'qa_reports',
-        'workflow_definitions', 'workflow_versions', 'workflow_version_locks', 'sub_workflow_executions',
-        'workflow_imports'
+        // FictionLab Workflow tables
+        'fictionlab.workflow_definitions', 'fictionlab.workflow_versions', 'fictionlab.workflow_imports', 'fictionlab.active_workflows'
     ],
 
     // Restricted tables - cannot be accessed at all

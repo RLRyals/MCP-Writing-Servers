@@ -59,14 +59,12 @@ export const WHITELIST = {
     npe_relationship_tension: ['id', 'relationship_arc_id', 'chapter_id', 'scene_id', 'character_a_id', 'character_b_id', 'a_to_b_tension', 'b_to_a_tension', 'connection_strength', 'friction_strength', 'trigger_event', 'caused_by_character_action', 'character_action_id', 'tension_change_a_to_b', 'tension_change_b_to_a', 'physics_rule_applied', 'tracked_at'],
     npe_compliance_summary: ['id', 'book_id', 'chapter_id', 'plot_mechanics_score', 'character_logic_score', 'pacing_score', 'scene_architecture_score', 'dialogue_physics_score', 'pov_physics_score', 'transitions_score', 'information_economy_score', 'stakes_pressure_score', 'offstage_narrative_score', 'overall_npe_score', 'critical_violations', 'warning_violations', 'minor_violations', 'violations_detail', 'compliant', 'recommendations', 'calculated_at'],
 
-    // Workflow Management tables
-    workflow_definitions: ['id', 'name', 'version', 'description', 'graph_json', 'dependencies_json', 'phases_json', 'created_at', 'updated_at', 'created_by', 'is_system', 'tags', 'marketplace_metadata'],
-    workflow_versions: ['id', 'workflow_def_id', 'version', 'definition_json', 'created_at', 'created_by', 'changelog', 'parent_version'],
-    workflow_version_locks: ['id', 'workflow_def_id', 'version', 'locked_by_instance_id', 'locked_at'],
-    workflow_instances: ['id', 'workflow_def_id', 'workflow_version', 'total_phases', 'series_id', 'author_id', 'current_phase', 'phase_status', 'current_book', 'created_at', 'updated_at'],
-    workflow_phase_history: ['id', 'instance_id', 'phase_number', 'phase_name', 'started_at', 'completed_at', 'status', 'output', 'error', 'claude_code_session', 'skill_invoked', 'output_json'],
-    sub_workflow_executions: ['id', 'parent_instance_id', 'parent_phase_number', 'sub_workflow_def_id', 'sub_workflow_version', 'status', 'started_at', 'completed_at', 'output_json', 'error', 'created_at'],
-    workflow_imports: ['id', 'workflow_def_id', 'source_type', 'source_path', 'imported_at', 'imported_by', 'installation_log'],
+    // FictionLab Workflow tables (fictionlab schema)
+    'fictionlab.workflow_definitions': ['workflow_id', 'name', 'version', 'description', 'graph_json', 'dependencies', 'created_at', 'updated_at', 'created_by', 'is_system', 'tags', 'metadata'],
+    'fictionlab.workflow_versions': ['id', 'workflow_id', 'version', 'definition_json', 'created_at', 'created_by', 'changelog', 'parent_version'],
+    'fictionlab.workflow_imports': ['id', 'workflow_id', 'source_type', 'source_path', 'imported_at', 'imported_by', 'installation_log'],
+    'fictionlab.active_workflows': ['id', 'workflow_id', 'workflow_name', 'source', 'project_folder', 'project_name', 'current_node_id', 'current_node_name', 'status', 'progress_percent', 'total_nodes', 'completed_nodes', 'started_at', 'updated_at', 'completed_at', 'error_message', 'metadata', 'breadcrumb', 'parent_workflow_id', 'completed_node_ids', 'available_nodes'],
+    // Project management
     projects: ['id', 'project_name', 'folder_location', 'description', 'author_id', 'series_id', 'book_id', 'created_at', 'updated_at'],
     // Database management tables
     migrations: ['id', 'filename', 'applied_at']
@@ -110,9 +108,9 @@ export class SecurityValidator {
             throw new Error('Table name must be a non-empty string');
         }
 
-        // Prevent SQL injection attempts
-        if (!/^[a-z_]+$/.test(table)) {
-            throw new Error(`Invalid table name format: ${table}. Only lowercase letters and underscores allowed.`);
+        // Prevent SQL injection attempts (allow schema.table format for fictionlab schema)
+        if (!/^[a-z_]+(\.[a-z_]+)?$/.test(table)) {
+            throw new Error(`Invalid table name format: ${table}. Only lowercase letters, underscores, and optional schema prefix allowed.`);
         }
 
         if (!WHITELIST[table]) {
