@@ -139,6 +139,28 @@ export const workflowToolsSchema = [
             required: ['workflow_id']
         }
     },
+    {
+        name: 'get_workflow_import_source',
+        description: 'Gets the original import source path for a workflow (used for reimport/refresh)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                id: { type: 'string', description: 'Workflow definition ID' }
+            },
+            required: ['id']
+        }
+    },
+    {
+        name: 'delete_workflow_definition',
+        description: 'Deletes a workflow definition and its import records',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                id: { type: 'string', description: 'Workflow definition ID to delete' }
+            },
+            required: ['id']
+        }
+    },
     // =============================================
     // SUB-WORKFLOW SUPPORT (Migration 028)
     // =============================================

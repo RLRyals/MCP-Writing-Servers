@@ -83,6 +83,8 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
             // REMOVED: unlock_workflow_version - version locking removed in migration 032
             'update_phase_execution': this.definitionHandlers.handleUpdatePhaseExecution.bind(this.definitionHandlers),
             'export_workflow_package': this.definitionHandlers.handleExportWorkflowPackage.bind(this.definitionHandlers),
+            'get_workflow_import_source': this.definitionHandlers.handleGetWorkflowImportSource.bind(this.definitionHandlers),
+            'delete_workflow_definition': this.definitionHandlers.handleDeleteWorkflowDefinition.bind(this.definitionHandlers),
             // Subworkflow Handlers (3 tools)
             'start_sub_workflow': this.subworkflowHandlers.handleStartSubWorkflow.bind(this.subworkflowHandlers),
             'complete_sub_workflow': this.subworkflowHandlers.handleCompleteSubWorkflow.bind(this.subworkflowHandlers),

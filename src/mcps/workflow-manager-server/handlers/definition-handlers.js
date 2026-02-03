@@ -464,6 +464,61 @@ export class DefinitionHandlers {
         };
     }
 
+    async handleGetWorkflowImportSource(args) {
+        const { id } = args;
+
+        // Get the most recent import record for this workflow
+        const result = await this.db.query(
+            `SELECT source_path, source_type, imported_at
+            FROM fictionlab.workflow_imports
+            WHERE workflow_id = $1
+            ORDER BY imported_at DESC
+            LIMIT 1`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return {
+                workflow_id: id,
+                sourcePath: null,
+                message: 'No import record found for this workflow'
+            };
+        }
+
+        return {
+            workflow_id: id,
+            sourcePath: result.rows[0].source_path,
+            sourceType: result.rows[0].source_type,
+            importedAt: result.rows[0].imported_at
+        };
+    }
+
+    async handleDeleteWorkflowDefinition(args) {
+        const { id } = args;
+
+        // Delete import records first (foreign key constraint)
+        await this.db.query(
+            `DELETE FROM fictionlab.workflow_imports WHERE workflow_id = $1`,
+            [id]
+        );
+
+        // Delete the workflow definition
+        const result = await this.db.query(
+            `DELETE FROM fictionlab.workflow_definitions WHERE workflow_id = $1 RETURNING workflow_id`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            throw new Error(`Workflow definition ${id} not found`);
+        }
+
+        return {
+            workflow_id: id,
+            deleted: true,
+            message: `Workflow ${id} deleted successfully`
+        };
+    }
+
     // Helper function to generate README
     generateReadme(workflow) {
         const readme = `# ${workflow.name}
