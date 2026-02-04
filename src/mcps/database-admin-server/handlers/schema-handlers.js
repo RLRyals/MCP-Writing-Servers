@@ -21,6 +21,19 @@ export class SchemaHandlers {
     }
 
     /**
+     * Parse schema-qualified table name into schema and table parts
+     * @param {string} tableName - Table name, optionally schema-qualified (e.g., "fictionlab.workflow_definitions")
+     * @returns {{ schema: string, table: string }} Parsed schema and table name
+     */
+    _parseTableName(tableName) {
+        if (tableName.includes('.')) {
+            const [schema, table] = tableName.split('.');
+            return { schema, table };
+        }
+        return { schema: 'public', table: tableName };
+    }
+
+    /**
      * Handler for db_get_schema tool
      * Gets detailed schema information for a table
      */
@@ -30,6 +43,9 @@ export class SchemaHandlers {
         try {
             // Validate table exists in whitelist
             SecurityValidator.validateTable(table);
+
+            // Parse schema-qualified table name
+            const { schema: schemaName, table: tableName } = this._parseTableName(table);
 
             // Check cache first (unless refresh requested)
             const cacheKey = SchemaCache.generateKey(table, 'schema');
@@ -62,12 +78,12 @@ export class SchemaHandlers {
                         c.ordinal_position
                     ) AS column_comment
                 FROM information_schema.columns c
-                WHERE c.table_schema = 'public'
-                    AND c.table_name = $1
+                WHERE c.table_schema = $1
+                    AND c.table_name = $2
                 ORDER BY c.ordinal_position;
             `;
 
-            const columnsResult = await this.db.query(schemaQuery, [table]);
+            const columnsResult = await this.db.query(schemaQuery, [schemaName, tableName]);
 
             if (columnsResult.rows.length === 0) {
                 return {
@@ -88,12 +104,12 @@ export class SchemaHandlers {
                 LEFT JOIN information_schema.key_column_usage kcu
                     ON tc.constraint_name = kcu.constraint_name
                     AND tc.table_schema = kcu.table_schema
-                WHERE tc.table_schema = 'public'
-                    AND tc.table_name = $1
+                WHERE tc.table_schema = $1
+                    AND tc.table_name = $2
                 ORDER BY tc.constraint_type, kcu.ordinal_position;
             `;
 
-            const constraintsResult = await this.db.query(constraintsQuery, [table]);
+            const constraintsResult = await this.db.query(constraintsQuery, [schemaName, tableName]);
 
             // Get indexes
             const indexesQuery = `
@@ -110,11 +126,11 @@ export class SchemaHandlers {
                 JOIN pg_am am ON i.relam = am.oid
                 WHERE t.relkind = 'r'
                     AND t.relname = $1
-                    AND t.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+                    AND t.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = $2)
                 ORDER BY i.relname, a.attnum;
             `;
 
-            const indexesResult = await this.db.query(indexesQuery, [table]);
+            const indexesResult = await this.db.query(indexesQuery, [tableName, schemaName]);
 
             // Format the response
             const schema = {
@@ -160,9 +176,10 @@ export class SchemaHandlers {
         const { include_system_tables = false, pattern } = params;
 
         try {
-            // Build query based on parameters
+            // Build query based on parameters - include both public and fictionlab schemas
             let query = `
                 SELECT
+                    t.table_schema,
                     t.table_name,
                     t.table_type,
                     pg_catalog.obj_description(
@@ -179,7 +196,7 @@ export class SchemaHandlers {
                          WHERE c.relname = t.table_name AND n.nspname = t.table_schema)
                     ) AS table_size_bytes
                 FROM information_schema.tables t
-                WHERE t.table_schema = 'public'
+                WHERE t.table_schema IN ('public', 'fictionlab')
             `;
 
             const queryParams = [];
@@ -196,14 +213,18 @@ export class SchemaHandlers {
                 query += ` AND t.table_name NOT LIKE 'pg_%' AND t.table_name NOT LIKE 'sql_%'`;
             }
 
-            query += ` ORDER BY t.table_name`;
+            query += ` ORDER BY t.table_schema, t.table_name`;
 
             const result = await this.db.query(query, queryParams);
 
             // Filter to only whitelisted tables for security
+            // Use schema-qualified name for non-public schemas
             const whitelistedTables = result.rows.filter(row => {
+                const tableName = row.table_schema === 'public'
+                    ? row.table_name
+                    : `${row.table_schema}.${row.table_name}`;
                 try {
-                    SecurityValidator.validateTable(row.table_name);
+                    SecurityValidator.validateTable(tableName);
                     return true;
                 } catch (error) {
                     return false;
@@ -214,15 +235,22 @@ export class SchemaHandlers {
                 success: true,
                 count: whitelistedTables.length,
                 total_in_database: result.rows.length,
-                tables: whitelistedTables.map(row => ({
-                    name: row.table_name,
-                    type: row.table_type,
-                    comment: row.table_comment,
-                    column_count: parseInt(row.column_count),
-                    size_bytes: parseInt(row.table_size_bytes) || 0,
-                    size_human: this._formatBytes(parseInt(row.table_size_bytes) || 0),
-                    is_whitelisted: true
-                }))
+                tables: whitelistedTables.map(row => {
+                    // Use schema-qualified name for non-public schemas
+                    const tableName = row.table_schema === 'public'
+                        ? row.table_name
+                        : `${row.table_schema}.${row.table_name}`;
+                    return {
+                        name: tableName,
+                        schema: row.table_schema,
+                        type: row.table_type,
+                        comment: row.table_comment,
+                        column_count: parseInt(row.column_count),
+                        size_bytes: parseInt(row.table_size_bytes) || 0,
+                        size_human: this._formatBytes(parseInt(row.table_size_bytes) || 0),
+                        is_whitelisted: true
+                    };
+                })
             };
 
         } catch (error) {
@@ -296,6 +324,9 @@ export class SchemaHandlers {
             // Validate table exists in whitelist
             SecurityValidator.validateTable(table);
 
+            // Parse schema-qualified table name
+            const { schema: schemaName, table: tableName } = this._parseTableName(table);
+
             // Check cache first
             const cacheKey = SchemaCache.generateKey(table, 'columns', { include_metadata });
             const cached = this.cache.get(cacheKey);
@@ -316,12 +347,12 @@ export class SchemaHandlers {
                     column_default,
                     udt_name
                 FROM information_schema.columns
-                WHERE table_schema = 'public'
-                    AND table_name = $1
+                WHERE table_schema = $1
+                    AND table_name = $2
                 ORDER BY ordinal_position;
             `;
 
-            const result = await this.db.query(query, [table]);
+            const result = await this.db.query(query, [schemaName, tableName]);
 
             if (result.rows.length === 0) {
                 return {

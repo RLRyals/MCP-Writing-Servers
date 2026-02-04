@@ -7,6 +7,19 @@ export class RelationshipMapper {
     }
 
     /**
+     * Parse schema-qualified table name into schema and table parts
+     * @param {string} tableName - Table name, optionally schema-qualified (e.g., "fictionlab.workflow_definitions")
+     * @returns {{ schema: string, table: string }} Parsed schema and table name
+     */
+    _parseTableName(tableName) {
+        if (tableName.includes('.')) {
+            const [schema, table] = tableName.split('.');
+            return { schema, table };
+        }
+        return { schema: 'public', table: tableName };
+    }
+
+    /**
      * Get all foreign key relationships for a table
      * @param {string} table - Table name
      * @param {number} depth - How many levels to traverse (1-3)
@@ -44,11 +57,15 @@ export class RelationshipMapper {
      * @private
      */
     async _getDirectRelationships(table, relationships, visited) {
+        // Parse schema-qualified table name
+        const { schema: schemaName, table: tableName } = this._parseTableName(table);
+
         // Query for foreign keys FROM this table (parents)
         const parentsQuery = `
             SELECT
                 tc.constraint_name,
                 kcu.column_name,
+                ccu.table_schema AS foreign_table_schema,
                 ccu.table_name AS foreign_table_name,
                 ccu.column_name AS foreign_column_name
             FROM information_schema.table_constraints AS tc
@@ -60,17 +77,21 @@ export class RelationshipMapper {
                 AND ccu.table_schema = tc.table_schema
             WHERE tc.constraint_type = 'FOREIGN KEY'
                 AND tc.table_name = $1
-                AND tc.table_schema = 'public'
+                AND tc.table_schema = $2
             ORDER BY kcu.column_name;
         `;
 
-        const parentsResult = await this.db.query(parentsQuery, [table]);
+        const parentsResult = await this.db.query(parentsQuery, [tableName, schemaName]);
 
         for (const row of parentsResult.rows) {
+            // Use schema-qualified name for non-public schema tables
+            const foreignTable = row.foreign_table_schema === 'public'
+                ? row.foreign_table_name
+                : `${row.foreign_table_schema}.${row.foreign_table_name}`;
             relationships.parents.push({
                 constraint_name: row.constraint_name,
                 column: row.column_name,
-                references_table: row.foreign_table_name,
+                references_table: foreignTable,
                 references_column: row.foreign_column_name,
                 type: 'foreign_key'
             });
@@ -79,6 +100,7 @@ export class RelationshipMapper {
         // Query for foreign keys TO this table (children)
         const childrenQuery = `
             SELECT
+                tc.table_schema AS child_table_schema,
                 tc.table_name AS child_table,
                 tc.constraint_name,
                 kcu.column_name AS child_column,
@@ -92,16 +114,20 @@ export class RelationshipMapper {
                 AND ccu.table_schema = tc.table_schema
             WHERE tc.constraint_type = 'FOREIGN KEY'
                 AND ccu.table_name = $1
-                AND tc.table_schema = 'public'
+                AND ccu.table_schema = $2
             ORDER BY tc.table_name, kcu.column_name;
         `;
 
-        const childrenResult = await this.db.query(childrenQuery, [table]);
+        const childrenResult = await this.db.query(childrenQuery, [tableName, schemaName]);
 
         for (const row of childrenResult.rows) {
+            // Use schema-qualified name for non-public schema tables
+            const childTable = row.child_table_schema === 'public'
+                ? row.child_table
+                : `${row.child_table_schema}.${row.child_table}`;
             relationships.children.push({
                 constraint_name: row.constraint_name,
-                table: row.child_table,
+                table: childTable,
                 column: row.child_column,
                 references_column: row.parent_column,
                 type: 'foreign_key'
