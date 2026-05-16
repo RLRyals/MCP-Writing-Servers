@@ -201,7 +201,21 @@ async function loadServers() {
         console.error('✗ Failed to load Workflow Manager Server:', error.message);
     }
 
-    console.error(`\n✅ Successfully loaded ${servers.length}/11 servers\n`);
+    try {
+        // Outline Server (phase aggregator)
+        const { OutlinePhaseMCPServer } = await import('./config-mcps/outline-server/index.js');
+        servers.push({
+            name: 'outline',
+            path: '/outline',
+            serverClass: OutlinePhaseMCPServer,
+            port: 3013
+        });
+        console.error('✓ Outline Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Outline Server:', error.message);
+    }
+
+    console.error(`\n✅ Successfully loaded ${servers.length}/12 servers\n`);
     return servers;
 }
 

@@ -5,7 +5,7 @@
 # Complete production stack with:
 # - PostgreSQL database with optimized settings
 # - PgBouncer connection pooling
-# - MCP Writing Servers (11 servers on ports 3001-3010, 3012)
+# - MCP Writing Servers (13 servers on ports 3001-3013)
 # - Prometheus monitoring
 # - Grafana dashboards
 # - Health checks and auto-restart
@@ -112,7 +112,7 @@ services:
       # Persist logs
       - log_data:/app/logs
     ports:
-      # Expose all 11 MCP server ports
+      # Expose all MCP server ports
       - "3001:3001"  # book-planning
       - "3002:3002"  # series-planning
       - "3003:3003"  # chapter-planning
@@ -125,6 +125,7 @@ services:
       - "3010:3010"  # database-admin
       - "3011:3011"  # npe
       - "3012:3012"  # workflow-manager
+      - "3013:3013"  # outline
     depends_on:
       pgbouncer:
         condition: service_healthy

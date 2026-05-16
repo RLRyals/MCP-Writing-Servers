@@ -26,6 +26,9 @@
     },
     "author": {
       "url": "http://mcp-writing-servers:3009/"
+    },
+    "outline": {
+      "url": "http://mcp-writing-servers:3013/"
     }
   }
 }
