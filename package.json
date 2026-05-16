@@ -1,11 +1,16 @@
 {
-  "name": "mcp-writing-servers",
+  "name": "@fictionlab/db",
   "version": "1.0.0",
-  "description": "MCP Writing Servers for TypingMind Integration",
-  "main": "src/http-sse-server.js",
-  "directories": {
-    "doc": "docs"
+  "description": "FictionLab database layer and MCP writing servers",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./db": "./src/db.js",
+    "./migrations": "./src/migrations.js",
+    "./mcp-servers": "./src/mcps/index.js",
+    "./http-server": "./src/http-sse-server.js"
   },
+  "main": "src/index.js",
   "scripts": {
     "start": "node src/http-sse-server.js",
     "start:stdio": "node src/stdio-server.js",
@@ -17,14 +22,19 @@
     "type": "git",
     "url": "git+https://github.com/RLRyals/MCP-Writing-Servers.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
+  "keywords": ["fictionlab", "mcp", "writing", "database"],
+  "author": "FictionLab",
+  "license": "UNLICENSED",
+  "publishConfig": {
+    "access": "restricted"
+  },
   "bugs": {
     "url": "https://github.com/RLRyals/MCP-Writing-Servers/issues"
   },
   "homepage": "https://github.com/RLRyals/MCP-Writing-Servers#readme",
+  "peerDependencies": {
+    "pg": "^8"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
     "cors": "^2.8.5",
