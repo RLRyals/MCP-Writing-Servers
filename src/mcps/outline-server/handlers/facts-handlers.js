@@ -29,6 +29,58 @@ export class FactsHandlers {
         }
     }
 
+    async handleUpdateFact(args) {
+        try {
+            const { fact_id, statement, fact_type, canonical_source, notes } = args;
+            const updates = [];
+            const values = [];
+            let p = 1;
+            if (statement !== undefined)        { updates.push(`statement = $${p++}`);        values.push(statement); }
+            if (fact_type !== undefined)        { updates.push(`fact_type = $${p++}`);        values.push(fact_type); }
+            if (canonical_source !== undefined) { updates.push(`canonical_source = $${p++}`); values.push(canonical_source); }
+            if (notes !== undefined)            { updates.push(`notes = $${p++}`);            values.push(notes); }
+            if (updates.length === 0) {
+                return { content: [{ type: 'text', text: 'No fields to update.' }] };
+            }
+            updates.push(`updated_at = CURRENT_TIMESTAMP`);
+            values.push(fact_id);
+            const result = await this.db.query(
+                `UPDATE outline_facts SET ${updates.join(', ')} WHERE id = $${p} RETURNING *`,
+                values
+            );
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: `Fact ${fact_id} not found.` }] };
+            }
+            const f = result.rows[0];
+            return { content: [{ type: 'text', text:
+                `Updated fact #${f.id}.\nStatement: ${f.statement}`
+            }] };
+        } catch (err) {
+            throw new Error(`update_fact failed: ${err.message}`);
+        }
+    }
+
+    async handleDeleteFact(args) {
+        try {
+            const { fact_id, confirm } = args;
+            if (!confirm) {
+                throw new Error('confirm must be true to delete.');
+            }
+            const result = await this.db.query(
+                `DELETE FROM outline_facts WHERE id = $1 RETURNING id, statement`,
+                [fact_id]
+            );
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: `Fact ${fact_id} not found.` }] };
+            }
+            return { content: [{ type: 'text', text:
+                `Deleted fact #${result.rows[0].id}. Any scene_events referencing it had fact_id set to NULL.`
+            }] };
+        } catch (err) {
+            throw new Error(`delete_fact failed: ${err.message}`);
+        }
+    }
+
     async handleListFacts(args) {
         try {
             const { series_root_id, fact_type, search } = args;

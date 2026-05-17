@@ -18,7 +18,8 @@ export const worksToolsSchema = [
                 title: { type: 'string', description: 'Title' },
                 summary: { type: 'string', description: 'Short summary (shown in rollups)' },
                 content: { type: 'string', description: 'Long-form outline text at this zoom level' },
-                status: { type: 'string', description: 'planned, outlined, drafted, etc.' },
+                status: { type: 'string', description: 'planned, outlined, drafted, abandoned, etc.' },
+                pov_character_id: { type: 'integer', description: 'POV character (FK to characters.id). Usually set on scene nodes.' },
                 legacy_series_id: { type: 'integer', description: 'Optional cross-link to series(id)' },
                 legacy_book_id: { type: 'integer', description: 'Optional cross-link to books(id)' },
                 legacy_chapter_id: { type: 'integer', description: 'Optional cross-link to chapters(id)' },
@@ -29,7 +30,7 @@ export const worksToolsSchema = [
     },
     {
         name: 'update_work',
-        description: 'Update an outline node\'s title, summary, content, status, or sequence.',
+        description: 'Update an outline node\'s title, summary, content, status, sequence, or POV character. Setting status to "abandoned" is the soft-delete convention.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -38,9 +39,63 @@ export const worksToolsSchema = [
                 summary: { type: 'string' },
                 content: { type: 'string' },
                 status: { type: 'string' },
-                sequence: { type: 'integer' }
+                sequence: { type: 'integer' },
+                pov_character_id: { type: 'integer', description: 'Pass null/0 to clear' }
             },
             required: ['work_id']
+        }
+    },
+    {
+        name: 'delete_work',
+        description: 'Hard-delete an outline node and all its descendants (cascade). For non-destructive removal, use update_work to set status="abandoned" instead.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                work_id: { type: 'integer' },
+                confirm: { type: 'boolean', description: 'Must be true to actually delete' }
+            },
+            required: ['work_id','confirm']
+        }
+    },
+    {
+        name: 'list_series_roots',
+        description: 'List all series-root outline nodes (work_type=\'series\'). Use this when you don\'t know any work IDs yet.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                include_abandoned: { type: 'boolean', description: 'Default false' }
+            },
+            required: []
+        }
+    },
+    {
+        name: 'list_works',
+        description: 'List outline nodes with filters. The bootstrap query for finding work_ids.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                parent_id: { type: 'integer', description: 'Direct children of this parent only' },
+                ancestor_id: { type: 'integer', description: 'All descendants of this node (recursive)' },
+                work_type: { type: 'string', enum: ['series','book','act','beat','chapter','scene'] },
+                status: { type: 'string' },
+                title_search: { type: 'string', description: 'ILIKE match on title' },
+                limit: { type: 'integer', description: 'Default 100' }
+            },
+            required: []
+        }
+    },
+    {
+        name: 'search_works',
+        description: 'Full-text-ish search across title, summary, and content. Scope optional. Useful for "where did I describe X" lookups.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                query: { type: 'string', description: 'ILIKE match against title/summary/content' },
+                ancestor_id: { type: 'integer', description: 'Limit to descendants of this node' },
+                work_type: { type: 'string' },
+                limit: { type: 'integer', description: 'Default 50' }
+            },
+            required: ['query']
         }
     },
     {
@@ -112,6 +167,33 @@ export const factsToolsSchema = [
                 search: { type: 'string', description: 'ILIKE match against statement' }
             },
             required: []
+        }
+    },
+    {
+        name: 'update_fact',
+        description: 'Edit a fact (correct the canonical wording, retype, add notes).',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                fact_id: { type: 'integer' },
+                statement: { type: 'string' },
+                fact_type: { type: 'string' },
+                canonical_source: { type: 'string' },
+                notes: { type: 'string' }
+            },
+            required: ['fact_id']
+        }
+    },
+    {
+        name: 'delete_fact',
+        description: 'Hard-delete a fact. Any scene_events that reference it have their fact_id set to NULL (the event row survives).',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                fact_id: { type: 'integer' },
+                confirm: { type: 'boolean' }
+            },
+            required: ['fact_id','confirm']
         }
     }
 ];

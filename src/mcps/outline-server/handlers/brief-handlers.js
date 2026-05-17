@@ -29,13 +29,15 @@ export class BriefHandlers {
             }
             const self = selfResult.rows[0];
 
-            // 2. Ancestry (root -> self).
+            // 2. Ancestry (root -> self). Include pov_character_id so the brief
+            //    can auto-populate present_character_ids from the scene's POV
+            //    (and any ancestor that pins POV).
             const ancestryResult = await this.db.query(
                 `WITH RECURSIVE up AS (
-                     SELECT id, parent_id, work_type, sequence, title, summary, 0 AS depth
+                     SELECT id, parent_id, work_type, sequence, title, summary, pov_character_id, 0 AS depth
                        FROM outline_works WHERE id = $1
                      UNION ALL
-                     SELECT w.id, w.parent_id, w.work_type, w.sequence, w.title, w.summary, u.depth + 1
+                     SELECT w.id, w.parent_id, w.work_type, w.sequence, w.title, w.summary, w.pov_character_id, u.depth + 1
                        FROM outline_works w JOIN up u ON w.id = u.parent_id
                  )
                  SELECT * FROM up ORDER BY depth DESC`,
@@ -44,6 +46,18 @@ export class BriefHandlers {
 
             // Find series root for scoping.
             const rootId = ancestryResult.rows.find(r => !r.parent_id)?.id ?? null;
+
+            // Auto-merge POV characters into present_character_ids.
+            // Priority: self.pov_character_id, then any ancestor's, then explicit caller list.
+            const autoIds = new Set();
+            if (self.pov_character_id) autoIds.add(self.pov_character_id);
+            for (const a of ancestryResult.rows) {
+                if (a.pov_character_id) autoIds.add(a.pov_character_id);
+            }
+            const effectiveCharacterIds = Array.from(new Set([
+                ...autoIds,
+                ...present_character_ids
+            ]));
 
             // 3. Events recorded on this node.
             const eventsResult = await this.db.query(
@@ -95,7 +109,7 @@ export class BriefHandlers {
 
             // 6. Per-character knowledge state at this work.
             const knowledgeByChar = [];
-            for (const cid of present_character_ids) {
+            for (const cid of effectiveCharacterIds) {
                 const charResult = await this.db.query(
                     `SELECT name FROM characters WHERE id = $1`, [cid]
                 );
@@ -147,6 +161,12 @@ export class BriefHandlers {
             lines.push('');
 
             lines.push('## This work');
+            if (self.pov_character_id) {
+                const povName = (await this.db.query(
+                    `SELECT name FROM characters WHERE id = $1`, [self.pov_character_id]
+                )).rows[0]?.name;
+                lines.push(`**POV:** ${povName ?? `character#${self.pov_character_id}`}`);
+            }
             if (self.summary) lines.push(`**Summary:** ${self.summary}`);
             if (self.content) lines.push(`\n${self.content}`);
             lines.push('');

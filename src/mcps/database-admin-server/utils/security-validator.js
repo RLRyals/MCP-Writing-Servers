@@ -70,10 +70,10 @@ export const WHITELIST = {
     migrations: ['id', 'filename', 'applied_at'],
 
     // Outline server tables (event-sourced outline hierarchy + ledgers)
-    outline_works: ['id', 'parent_id', 'work_type', 'sequence', 'title', 'summary', 'content', 'status', 'legacy_series_id', 'legacy_book_id', 'legacy_chapter_id', 'legacy_scene_id', 'created_at', 'updated_at'],
+    outline_works: ['id', 'parent_id', 'work_type', 'sequence', 'title', 'summary', 'content', 'status', 'pov_character_id', 'legacy_series_id', 'legacy_book_id', 'legacy_chapter_id', 'legacy_scene_id', 'created_at', 'updated_at'],
     outline_facts: ['id', 'series_root_id', 'statement', 'fact_type', 'canonical_source', 'notes', 'created_at', 'updated_at'],
     outline_promises: ['id', 'series_root_id', 'promise_type', 'label', 'description', 'planted_work_id', 'payoff_work_id', 'status', 'carries_to_series', 'notes', 'created_at', 'updated_at'],
-    outline_evidence_chain: ['id', 'series_root_id', 'produced_work_id', 'finding', 'who_acts_on_it', 'action_gap_note', 'converted_work_id', 'status', 'notes', 'created_at', 'updated_at'],
+    outline_evidence_chain: ['id', 'series_root_id', 'produced_work_id', 'finding', 'who_acts_on_it', 'action_gap_note', 'converted_work_id', 'converted_fact_id', 'status', 'notes', 'created_at', 'updated_at'],
     outline_scene_events: ['id', 'work_id', 'event_type', 'fact_id', 'promise_id', 'evidence_id', 'character_id', 'ordering', 'note', 'created_at']
 };
 

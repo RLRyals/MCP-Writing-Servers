@@ -17,6 +17,7 @@ export class WorksHandlers {
         try {
             const {
                 parent_id, work_type, sequence, title, summary, content, status,
+                pov_character_id,
                 legacy_series_id, legacy_book_id, legacy_chapter_id, legacy_scene_id
             } = args;
 
@@ -30,11 +31,13 @@ export class WorksHandlers {
             const result = await this.db.query(
                 `INSERT INTO outline_works
                     (parent_id, work_type, sequence, title, summary, content, status,
+                     pov_character_id,
                      legacy_series_id, legacy_book_id, legacy_chapter_id, legacy_scene_id)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                  RETURNING *`,
                 [parent_id || null, work_type, sequence ?? 0, title || null,
                  summary || null, content || null, status || 'planned',
+                 pov_character_id || null,
                  legacy_series_id || null, legacy_book_id || null,
                  legacy_chapter_id || null, legacy_scene_id || null]
             );
@@ -58,7 +61,7 @@ export class WorksHandlers {
 
     async handleUpdateWork(args) {
         try {
-            const { work_id, title, summary, content, status, sequence } = args;
+            const { work_id, title, summary, content, status, sequence, pov_character_id } = args;
 
             const updates = [];
             const values = [];
@@ -68,6 +71,10 @@ export class WorksHandlers {
             if (content !== undefined)  { updates.push(`content = $${p++}`);  values.push(content); }
             if (status !== undefined)   { updates.push(`status = $${p++}`);   values.push(status); }
             if (sequence !== undefined) { updates.push(`sequence = $${p++}`); values.push(sequence); }
+            if (pov_character_id !== undefined) {
+                updates.push(`pov_character_id = $${p++}`);
+                values.push(pov_character_id || null);
+            }
 
             if (updates.length === 0) {
                 return { content: [{ type: 'text', text: 'No fields to update.' }] };
@@ -213,6 +220,178 @@ export class WorksHandlers {
             }] };
         } catch (err) {
             throw new Error(`get_ancestry failed: ${err.message}`);
+        }
+    }
+
+    async handleDeleteWork(args) {
+        try {
+            const { work_id, confirm } = args;
+            if (!confirm) {
+                throw new Error('confirm must be true to hard-delete. To soft-delete, call update_work with status="abandoned".');
+            }
+            const result = await this.db.query(
+                `DELETE FROM outline_works WHERE id = $1 RETURNING id, work_type, title`,
+                [work_id]
+            );
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: `Work ${work_id} not found.` }] };
+            }
+            const w = result.rows[0];
+            return { content: [{ type: 'text', text:
+                `Deleted [${w.work_type}#${w.id}] ${w.title ?? '(untitled)'} and all descendants (cascade).`
+            }] };
+        } catch (err) {
+            throw new Error(`delete_work failed: ${err.message}`);
+        }
+    }
+
+    async handleListSeriesRoots(args) {
+        try {
+            const { include_abandoned = false } = args;
+            const where = [`work_type = 'series'`];
+            if (!include_abandoned) where.push(`status <> 'abandoned'`);
+            const result = await this.db.query(
+                `SELECT id, title, summary, status, created_at
+                   FROM outline_works
+                  WHERE ${where.join(' AND ')}
+                  ORDER BY sequence, id`
+            );
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: 'No series roots found.' }] };
+            }
+            const lines = result.rows.map(r =>
+                `[series#${r.id}] ${r.title ?? '(untitled)'} (${r.status})` +
+                (r.summary ? `\n    ${r.summary}` : '')
+            );
+            return { content: [{ type: 'text', text:
+                `${result.rows.length} series root(s):\n\n${lines.join('\n\n')}`
+            }] };
+        } catch (err) {
+            throw new Error(`list_series_roots failed: ${err.message}`);
+        }
+    }
+
+    async handleListWorks(args) {
+        try {
+            const { parent_id, ancestor_id, work_type, status, title_search, limit = 100 } = args;
+
+            const where = [];
+            const values = [];
+            let p = 1;
+            if (parent_id !== undefined) { where.push(`w.parent_id = $${p++}`); values.push(parent_id); }
+            if (work_type)               { where.push(`w.work_type = $${p++}`); values.push(work_type); }
+            if (status)                  { where.push(`w.status = $${p++}`);    values.push(status); }
+            if (title_search)            { where.push(`w.title ILIKE $${p++}`); values.push(`%${title_search}%`); }
+
+            let sql;
+            if (ancestor_id !== undefined) {
+                sql = `
+                    WITH RECURSIVE subtree AS (
+                        SELECT id FROM outline_works WHERE id = $${p++}
+                        UNION ALL
+                        SELECT c.id FROM outline_works c JOIN subtree s ON c.parent_id = s.id
+                    )
+                    SELECT w.id, w.parent_id, w.work_type, w.sequence, w.title, w.summary, w.status
+                      FROM outline_works w
+                     WHERE w.id IN (SELECT id FROM subtree)
+                       AND w.id <> $${p - 1}
+                       ${where.length ? 'AND ' + where.join(' AND ') : ''}
+                     ORDER BY w.work_type, w.sequence, w.id
+                     LIMIT $${p++}`;
+                values.push(ancestor_id, limit);
+            } else {
+                sql = `
+                    SELECT w.id, w.parent_id, w.work_type, w.sequence, w.title, w.summary, w.status
+                      FROM outline_works w
+                     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+                     ORDER BY w.work_type, w.sequence, w.id
+                     LIMIT $${p++}`;
+                values.push(limit);
+            }
+
+            const result = await this.db.query(sql, values);
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: 'No works match.' }] };
+            }
+            const lines = result.rows.map(r =>
+                `[${r.work_type}#${r.id}] ${r.title ?? '(untitled)'} ` +
+                `(parent ${r.parent_id ?? 'none'}, seq ${r.sequence}, ${r.status})` +
+                (r.summary ? `\n    ${r.summary}` : '')
+            );
+            return { content: [{ type: 'text', text:
+                `${result.rows.length} work(s):\n\n${lines.join('\n\n')}`
+            }] };
+        } catch (err) {
+            throw new Error(`list_works failed: ${err.message}`);
+        }
+    }
+
+    async handleSearchWorks(args) {
+        try {
+            const { query, ancestor_id, work_type, limit = 50 } = args;
+            if (!query || !query.trim()) {
+                throw new Error('query is required.');
+            }
+
+            const values = [];
+            let p = 1;
+            const pattern = `%${query}%`;
+            values.push(pattern, pattern, pattern);
+            const matchClause = `(w.title ILIKE $${p++} OR w.summary ILIKE $${p++} OR w.content ILIKE $${p++})`;
+
+            const extra = [];
+            if (work_type) { extra.push(`w.work_type = $${p++}`); values.push(work_type); }
+
+            let sql;
+            if (ancestor_id !== undefined) {
+                sql = `
+                    WITH RECURSIVE subtree AS (
+                        SELECT id FROM outline_works WHERE id = $${p++}
+                        UNION ALL
+                        SELECT c.id FROM outline_works c JOIN subtree s ON c.parent_id = s.id
+                    )
+                    SELECT w.id, w.work_type, w.sequence, w.title, w.summary,
+                           CASE
+                             WHEN w.title ILIKE $1 THEN 'title'
+                             WHEN w.summary ILIKE $2 THEN 'summary'
+                             ELSE 'content'
+                           END AS hit_field
+                      FROM outline_works w
+                     WHERE ${matchClause}
+                       AND w.id IN (SELECT id FROM subtree)
+                       ${extra.length ? 'AND ' + extra.join(' AND ') : ''}
+                     ORDER BY w.work_type, w.sequence, w.id
+                     LIMIT $${p++}`;
+                values.push(ancestor_id, limit);
+            } else {
+                sql = `
+                    SELECT w.id, w.work_type, w.sequence, w.title, w.summary,
+                           CASE
+                             WHEN w.title ILIKE $1 THEN 'title'
+                             WHEN w.summary ILIKE $2 THEN 'summary'
+                             ELSE 'content'
+                           END AS hit_field
+                      FROM outline_works w
+                     WHERE ${matchClause}
+                       ${extra.length ? 'AND ' + extra.join(' AND ') : ''}
+                     ORDER BY w.work_type, w.sequence, w.id
+                     LIMIT $${p++}`;
+                values.push(limit);
+            }
+
+            const result = await this.db.query(sql, values);
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: `No works match "${query}".` }] };
+            }
+            const lines = result.rows.map(r =>
+                `[${r.work_type}#${r.id}] ${r.title ?? '(untitled)'} — hit in ${r.hit_field}` +
+                (r.summary ? `\n    ${r.summary}` : '')
+            );
+            return { content: [{ type: 'text', text:
+                `${result.rows.length} match(es) for "${query}":\n\n${lines.join('\n\n')}`
+            }] };
+        } catch (err) {
+            throw new Error(`search_works failed: ${err.message}`);
         }
     }
 }
