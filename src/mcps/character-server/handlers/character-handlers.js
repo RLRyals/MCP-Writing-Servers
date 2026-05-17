@@ -22,31 +22,41 @@ export class CharacterHandlers {
 
     async handleListCharacters(args) {
         try {
-            const { series_id, character_type, status } = args;
+            const { series_id, character_type, status, search } = args;
 
-            let query = `
+            if (!series_id && !search) {
+                throw new Error('Provide series_id or search (or both). Unscoped listing is not supported.');
+            }
+
+            const where = [];
+            const params = [];
+            let p = 1;
+
+            if (series_id) {
+                where.push(`c.series_id = $${p++}`);
+                params.push(series_id);
+            }
+            if (character_type) {
+                where.push(`c.character_type = $${p++}`);
+                params.push(character_type);
+            }
+            if (status) {
+                where.push(`c.status = $${p++}`);
+                params.push(status);
+            }
+            if (search) {
+                where.push(`(c.name ILIKE $${p} OR c.full_name ILIKE $${p} OR EXISTS (SELECT 1 FROM unnest(c.aliases) a WHERE a ILIKE $${p}))`);
+                params.push(`%${search}%`);
+                p++;
+            }
+
+            const query = `
                 SELECT c.*, s.title as series_title
                 FROM characters c
                 JOIN series s ON c.series_id = s.id
-                WHERE c.series_id = $1
+                WHERE ${where.join(' AND ')}
+                ORDER BY c.character_type, c.name
             `;
-
-            const params = [series_id];
-            let paramCount = 1;
-
-            if (character_type) {
-                paramCount++;
-                query += ` AND c.character_type = $${paramCount}`;
-                params.push(character_type);
-            }
-
-            if (status) {
-                paramCount++;
-                query += ` AND c.status = $${paramCount}`;
-                params.push(status);
-            }
-
-            query += ` ORDER BY c.character_type, c.name`;
 
             const result = await this.db.query(query, params);
 

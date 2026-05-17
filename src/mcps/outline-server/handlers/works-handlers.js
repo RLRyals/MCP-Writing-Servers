@@ -18,7 +18,7 @@ export class WorksHandlers {
             const {
                 parent_id, work_type, sequence, title, summary, content, status,
                 pov_character_id,
-                legacy_series_id, legacy_book_id, legacy_chapter_id, legacy_scene_id
+                series_id, book_id, chapter_id, scene_id
             } = args;
 
             if (work_type !== 'series' && !parent_id) {
@@ -32,14 +32,14 @@ export class WorksHandlers {
                 `INSERT INTO outline_works
                     (parent_id, work_type, sequence, title, summary, content, status,
                      pov_character_id,
-                     legacy_series_id, legacy_book_id, legacy_chapter_id, legacy_scene_id)
+                     series_id, book_id, chapter_id, scene_id)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                  RETURNING *`,
                 [parent_id || null, work_type, sequence ?? 0, title || null,
                  summary || null, content || null, status || 'planned',
                  pov_character_id || null,
-                 legacy_series_id || null, legacy_book_id || null,
-                 legacy_chapter_id || null, legacy_scene_id || null]
+                 series_id || null, book_id || null,
+                 chapter_id || null, scene_id || null]
             );
 
             const w = result.rows[0];

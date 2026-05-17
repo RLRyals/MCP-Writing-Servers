@@ -20,10 +20,10 @@ export const worksToolsSchema = [
                 content: { type: 'string', description: 'Long-form outline text at this zoom level' },
                 status: { type: 'string', description: 'planned, outlined, drafted, abandoned, etc.' },
                 pov_character_id: { type: 'integer', description: 'POV character (FK to characters.id). Usually set on scene nodes.' },
-                legacy_series_id: { type: 'integer', description: 'Optional cross-link to series(id)' },
-                legacy_book_id: { type: 'integer', description: 'Optional cross-link to books(id)' },
-                legacy_chapter_id: { type: 'integer', description: 'Optional cross-link to chapters(id)' },
-                legacy_scene_id: { type: 'integer', description: 'Optional cross-link to chapter_scenes(id)' }
+                series_id: { type: 'integer', description: 'Optional cross-link to series(id)' },
+                book_id: { type: 'integer', description: 'Optional cross-link to books(id)' },
+                chapter_id: { type: 'integer', description: 'Optional cross-link to chapters(id)' },
+                scene_id: { type: 'integer', description: 'Optional cross-link to chapter_scenes(id)' }
             },
             required: ['work_type','sequence']
         }

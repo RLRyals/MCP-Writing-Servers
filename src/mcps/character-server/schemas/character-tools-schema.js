@@ -8,11 +8,12 @@
 export const characterToolsSchema = [
     {
         name: 'list_characters',
-        description: 'List characters in series',
+        description: 'List/search characters. Provide series_id, search, or both. Unscoped listing not supported.',
         inputSchema: {
             type: 'object',
             properties: {
-                series_id: { type: 'integer', description: 'Series ID' },
+                series_id: { type: 'integer', description: 'Series ID (optional if search is provided)' },
+                search: { type: 'string', description: 'ILIKE match against name, full_name, or aliases' },
                 character_type: {
                     type: 'string',
                     enum: ['main', 'supporting', 'minor', 'antagonist'],
@@ -24,7 +25,7 @@ export const characterToolsSchema = [
                     description: 'Status filter?'
                 }
             },
-            required: ['series_id']
+            required: []
         }
     },
     {
