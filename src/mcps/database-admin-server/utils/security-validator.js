@@ -17,7 +17,7 @@ export const WHITELIST = {
 
     // Character management
     characters: ['id', 'series_id', 'name', 'role', 'description', 'appearance', 'personality', 'backstory', 'goals', 'created_at', 'updated_at'],
-    character_arcs: ['id', 'character_id', 'book_id', 'arc_type', 'description', 'starting_state', 'ending_state', 'created_at', 'updated_at'],
+    character_arcs: ['id', 'character_id', 'book_id', 'arc_name', 'arc_description', 'starting_state', 'ending_state', 'key_events', 'growth_areas', 'created_at', 'updated_at'],
     character_relationships: ['id', 'character_id', 'related_character_id', 'relationship_type', 'description', 'status', 'created_at', 'updated_at'],
     character_timeline_events: ['id', 'character_id', 'event_date', 'event_type', 'description', 'chapter_id', 'created_at', 'updated_at'],
     character_knowledge: ['id', 'character_id', 'knowledge_type', 'description', 'acquired_chapter_id', 'created_at', 'updated_at'],

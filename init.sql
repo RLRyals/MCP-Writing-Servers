@@ -259,6 +259,7 @@ CREATE TABLE IF NOT EXISTS character_arcs (
     character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     arc_name VARCHAR(255),
+    arc_description TEXT,
     starting_state TEXT,
     ending_state TEXT,
     key_events TEXT[],

@@ -1,9 +1,11 @@
 // src/mcps/outline-server/handlers/brief-handlers.js
 // get_scene_brief: one tool call that loads the drafting context window
 // for a single outline node. Composes ancestry + outline + events +
-// open promises (scoped) + unconverted evidence (scoped) + per-character
-// knowledge state. The intent: avoid forcing the drafting LLM through
-// 6 tool calls before it can start writing.
+// open promises (scoped to this work's ancestry + referenced events) +
+// unconverted evidence (same scope) + per-character knowledge state.
+// The intent: avoid forcing the drafting LLM through 6 tool calls before
+// it can start writing. For series-wide promise/evidence lookups, callers
+// should use list_open_promises / list_unconverted_evidence directly.
 
 import { briefToolsSchema } from '../schemas/outline-tools-schema.js';
 
@@ -44,8 +46,10 @@ export class BriefHandlers {
                 [work_id]
             );
 
-            // Find series root for scoping.
-            const rootId = ancestryResult.rows.find(r => !r.parent_id)?.id ?? null;
+            // Ancestor + self ids — used to scope promises/evidence to "connected
+            // to this work" rather than "anywhere in the series." Callers who
+            // want the broader list should call list_open_promises directly.
+            const ancestorAndSelfIds = ancestryResult.rows.map(r => r.id);
 
             // Auto-merge POV characters into present_character_ids.
             // Priority: self.pov_character_id, then any ancestor's, then explicit caller list.
@@ -76,36 +80,39 @@ export class BriefHandlers {
                 [work_id]
             );
 
-            // 4. Open promises in scope: planted in the series, not yet paid.
-            //    We surface ALL open ones for the series; the LLM picks which
-            //    are candidates to advance/pay here.
-            let openPromises = { rows: [] };
-            if (rootId) {
-                openPromises = await this.db.query(
-                    `SELECT p.*, w.title AS planted_title, w.work_type AS planted_type
-                       FROM outline_promises p
-                       LEFT JOIN outline_works w ON p.planted_work_id = w.id
-                      WHERE p.series_root_id = $1
-                        AND p.status IN ('open','progressing')
-                        AND p.payoff_work_id IS NULL
-                      ORDER BY p.id`,
-                    [rootId]
-                );
-            }
+            // 4. Open promises connected to this work: planted on the current
+            //    work or one of its ancestors, OR referenced in this scene's
+            //    recorded events. The series-wide list is available via
+            //    list_open_promises for callers that need broader scope.
+            const referencedPromiseIds = eventsResult.rows
+                .map(e => e.promise_id)
+                .filter(id => id != null);
+            const openPromises = await this.db.query(
+                `SELECT p.*, w.title AS planted_title, w.work_type AS planted_type
+                   FROM outline_promises p
+                   LEFT JOIN outline_works w ON p.planted_work_id = w.id
+                  WHERE p.status IN ('open','progressing')
+                    AND p.payoff_work_id IS NULL
+                    AND (p.planted_work_id = ANY($1::int[]) OR p.id = ANY($2::int[]))
+                  ORDER BY p.id`,
+                [ancestorAndSelfIds, referencedPromiseIds]
+            );
 
-            // 5. Unconverted evidence in scope.
-            let unconverted = { rows: [] };
-            if (rootId) {
-                unconverted = await this.db.query(
-                    `SELECT e.*, w.title AS produced_title, w.work_type AS produced_type
-                       FROM outline_evidence_chain e
-                       LEFT JOIN outline_works w ON e.produced_work_id = w.id
-                      WHERE e.series_root_id = $1
-                        AND e.status = 'unconverted'
-                      ORDER BY e.id`,
-                    [rootId]
-                );
-            }
+            // 5. Unconverted evidence connected to this work: produced on the
+            //    current work or an ancestor, OR referenced in this scene's
+            //    events. Same scoping rationale as open promises.
+            const referencedEvidenceIds = eventsResult.rows
+                .map(e => e.evidence_id)
+                .filter(id => id != null);
+            const unconverted = await this.db.query(
+                `SELECT e.*, w.title AS produced_title, w.work_type AS produced_type
+                   FROM outline_evidence_chain e
+                   LEFT JOIN outline_works w ON e.produced_work_id = w.id
+                  WHERE e.status = 'unconverted'
+                    AND (e.produced_work_id = ANY($1::int[]) OR e.id = ANY($2::int[]))
+                  ORDER BY e.id`,
+                [ancestorAndSelfIds, referencedEvidenceIds]
+            );
 
             // 6. Per-character knowledge state at this work.
             const knowledgeByChar = [];
@@ -187,7 +194,8 @@ export class BriefHandlers {
             }
             lines.push('');
 
-            lines.push(`## Open promises (${openPromises.rows.length})`);
+            lines.push(`## Open promises connected to this work (${openPromises.rows.length})`);
+            lines.push('_(planted on this work or an ancestor, or referenced in this scene\'s events. Use list_open_promises for series-wide scope.)_');
             if (openPromises.rows.length === 0) {
                 lines.push('_(none)_');
             } else {
@@ -198,7 +206,8 @@ export class BriefHandlers {
             }
             lines.push('');
 
-            lines.push(`## Unconverted evidence (${unconverted.rows.length})`);
+            lines.push(`## Unconverted evidence connected to this work (${unconverted.rows.length})`);
+            lines.push('_(produced on this work or an ancestor, or referenced in this scene\'s events.)_');
             if (unconverted.rows.length === 0) {
                 lines.push('_(none)_');
             } else {

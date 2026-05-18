@@ -355,7 +355,7 @@ export const sceneEventsToolsSchema = [
 export const briefToolsSchema = [
     {
         name: 'get_scene_brief',
-        description: 'One-call drafting brief: scene\'s outline + ancestry summaries (chapter/act/book/series) + scene_events + open promises that could pay off here + unconverted evidence in scope + each present character\'s knowledge state. Use at the start of a drafting session to load context.',
+        description: 'One-call drafting brief: scene\'s outline + ancestry summaries (chapter/act/book/series) + scene_events + open promises connected to this work (planted on this work or an ancestor, or already referenced in this scene\'s events) + unconverted evidence connected to this work + each present character\'s knowledge state. Use at the start of a drafting session to load context. For series-wide open-promise lookups, call list_open_promises separately.',
         inputSchema: {
             type: 'object',
             properties: {

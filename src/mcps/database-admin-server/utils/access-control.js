@@ -22,6 +22,8 @@ export const ACCESS_CONTROL = {
         'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
         'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
         'npe_compliance_summary',
+        // Outline server tables
+        'outline_works', 'outline_facts', 'outline_promises', 'outline_evidence_chain', 'outline_scene_events',
         // FictionLab Workflow tables
         'fictionlab.workflow_definitions', 'fictionlab.workflow_versions', 'fictionlab.workflow_imports', 'fictionlab.active_workflows'
     ],
@@ -39,6 +41,8 @@ export const ACCESS_CONTROL = {
         'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
         'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
         'npe_compliance_summary',
+        // Outline server tables
+        'outline_works', 'outline_facts', 'outline_promises', 'outline_evidence_chain', 'outline_scene_events',
         // FictionLab Workflow tables
         'fictionlab.workflow_definitions', 'fictionlab.workflow_versions', 'fictionlab.workflow_imports', 'fictionlab.active_workflows'
     ],
@@ -56,6 +60,8 @@ export const ACCESS_CONTROL = {
         'npe_causality_chains', 'npe_causal_links', 'npe_character_decisions', 'npe_scene_validation',
         'npe_pacing_analysis', 'npe_stakes_pressure', 'npe_information_economy', 'npe_relationship_tension',
         'npe_compliance_summary',
+        // Outline server tables
+        'outline_works', 'outline_facts', 'outline_promises', 'outline_evidence_chain', 'outline_scene_events',
         // FictionLab Workflow tables
         'fictionlab.workflow_definitions', 'fictionlab.workflow_versions', 'fictionlab.workflow_imports', 'fictionlab.active_workflows'
     ],
