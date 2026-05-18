@@ -131,7 +131,34 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             });
         }
 
-        
+        const updateCharacterArcSchema = characterArcTools.find(t => t.name === 'update_character_arc');
+        if (updateCharacterArcSchema) {
+            tools.push({
+                ...updateCharacterArcSchema,
+                name: 'update_character_arc',
+                description: 'Update an existing character arc (partial update; identify by id or character_id+book_id)'
+            });
+        }
+
+        const deleteCharacterArcSchema = characterArcTools.find(t => t.name === 'delete_character_arc');
+        if (deleteCharacterArcSchema) {
+            tools.push({
+                ...deleteCharacterArcSchema,
+                name: 'delete_character_arc',
+                description: 'Delete a character arc (identify by id or character_id+book_id)'
+            });
+        }
+
+        const listCharacterArcsSchema = characterArcTools.find(t => t.name === 'list_character_arcs');
+        if (listCharacterArcsSchema) {
+            tools.push({
+                ...listCharacterArcsSchema,
+                name: 'list_character_arcs',
+                description: 'List character arcs, optionally filtered by character_id, book_id, or series_id'
+            });
+        }
+
+
 
         // =============================================
         //  RELATIONSHIP ARC TOOLS (Phase-specific)
@@ -191,6 +218,9 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             'update_character_detail': (args) => this.characterDetailHandlers.handleUpdateCharacterDetail(args),
             'check_character_knowledge': (args) => this.characterKnowledgeHandlers.handleCheckCharacterKnowledge(args),
             'create_character_arc': (args) => this.characterArcHandlers.handleCreateCharacterArc(args),
+            'update_character_arc': (args) => this.characterArcHandlers.handleUpdateCharacterArc(args),
+            'delete_character_arc': (args) => this.characterArcHandlers.handleDeleteCharacterArc(args),
+            'list_character_arcs': (args) => this.characterArcHandlers.handleListCharacterArcs(args),
 
             // Relationship handlers
             'create_relationship_arc': (args) => this.relationshipHandlers.handleCreateRelationshipArc(args),

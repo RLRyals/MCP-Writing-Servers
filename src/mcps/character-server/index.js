@@ -15,6 +15,7 @@ import { CharacterHandlers } from './handlers/character-handlers.js';
 import { CharacterDetailHandlers } from './handlers/character-detail-handlers.js';
 import { CharacterKnowledgeHandlers } from './handlers/character-knowledge-handlers.js';
 import { CharacterTimelineHandlers } from './handlers/character-timeline-handlers.js';
+import { CharacterArcHandlers } from './handlers/character-arc-handlers.js';
 
 class CharacterMCPServer extends BaseMCPServer {
     constructor() {
@@ -33,6 +34,7 @@ class CharacterMCPServer extends BaseMCPServer {
         this.characterDetailHandlers = new CharacterDetailHandlers(this.db);
         this.characterKnowledgeHandlers = new CharacterKnowledgeHandlers(this.db);
         this.characterTimelineHandlers = new CharacterTimelineHandlers(this.db);
+        this.characterArcHandlers = new CharacterArcHandlers(this.db);
 
         // Properly bind handler methods to maintain context
         this.bindHandlerMethods();
@@ -79,6 +81,12 @@ class CharacterMCPServer extends BaseMCPServer {
         this.handleGetCharacterTimeline = this.characterTimelineHandlers.handleGetCharacterTimeline.bind(this.characterTimelineHandlers);
         this.handleCheckCharacterContinuity = this.characterTimelineHandlers.handleCheckCharacterContinuity.bind(this.characterTimelineHandlers);
         this.handleGetCharactersInChapter = this.characterTimelineHandlers.handleGetCharactersInChapter.bind(this.characterTimelineHandlers);
+
+        // Bind character arc handler methods
+        this.handleCreateCharacterArc = this.characterArcHandlers.handleCreateCharacterArc.bind(this.characterArcHandlers);
+        this.handleUpdateCharacterArc = this.characterArcHandlers.handleUpdateCharacterArc.bind(this.characterArcHandlers);
+        this.handleDeleteCharacterArc = this.characterArcHandlers.handleDeleteCharacterArc.bind(this.characterArcHandlers);
+        this.handleListCharacterArcs = this.characterArcHandlers.handleListCharacterArcs.bind(this.characterArcHandlers);
     }
 
     async testDatabaseConnection() {
@@ -117,7 +125,10 @@ class CharacterMCPServer extends BaseMCPServer {
             ...this.characterKnowledgeHandlers.getCharacterKnowledgeTools(),
 
             // Character Timeline Management Tools
-            ...this.characterTimelineHandlers.getCharacterTimelineTools()
+            ...this.characterTimelineHandlers.getCharacterTimelineTools(),
+
+            // Character Arc Management Tools
+            ...this.characterArcHandlers.getCharacterArcTools()
         ];
     }
 
@@ -148,7 +159,13 @@ class CharacterMCPServer extends BaseMCPServer {
             'track_character_presence': this.handleTrackCharacterPresence,
             'get_character_timeline': this.handleGetCharacterTimeline,
             'check_character_continuity': this.handleCheckCharacterContinuity,
-            'get_characters_in_chapter': this.handleGetCharactersInChapter
+            'get_characters_in_chapter': this.handleGetCharactersInChapter,
+
+            // Character Arc Handlers
+            'create_character_arc': this.handleCreateCharacterArc,
+            'update_character_arc': this.handleUpdateCharacterArc,
+            'delete_character_arc': this.handleDeleteCharacterArc,
+            'list_character_arcs': this.handleListCharacterArcs
         };
         return handlers[toolName];
     }
