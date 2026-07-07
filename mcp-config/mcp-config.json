@@ -29,6 +29,9 @@
     },
     "outline": {
       "url": "http://mcp-writing-servers:3013/"
+    },
+    "kanban": {
+      "url": "http://mcp-writing-servers:3015/"
     }
   }
 }

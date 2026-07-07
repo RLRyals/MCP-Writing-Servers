@@ -60,9 +60,17 @@ export async function runMigration(migrationPath) {
                 `);
             }
             
-            // Record this migration
+            // Record this migration. Idempotent (ON CONFLICT DO NOTHING) because
+            // every migration file since 025 already self-records via its own
+            // guarded `INSERT INTO migrations (filename) ... ON CONFLICT DO NOTHING`
+            // inside the DO block above (see migrations/README.md convention) —
+            // without ON CONFLICT here, this unconditional insert throws
+            // "duplicate key value violates unique constraint migrations_filename_key"
+            // on every single migration that follows that convention (i.e. all of
+            // them), rolling back the whole transaction. Fixed 2026-07-06 while
+            // applying 042_kanban_tables.sql (GH issue #58).
             await client.query(
-                'INSERT INTO migrations (filename) VALUES ($1)',
+                'INSERT INTO migrations (filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING',
                 [path.basename(migrationPath)]
             );
         });

@@ -215,7 +215,21 @@ async function loadServers() {
         console.error('✗ Failed to load Outline Server:', error.message);
     }
 
-    console.error(`\n✅ Successfully loaded ${servers.length}/12 servers\n`);
+    try {
+        // Kanban Server (S11 kanban board plugin, GH issue #58)
+        const { KanbanMCPServer } = await import('./mcps/kanban-server/index.js');
+        servers.push({
+            name: 'kanban',
+            path: '/kanban',
+            serverClass: KanbanMCPServer,
+            port: 3015
+        });
+        console.error('✓ Kanban Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Kanban Server:', error.message);
+    }
+
+    console.error(`\n✅ Successfully loaded ${servers.length}/13 servers\n`);
     return servers;
 }
 

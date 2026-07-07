@@ -1,0 +1,296 @@
+#!/usr/bin/env node
+// test/kanban-server/smoke-test.js
+// Exercises every kanban-server tool once against the LIVE database, over the
+// real stdio transport (the same path Claude Code / agents use per S11
+// decision 6). Creates its own throwaway test board (never touches the real
+// dev-backlog board), then deletes that board at the end — ON DELETE CASCADE
+// takes its columns/cards/comments/links/activity rows with it, so this test
+// leaves nothing behind.
+//
+// Run: node test/kanban-server/smoke-test.js
+// Requires: DATABASE_URL in .env (see src/shared/database.js), the
+// 042_kanban_tables.sql migration already applied.
+
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import pg from 'pg';
+import dotenv from 'dotenv';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, '../..');
+dotenv.config({ path: path.join(repoRoot, '.env') });
+
+const { Pool } = pg;
+
+let passCount = 0;
+let failCount = 0;
+
+function check(label, condition, detail) {
+    if (condition) {
+        console.log(`  PASS  ${label}`);
+        passCount++;
+    } else {
+        console.log(`  FAIL  ${label}${detail ? ' -- ' + detail : ''}`);
+        failCount++;
+    }
+}
+
+async function callTool(client, name, args) {
+    const result = await client.callTool({ name, arguments: args || {} });
+    if (result.isError) {
+        throw new Error(`Tool ${name} returned an error: ${result.content?.[0]?.text}`);
+    }
+    const text = result.content?.[0]?.text;
+    return text ? JSON.parse(text) : undefined;
+}
+
+async function main() {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+    // Safety-net pre-clean: the quick-add sub-test below lands a card on the
+    // REAL dev-backlog board (that's the point of the test — no board given
+    // -> resolves to dev-backlog). If a prior run of this script was
+    // interrupted before its own cleanup ran, sweep any stragglers by title
+    // pattern before we start, so dev-backlog never accumulates test junk.
+    await pool.query(`DELETE FROM fictionlab.kanban_cards WHERE title LIKE 'Quick-add smoke test %'`);
+
+    // --- Test scaffolding: an ephemeral board, never the real dev-backlog ---
+    const testBoardKey = `kanban-smoke-test-${Date.now()}`;
+    const boardResult = await pool.query(
+        `INSERT INTO fictionlab.kanban_boards (board_key, name, description)
+         VALUES ($1, 'Kanban Smoke Test', 'Ephemeral board created by test/kanban-server/smoke-test.js')
+         RETURNING id`,
+        [testBoardKey]
+    );
+    const testBoardId = boardResult.rows[0].id;
+
+    await pool.query(
+        `INSERT INTO fictionlab.kanban_columns (board_id, status_key, name, position, is_agent_pickup)
+         VALUES
+            ($1, 'backlog', 'Backlog', 0, FALSE),
+            ($1, 'ready', 'Ready to work', 1, TRUE),
+            ($1, 'in_progress', 'In progress', 2, FALSE),
+            ($1, 'review', 'In review', 3, FALSE),
+            ($1, 'blocked', 'Blocked', 4, FALSE),
+            ($1, 'done', 'Done', 5, FALSE),
+            ($1, 'archived', 'Archived', 6, FALSE),
+            ($1, 'claimed', 'Claimed', 7, FALSE)`,
+        [testBoardId]
+    );
+
+    console.log(`Created ephemeral test board ${testBoardKey} (${testBoardId})`);
+
+    const devBacklogResult = await pool.query(
+        `SELECT id FROM fictionlab.kanban_boards WHERE board_key = 'dev-backlog'`
+    );
+    const devBacklogId = devBacklogResult.rows[0]?.id;
+
+    const transport = new StdioClientTransport({
+        command: process.execPath,
+        args: [path.join(repoRoot, 'src/mcps/kanban-server/stdio-adapter.js')],
+        cwd: repoRoot,
+        env: { ...process.env, MCP_STDIO_MODE: 'true' }
+    });
+
+    const client = new Client({ name: 'kanban-smoke-test', version: '1.0.0' }, { capabilities: {} });
+    await client.connect(transport);
+    console.log('Connected to kanban-server over stdio.\n');
+
+    try {
+        // 1. list_boards
+        const boardsRes = await callTool(client, 'list_boards', {});
+        check('list_boards returns our test board', boardsRes.boards.some((b) => b.id === testBoardId));
+
+        // 2. get_board
+        const getBoardRes = await callTool(client, 'get_board', { board_id: testBoardId });
+        check('get_board returns 8 columns', getBoardRes.columns.length === 8, `got ${getBoardRes.columns.length}`);
+        check(
+            'get_board ready column is_agent_pickup=true',
+            getBoardRes.columns.find((c) => c.status_key === 'ready')?.is_agent_pickup === true
+        );
+
+        // 3. create_card (full form)
+        const createRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: 'Smoke test card',
+            body: 'Body text for the smoke test card.',
+            labels: ['test'],
+            priority: 'high'
+        });
+        const cardId = createRes.card.id;
+        check('create_card returns a card id', !!cardId);
+        check("create_card default status is 'ready'", createRes.card.status === 'ready');
+        check("create_card created_by defaults to 'rebecca'", createRes.card.created_by === 'rebecca');
+        check(
+            "create_card review_policy defaults to 'review-required' (no doc/spec signal)",
+            createRes.card.review_policy === 'review-required'
+        );
+
+        // 3b. create_card quick-add (title only, no board given -> dev-backlog)
+        const quickAddRes = await callTool(client, 'create_card', { title: `Quick-add smoke test ${Date.now()}` });
+        check('create_card quick-add succeeds with title only', !!quickAddRes.card.id);
+        check(
+            'create_card quick-add resolves to dev-backlog',
+            quickAddRes.card.board_id === devBacklogId
+        );
+        // Clean up the quick-add card immediately (it landed on the REAL dev-backlog board).
+        // Belt-and-suspenders: delete by id AND by the same title pattern the
+        // pre-clean sweep uses, in case anything else produced a stray row.
+        await pool.query('DELETE FROM fictionlab.kanban_cards WHERE id = $1', [quickAddRes.card.id]);
+        await pool.query(`DELETE FROM fictionlab.kanban_cards WHERE title LIKE 'Quick-add smoke test %'`);
+
+        // 4. list_cards filters
+        const unassignedRes = await callTool(client, 'list_cards', { board_id: testBoardId, assignee: '__unassigned__' });
+        check('list_cards __unassigned__ finds the new card', unassignedRes.cards.some((c) => c.id === cardId));
+
+        const claimableRes = await callTool(client, 'list_cards', { board_id: testBoardId, agent_claimable_only: true });
+        check('list_cards agent_claimable_only finds the new card', claimableRes.cards.some((c) => c.id === cardId));
+
+        const labelRes = await callTool(client, 'list_cards', { board_id: testBoardId, label: 'test' });
+        check('list_cards label filter finds the new card', labelRes.cards.some((c) => c.id === cardId));
+
+        // 5. update_card (partial patch)
+        const updateRes = await callTool(client, 'update_card', {
+            card_id: cardId,
+            priority: 'urgent',
+            labels: ['test', 'updated']
+        });
+        check("update_card applied priority='urgent'", updateRes.card.priority === 'urgent');
+        check('update_card applied labels patch', JSON.stringify(updateRes.card.labels.sort()) === JSON.stringify(['test', 'updated']));
+        check('update_card left title untouched (partial patch)', updateRes.card.title === 'Smoke test card');
+
+        // 5b. update_card review_policy — escalate-only guard (S11 §11.5 decision 5)
+        const docsCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: 'Docs-only smoke test card',
+            body: 'This is a docs-only change, no code touched.'
+        });
+        const docsCardId = docsCardRes.card.id;
+        check("create_card infers review_policy='auto-done' for a docs-only card", docsCardRes.card.review_policy === 'auto-done');
+
+        const escalateRes = await callTool(client, 'update_card', { card_id: docsCardId, review_policy: 'review-required' });
+        check("update_card allows escalating auto-done -> review-required", escalateRes.card.review_policy === 'review-required');
+
+        let downgradeRejected = false;
+        try {
+            await callTool(client, 'update_card', { card_id: docsCardId, review_policy: 'auto-done' });
+        } catch (e) {
+            downgradeRejected = /downgrad/i.test(e.message);
+        }
+        check('update_card rejects downgrading review-required -> auto-done', downgradeRejected);
+
+        // 6. claim_card (win)
+        const claimRes = await callTool(client, 'claim_card', { card_id: cardId, agent: 'claude-code:smoke-test' });
+        check('claim_card wins the claim', claimRes.claimed === true);
+        check("claim_card sets status='claimed'", claimRes.card?.status === 'claimed');
+        check('claim_card sets assignee to the claiming agent', claimRes.card?.assignee === 'claude-code:smoke-test');
+
+        // 6b. claim_card (second attempt on an already-claimed card)
+        const reClaimRes = await callTool(client, 'claim_card', { card_id: cardId, agent: 'claude-code:other-session' });
+        check('claim_card second attempt is denied', reClaimRes.claimed === false);
+        check("claim_card second attempt reason='already_claimed'", reClaimRes.reason === 'already_claimed', reClaimRes.reason);
+
+        // 7. move_card -> review (review-required card should auto-reassign to rebecca)
+        const moveRes = await callTool(client, 'move_card', { card_id: cardId, to_status: 'review', actor: 'claude-code:smoke-test' });
+        check("move_card sets status='review'", moveRes.card.status === 'review');
+        check(
+            "move_card auto-reassigns review-required card to 'rebecca'",
+            moveRes.card.assignee === 'rebecca'
+        );
+
+        // 8. comment_card
+        const commentRes = await callTool(client, 'comment_card', {
+            card_id: cardId,
+            author: 'claude-code:smoke-test',
+            body: 'Finished the smoke test scenario.'
+        });
+        check('comment_card returns a comment id', !!commentRes.comment.id);
+
+        // 9. add_card_link
+        const linkRes = await callTool(client, 'add_card_link', {
+            card_id: cardId,
+            link_type: 'github_issue',
+            ref: 'RLRyals/MCP-Writing-Servers#58',
+            label: 'Implementation issue'
+        });
+        check('add_card_link returns a link id', !!linkRes.link.id);
+
+        // 10. get_card (detail-drawer call)
+        const detailRes = await callTool(client, 'get_card', { card_id: cardId });
+        check('get_card returns the card', detailRes.card.id === cardId);
+        check('get_card returns >=1 comment', detailRes.comments.length >= 1);
+        check('get_card returns >=1 link', detailRes.links.length >= 1);
+        check('get_card returns activity rows', detailRes.activity.length > 0);
+        const actions = detailRes.activity.map((a) => a.action).sort();
+        check(
+            'get_card activity includes created/claimed/moved/commented/linked',
+            ['claim_denied', 'claimed', 'commented', 'created', 'linked', 'moved', 'updated'].every((a) => actions.includes(a)),
+            JSON.stringify(actions)
+        );
+
+        // 11. archive_card
+        const archiveRes = await callTool(client, 'archive_card', { card_id: cardId, actor: 'rebecca' });
+        check("archive_card sets status='archived'", archiveRes.card.status === 'archived');
+
+        const excludesArchivedRes = await callTool(client, 'list_cards', { board_id: testBoardId });
+        check('list_cards default excludes archived card', !excludesArchivedRes.cards.some((c) => c.id === cardId));
+
+        const includesArchivedRes = await callTool(client, 'list_cards', { board_id: testBoardId, include_archived: true });
+        check('list_cards include_archived:true finds the archived card', includesArchivedRes.cards.some((c) => c.id === cardId));
+
+        // --- Human-reserve guard ---
+        const humanCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: "Rebecca's card",
+            assignee: 'rebecca'
+        });
+        const humanCardId = humanCardRes.card.id;
+        check(
+            'create_card with assignee=rebecca sets agent_claimable=false (trigger)',
+            humanCardRes.card.agent_claimable === false
+        );
+
+        const humanClaimRes = await callTool(client, 'claim_card', {
+            card_id: humanCardId,
+            agent: 'claude-code:smoke-test',
+            expected_status: humanCardRes.card.status
+        });
+        check('claim_card on a rebecca-assigned card is denied', humanClaimRes.claimed === false);
+        check(
+            "claim_card on a rebecca-assigned card reason='reserved_for_human'",
+            humanClaimRes.reason === 'reserved_for_human',
+            humanClaimRes.reason
+        );
+
+        const humanCardAfter = await pool.query('SELECT assignee, status FROM fictionlab.kanban_cards WHERE id = $1', [humanCardId]);
+        check(
+            'claim_card denial caused no state change on the rebecca card',
+            humanCardAfter.rows[0].assignee === 'rebecca'
+        );
+
+        // claim_card must reject agent:'rebecca' outright
+        let rejectedRebeccaAgent = false;
+        try {
+            await callTool(client, 'claim_card', { card_id: humanCardId, agent: 'rebecca' });
+        } catch (e) {
+            rejectedRebeccaAgent = /rebecca/i.test(e.message);
+        }
+        check("claim_card rejects agent:'rebecca' outright", rejectedRebeccaAgent);
+    } finally {
+        await client.close();
+        // Cascade-delete the ephemeral test board (columns/cards/comments/links/activity all go with it).
+        await pool.query('DELETE FROM fictionlab.kanban_boards WHERE id = $1', [testBoardId]);
+        console.log(`\nCleaned up ephemeral test board ${testBoardKey}`);
+        await pool.end();
+    }
+
+    console.log(`\n${passCount} passed, ${failCount} failed.`);
+    process.exit(failCount > 0 ? 1 : 0);
+}
+
+main().catch((error) => {
+    console.error('Smoke test crashed:', error);
+    process.exit(1);
+});
