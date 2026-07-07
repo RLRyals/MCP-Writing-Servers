@@ -35,7 +35,8 @@ const serverConfigs = {
     'outline': { path: './config-mcps/outline-server/index.js', className: 'OutlinePhaseMCPServer' },
     'author': { path: './mcps/author-server/index.js', className: 'AuthorMCPServer' },
     'database-admin': { path: './mcps/database-admin-server/index.js', className: 'DatabaseAdminMCPServer' },
-    'workflow-manager': { path: './mcps/workflow-manager-server/index.js', className: 'WorkflowManagerMCPServer' }
+    'workflow-manager': { path: './mcps/workflow-manager-server/index.js', className: 'WorkflowManagerMCPServer' },
+    'kanban': { path: './mcps/kanban-server/index.js', className: 'KanbanMCPServer' }
 };
 
 // Active SSE transports Map
