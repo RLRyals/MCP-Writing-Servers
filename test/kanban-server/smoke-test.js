@@ -278,6 +278,69 @@ async function main() {
             rejectedRebeccaAgent = /rebecca/i.test(e.message);
         }
         check("claim_card rejects agent:'rebecca' outright", rejectedRebeccaAgent);
+
+        // --- S14 fold-in minimum: due_at + due_filter + assignee='rebecca' ---
+        // (assignee='rebecca' filtering already exercised implicitly above via
+        // humanCardRes/humanCardAfter; this block adds explicit due-date coverage.)
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        const overdueCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: "Rebecca's overdue card",
+            assignee: 'rebecca',
+            due_at: yesterday
+        });
+        const overdueCardId = overdueCardRes.card.id;
+        check('create_card accepts due_at', overdueCardRes.card.due_at !== null && overdueCardRes.card.due_at !== undefined);
+
+        const upcomingCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: 'Upcoming-deadline card',
+            due_at: nextWeek
+        });
+        const upcomingCardId = upcomingCardRes.card.id;
+
+        const noDeadlineCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: 'No-deadline card'
+        });
+        const noDeadlineCardId = noDeadlineCardRes.card.id;
+        check('create_card without due_at leaves due_at null', noDeadlineCardRes.card.due_at === null);
+
+        const overdueListRes = await callTool(client, 'list_cards', { board_id: testBoardId, due_filter: 'overdue' });
+        check('list_cards due_filter=overdue finds the overdue card', overdueListRes.cards.some((c) => c.id === overdueCardId));
+        check('list_cards due_filter=overdue excludes the upcoming card', !overdueListRes.cards.some((c) => c.id === upcomingCardId));
+        check('list_cards due_filter=overdue excludes the no-deadline card', !overdueListRes.cards.some((c) => c.id === noDeadlineCardId));
+
+        const upcomingListRes = await callTool(client, 'list_cards', { board_id: testBoardId, due_filter: 'upcoming' });
+        check('list_cards due_filter=upcoming finds the upcoming card', upcomingListRes.cards.some((c) => c.id === upcomingCardId));
+        check('list_cards due_filter=upcoming excludes the overdue card', !upcomingListRes.cards.some((c) => c.id === overdueCardId));
+
+        const rebeccaQueueRes = await callTool(client, 'list_cards', { board_id: testBoardId, assignee: 'rebecca' });
+        check(
+            "list_cards assignee='rebecca' finds her overdue card ('assigned to Rebecca' filter minimum)",
+            rebeccaQueueRes.cards.some((c) => c.id === overdueCardId)
+        );
+        check(
+            "list_cards assignee='rebecca' excludes the unassigned upcoming card",
+            !rebeccaQueueRes.cards.some((c) => c.id === upcomingCardId)
+        );
+
+        // update_card due_at patch + '__clear__' sentinel
+        const setDueRes = await callTool(client, 'update_card', { card_id: noDeadlineCardId, due_at: nextWeek });
+        check('update_card sets due_at', !!setDueRes.card.due_at);
+
+        const clearDueRes = await callTool(client, 'update_card', { card_id: noDeadlineCardId, due_at: '__clear__' });
+        check("update_card due_at:'__clear__' removes the deadline", clearDueRes.card.due_at === null);
+
+        // A done card with a past due_at must never surface as overdue.
+        await callTool(client, 'move_card', { card_id: overdueCardId, to_status: 'done', actor: 'rebecca' });
+        const overdueAfterDoneRes = await callTool(client, 'list_cards', { board_id: testBoardId, due_filter: 'overdue' });
+        check(
+            'list_cards due_filter=overdue excludes a done card even with a past due_at',
+            !overdueAfterDoneRes.cards.some((c) => c.id === overdueCardId)
+        );
     } finally {
         await client.close();
         // Cascade-delete the ephemeral test board (columns/cards/comments/links/activity all go with it).

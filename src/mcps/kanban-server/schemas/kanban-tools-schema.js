@@ -24,7 +24,7 @@ export const kanbanToolsSchema = [
     },
     {
         name: 'list_cards',
-        description: 'Lists cards with filters: board, assignee, agent, status, label, priority, agent_claimable_only, include_archived, include_workflow_phase. The workhorse read tool.',
+        description: 'Lists cards with filters: board, assignee, agent, status, label, priority, agent_claimable_only, include_archived, include_workflow_phase, due_filter. The workhorse read tool.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -52,6 +52,11 @@ export const kanbanToolsSchema = [
                     default: false,
                     description: 'Join live phase for cards with workflow_registry_id'
                 },
+                due_filter: {
+                    type: 'string',
+                    enum: ['overdue', 'upcoming'],
+                    description: "S14 fold-in minimum. 'overdue': due_at is set, in the past, and status is not done/archived. 'upcoming': due_at is set and in the future (status not done/archived). Results are additionally ordered by due_at ascending when this is set."
+                },
                 limit: { type: 'integer', default: 200 }
             }
         }
@@ -73,6 +78,10 @@ export const kanbanToolsSchema = [
                 spec_ref: { type: 'string' },
                 issue_ref: { type: 'string' },
                 created_by: { type: 'string', default: 'rebecca' },
+                due_at: {
+                    type: 'string',
+                    description: 'ISO 8601 timestamp. Optional card deadline (S14 fold-in minimum). Omit for no deadline.'
+                },
                 review_policy: {
                     type: 'string',
                     enum: ['auto-done', 'review-required'],
@@ -126,6 +135,10 @@ export const kanbanToolsSchema = [
                 workflow_registry_id: {
                     type: 'string',
                     description: 'Link this card to a live workflow run (active_workflows.id)'
+                },
+                due_at: {
+                    type: 'string',
+                    description: "ISO 8601 timestamp. '__clear__' removes the deadline (same sentinel convention as assignee)."
                 },
                 metadata: { type: 'object' },
                 review_policy: {
