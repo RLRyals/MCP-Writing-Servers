@@ -16,7 +16,7 @@ export class CardHandlers {
     /**
      * list_cards — the workhorse filter. board_key/board_id, assignee, agent,
      * status, label, priority, agent_claimable_only, include_archived,
-     * include_workflow_phase, limit.
+     * include_workflow_phase, due_filter, limit.
      */
     async handleListCards(args) {
         const {
@@ -30,6 +30,7 @@ export class CardHandlers {
             agent_claimable_only = false,
             include_archived = false,
             include_workflow_phase = false,
+            due_filter,
             limit = 200
         } = args || {};
 
@@ -89,6 +90,15 @@ export class CardHandlers {
             conditions.push(`c.status <> 'archived'`);
         }
 
+        // S14 fold-in minimum: due/overdue filtering. Both branches exclude
+        // done/archived cards -- a completed or archived card is never
+        // "overdue" or "upcoming" in any UI-meaningful sense.
+        if (due_filter === 'overdue') {
+            conditions.push(`c.due_at IS NOT NULL AND c.due_at < NOW() AND c.status NOT IN ('done', 'archived')`);
+        } else if (due_filter === 'upcoming') {
+            conditions.push(`c.due_at IS NOT NULL AND c.due_at >= NOW() AND c.status NOT IN ('done', 'archived')`);
+        }
+
         const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
         const workflowJoin = include_workflow_phase
@@ -100,6 +110,18 @@ export class CardHandlers {
 
         params.push(limit);
 
+        // When filtering by due date, the soonest-due card matters more than
+        // priority/position ordering -- lead with due_at ascending. Otherwise
+        // keep the existing priority-then-position-then-created_at order.
+        const orderClause = due_filter
+            ? 'ORDER BY c.due_at ASC NULLS LAST, c.priority, c.position'
+            : `ORDER BY
+                CASE c.priority
+                    WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 ELSE 4
+                END,
+                c.position,
+                c.created_at`;
+
         const result = await this.db.query(
             `SELECT
                 c.*,
@@ -109,12 +131,7 @@ export class CardHandlers {
              FROM fictionlab.kanban_cards c
              ${workflowJoin}
              ${whereClause}
-             ORDER BY
-                CASE c.priority
-                    WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 ELSE 4
-                END,
-                c.position,
-                c.created_at
+             ${orderClause}
              LIMIT $${i}`,
             params
         );
@@ -145,6 +162,7 @@ export class CardHandlers {
             spec_ref,
             issue_ref,
             created_by = 'rebecca',
+            due_at,
             review_policy
         } = args || {};
 
@@ -170,8 +188,8 @@ export class CardHandlers {
 
         const result = await this.db.query(
             `INSERT INTO fictionlab.kanban_cards
-                (board_id, title, body, status, assignee, priority, labels, spec_ref, issue_ref, review_policy, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                (board_id, title, body, status, assignee, priority, labels, spec_ref, issue_ref, review_policy, created_by, due_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              RETURNING *`,
             [
                 resolvedBoardId,
@@ -184,7 +202,8 @@ export class CardHandlers {
                 spec_ref || null,
                 issue_ref || null,
                 resolvedReviewPolicy,
-                created_by
+                created_by,
+                due_at || null
             ]
         );
 
@@ -223,6 +242,7 @@ export class CardHandlers {
             spec_ref,
             issue_ref,
             workflow_registry_id,
+            due_at,
             metadata,
             review_policy
         } = args || {};
@@ -292,6 +312,15 @@ export class CardHandlers {
             sets.push(`workflow_registry_id = $${i++}`);
             params.push(workflow_registry_id);
             changedFields.push('workflow_registry_id');
+        }
+        if (due_at !== undefined) {
+            if (due_at === '__clear__') {
+                sets.push('due_at = NULL');
+            } else {
+                sets.push(`due_at = $${i++}`);
+                params.push(due_at);
+            }
+            changedFields.push('due_at');
         }
         if (metadata !== undefined) {
             sets.push(`metadata = metadata || $${i++}`);
