@@ -8,6 +8,7 @@
 
 const CARD_STATUS_ENUM = ['backlog', 'ready', 'claimed', 'in_progress', 'review', 'blocked', 'done', 'archived'];
 const PRIORITY_ENUM = ['low', 'normal', 'high', 'urgent'];
+const IDENTITY_KIND_ENUM = ['human', 'persona', 'agent'];
 
 export const kanbanToolsSchema = [
     // ---- 7 required tools ----
@@ -32,7 +33,7 @@ export const kanbanToolsSchema = [
                 board_id: { type: 'string' },
                 assignee: {
                     type: 'string',
-                    description: "Exact match. Special: 'rebecca' (her queue); '__unassigned__' (assignee IS NULL)"
+                    description: "Exact match against an identity id (see list_identities), e.g. 'rebecca' (her queue). Special: '__unassigned__' (assignee IS NULL)"
                 },
                 agent: {
                     type: 'string',
@@ -44,7 +45,7 @@ export const kanbanToolsSchema = [
                 agent_claimable_only: {
                     type: 'boolean',
                     default: false,
-                    description: "Only cards agents may claim (agent_claimable=TRUE AND assignee<>'rebecca')"
+                    description: 'Only cards agents may claim (agent_claimable=TRUE AND assignee is not an active human identity — see list_identities)'
                 },
                 include_archived: { type: 'boolean', default: false },
                 include_workflow_phase: {
@@ -72,7 +73,10 @@ export const kanbanToolsSchema = [
                 title: { type: 'string' },
                 body: { type: 'string' },
                 status: { type: 'string', enum: CARD_STATUS_ENUM, default: 'ready' },
-                assignee: { type: 'string' },
+                assignee: {
+                    type: 'string',
+                    description: 'Must be a registered active identity id (see list_identities / upsert_identity) — unknown ids are rejected, no silent auto-create.'
+                },
                 priority: { type: 'string', enum: PRIORITY_ENUM, default: 'normal' },
                 labels: { type: 'array', items: { type: 'string' } },
                 spec_ref: { type: 'string' },
@@ -93,14 +97,14 @@ export const kanbanToolsSchema = [
     },
     {
         name: 'claim_card',
-        description: "ATOMIC compare-and-swap claim. Two agents can NEVER both win the same card. NEVER pass agent:'rebecca' — her cards are permanently reserved.",
+        description: 'ATOMIC compare-and-swap claim. Two agents can NEVER both win the same card. NEVER pass an agent id that resolves to an active human identity (see list_identities) — human cards are permanently reserved.',
         inputSchema: {
             type: 'object',
             properties: {
                 card_id: { type: 'string' },
                 agent: {
                     type: 'string',
-                    description: "Claiming agent identity, e.g. 'claude-code:<sessionLabel>' or a .kcpps config id like 'local-qwen3-14b'. NEVER 'rebecca'."
+                    description: "Claiming agent identity, e.g. 'claude-code:<sessionLabel>', a .kcpps config id like 'local-qwen3-14b', or a persona id claiming on its own behalf. NEVER an id registered as kind='human'. First-seen ids are auto-registered as kind='agent'."
                 },
                 expected_status: {
                     type: 'string',
@@ -119,7 +123,7 @@ export const kanbanToolsSchema = [
     },
     {
         name: 'update_card',
-        description: "Partial patch of a card — only provided keys change. assignee:'rebecca' auto-clears agent_claimable (DB trigger); assignee:'__clear__' unassigns.",
+        description: "Partial patch of a card — only provided keys change. assignee must be a registered active identity (unknown ids rejected); one resolving to an active human identity auto-clears agent_claimable (DB trigger). assignee:'__clear__' unassigns.",
         inputSchema: {
             type: 'object',
             properties: {
@@ -127,7 +131,10 @@ export const kanbanToolsSchema = [
                 actor: { type: 'string', description: 'Who is editing (for the activity log)' },
                 title: { type: 'string' },
                 body: { type: 'string' },
-                assignee: { type: 'string' },
+                assignee: {
+                    type: 'string',
+                    description: "Must be a registered active identity id (see list_identities / upsert_identity), or '__clear__' to unassign."
+                },
                 priority: { type: 'string', enum: PRIORITY_ENUM },
                 labels: { type: 'array', items: { type: 'string' } },
                 spec_ref: { type: 'string' },
@@ -222,6 +229,37 @@ export const kanbanToolsSchema = [
                 actor: { type: 'string' }
             },
             required: ['card_id']
+        }
+    },
+
+    // ---- 2 identity tools (GH issue #62 — identities model) ----
+    {
+        name: 'list_identities',
+        description: "Lists registered kanban identities (human/persona/agent) — the set of ids create_card/update_card will accept as assignee. Defaults to active only.",
+        inputSchema: {
+            type: 'object',
+            properties: {
+                kind: { type: 'string', enum: IDENTITY_KIND_ENUM, description: 'Filter to a single kind' },
+                include_inactive: { type: 'boolean', default: false }
+            }
+        }
+    },
+    {
+        name: 'upsert_identity',
+        description: "Registers a new identity or updates an existing one's display_name/kind/active. The ONLY sanctioned way to add an assignee value create_card/update_card will accept — there is no silent auto-create on write.",
+        inputSchema: {
+            type: 'object',
+            properties: {
+                id: { type: 'string', description: 'Matches the assignee values this identity represents, e.g. rebecca, mom, blake-merrick' },
+                display_name: { type: 'string' },
+                kind: {
+                    type: 'string',
+                    enum: IDENTITY_KIND_ENUM,
+                    description: "human = never agent-claimable. persona = agent-claimable (an agent may act as this persona, including claiming as it). agent = agent-claimable registered worker identity."
+                },
+                active: { type: 'boolean', default: true }
+            },
+            required: ['id', 'kind']
         }
     }
 ];

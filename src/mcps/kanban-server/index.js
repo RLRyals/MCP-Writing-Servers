@@ -17,6 +17,7 @@ import { BoardHandlers } from './handlers/board-handlers.js';
 import { CardHandlers } from './handlers/card-handlers.js';
 import { ClaimHandlers } from './handlers/claim-handlers.js';
 import { CommentHandlers } from './handlers/comment-handlers.js';
+import { IdentityHandlers } from './handlers/identity-handlers.js';
 import { kanbanToolsSchema } from './schemas/kanban-tools-schema.js';
 
 class KanbanMCPServer extends BaseMCPServer {
@@ -37,6 +38,7 @@ class KanbanMCPServer extends BaseMCPServer {
         this.cardHandlers = new CardHandlers(this.db);
         this.claimHandlers = new ClaimHandlers(this.db);
         this.commentHandlers = new CommentHandlers(this.db);
+        this.identityHandlers = new IdentityHandlers(this.db);
 
         this.tools = this.getTools();
 
@@ -87,7 +89,10 @@ class KanbanMCPServer extends BaseMCPServer {
             // Claim handler (1 tool — the atomic compare-and-swap)
             'claim_card': this.claimHandlers.handleClaimCard.bind(this.claimHandlers),
             // Comment handler (1 tool)
-            'comment_card': this.commentHandlers.handleCommentCard.bind(this.commentHandlers)
+            'comment_card': this.commentHandlers.handleCommentCard.bind(this.commentHandlers),
+            // Identity handlers (2 tools) — GH issue #62 identities model
+            'list_identities': this.identityHandlers.handleListIdentities.bind(this.identityHandlers),
+            'upsert_identity': this.identityHandlers.handleUpsertIdentity.bind(this.identityHandlers)
         };
         return handlers[toolName];
     }

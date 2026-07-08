@@ -74,6 +74,43 @@ export async function notifyKanbanChanged(db, cardId) {
  * agents may escalate a card to review-required but must never downgrade it
  * themselves, so an over-cautious default is the correct failure mode.
  */
+/**
+ * Validate an assignee id against fictionlab.kanban_identities before it's
+ * written via create_card/update_card (GH issue #62 — the human-gate must be
+ * identity-kind-driven, not name-driven). Unknown ids are REJECTED here, no
+ * silent auto-create — the error lists every known active identity so the
+ * caller can pick a real one or register a new one via upsert_identity.
+ *
+ * This is the primary gate. The DB trigger (kanban_enforce_human_reserve,
+ * migration 044) is separate, fail-safe defense-in-depth for a write that
+ * bypasses this validation entirely (e.g. raw SQL) — it treats an
+ * unrecognized assignee as human rather than silently leaving it
+ * agent-claimable.
+ *
+ * Pass-through, no-op cases: assignee is falsy (unset) or the '__clear__'
+ * unassign sentinel — both are always allowed.
+ */
+export async function validateAssignee(db, assignee) {
+    if (!assignee || assignee === '__clear__') {
+        return;
+    }
+
+    const result = await db.query(
+        'SELECT 1 FROM fictionlab.kanban_identities WHERE id = $1 AND active',
+        [assignee]
+    );
+
+    if (result.rows.length === 0) {
+        const known = await db.query(
+            'SELECT id FROM fictionlab.kanban_identities WHERE active ORDER BY id'
+        );
+        const knownIds = known.rows.map((r) => r.id).join(', ') || '(none registered)';
+        throw new Error(
+            `Unknown assignee '${assignee}'. Known identities: ${knownIds}. Register it first via upsert_identity.`
+        );
+    }
+}
+
 export function inferReviewPolicy({ labels = [], spec_ref, issue_ref, title, body } = {}) {
     const haystack = [
         ...(Array.isArray(labels) ? labels : []),

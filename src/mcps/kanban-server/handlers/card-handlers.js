@@ -4,7 +4,7 @@
 // claim_card lives in claim-handlers.js — the atomic compare-and-swap is
 // kept in exactly one place.
 
-import { resolveBoardId, logActivity, notifyKanbanChanged, inferReviewPolicy } from './kanban-helpers.js';
+import { resolveBoardId, logActivity, notifyKanbanChanged, inferReviewPolicy, validateAssignee } from './kanban-helpers.js';
 
 const CARD_STATUSES = ['backlog', 'ready', 'claimed', 'in_progress', 'review', 'blocked', 'done', 'archived'];
 
@@ -68,10 +68,16 @@ export class CardHandlers {
             params.push(priority);
         }
 
-        // agent_claimable_only MUST exclude every assignee='rebecca' card by
-        // construction (not just by relying on the agent_claimable trigger).
+        // agent_claimable_only MUST exclude every card assigned to an active
+        // human identity by construction (not just by relying on the
+        // agent_claimable trigger) — GH issue #62: identity-kind-driven, not
+        // name-driven, so this covers 'rebecca' and every other human
+        // identity (e.g. 'mom') alike.
         if (agent_claimable_only) {
-            conditions.push(`c.agent_claimable = TRUE AND c.assignee IS DISTINCT FROM 'rebecca'`);
+            conditions.push(`c.agent_claimable = TRUE AND NOT EXISTS (
+                SELECT 1 FROM fictionlab.kanban_identities ki
+                WHERE ki.id = c.assignee AND ki.kind = 'human' AND ki.active
+            )`);
             if (agent) {
                 conditions.push(`(c.assignee IS NULL OR c.assignee = $${i++})`);
                 params.push(agent);
@@ -174,6 +180,8 @@ export class CardHandlers {
             throw new Error(`Invalid status: ${status}`);
         }
 
+        await validateAssignee(this.db, assignee);
+
         const resolvedBoardId = await resolveBoardId(this.db, {
             board_id,
             board_key,
@@ -224,7 +232,9 @@ export class CardHandlers {
 
     /**
      * update_card — partial patch; only provided keys change.
-     * assignee:'rebecca' auto-clears agent_claimable via the DB trigger.
+     * assignee is validated against fictionlab.kanban_identities (unknown
+     * ids are rejected — GH issue #62); an assignee resolving to an active
+     * human identity auto-clears agent_claimable via the DB trigger.
      * assignee:'__clear__' unassigns.
      * review_policy: escalate-only (S11 §11.5 decision 5 — "agents may
      * escalate a card to review-required, never downgrade it themselves").
@@ -280,6 +290,7 @@ export class CardHandlers {
             changedFields.push('body');
         }
         if (assignee !== undefined) {
+            await validateAssignee(this.db, assignee);
             if (assignee === '__clear__') {
                 sets.push('assignee = NULL');
             } else {
