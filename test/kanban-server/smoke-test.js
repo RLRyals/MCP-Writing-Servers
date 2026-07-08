@@ -55,6 +55,15 @@ async function main() {
     // interrupted before its own cleanup ran, sweep any stragglers by title
     // pattern before we start, so dev-backlog never accumulates test junk.
     await pool.query(`DELETE FROM fictionlab.kanban_cards WHERE title LIKE 'Quick-add smoke test %'`);
+    // Same for the test-only identities registered by the GH issue #62
+    // identities-model block below (plus the two claiming-agent ids this
+    // script uses, which claim_card auto-registers as kind='agent' the
+    // first time they're ever seen -- see claim-handlers.js), in case a
+    // prior run was interrupted before its own cleanup ran.
+    await pool.query(
+        `DELETE FROM fictionlab.kanban_identities
+         WHERE id IN ('smoke-test-mom', 'smoke-test-persona', 'claude-code:smoke-test', 'claude-code:other-session')`
+    );
 
     // --- Test scaffolding: an ephemeral board, never the real dev-backlog ---
     const testBoardKey = `kanban-smoke-test-${Date.now()}`;
@@ -327,6 +336,154 @@ async function main() {
             !rebeccaQueueRes.cards.some((c) => c.id === upcomingCardId)
         );
 
+        // --- GH issue #62: identities model (replaces the hardcoded 'rebecca' human-gate) ---
+
+        // list_identities: seed 'rebecca' (human) is present before we add anything.
+        const seedIdentitiesRes = await callTool(client, 'list_identities', {});
+        check(
+            "list_identities returns the seeded 'rebecca' identity (kind=human)",
+            seedIdentitiesRes.identities.some((idn) => idn.id === 'rebecca' && idn.kind === 'human')
+        );
+
+        // Register a second human (her mother) and a persona (pen name).
+        const humanIdentityId = 'smoke-test-mom';
+        const personaIdentityId = 'smoke-test-persona';
+        const upsertHumanRes = await callTool(client, 'upsert_identity', {
+            id: humanIdentityId,
+            display_name: 'Smoke Test Mom',
+            kind: 'human'
+        });
+        check("upsert_identity registers a second human identity", upsertHumanRes.identity.kind === 'human');
+
+        const upsertPersonaRes = await callTool(client, 'upsert_identity', {
+            id: personaIdentityId,
+            display_name: 'Smoke Test Persona',
+            kind: 'persona'
+        });
+        check("upsert_identity registers a persona identity", upsertPersonaRes.identity.kind === 'persona');
+
+        const afterAddIdentitiesRes = await callTool(client, 'list_identities', {});
+        check(
+            'list_identities returns seeds plus additions',
+            [humanIdentityId, personaIdentityId, 'rebecca'].every(
+                (id) => afterAddIdentitiesRes.identities.some((idn) => idn.id === id)
+            )
+        );
+
+        // upsert_identity is idempotent (update-in-place, not a duplicate row).
+        const upsertAgainRes = await callTool(client, 'upsert_identity', {
+            id: humanIdentityId,
+            display_name: 'Smoke Test Mom (renamed)',
+            kind: 'human'
+        });
+        check(
+            'upsert_identity updates in place on a repeat call',
+            upsertAgainRes.identity.display_name === 'Smoke Test Mom (renamed)'
+        );
+
+        // create_card assigned to the second human: agent_claimable must be
+        // FALSE exactly like 'rebecca' -- the gate is identity-kind-driven,
+        // not name-driven.
+        const momCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: "Mom's card",
+            assignee: humanIdentityId
+        });
+        const momCardId = momCardRes.card.id;
+        check(
+            'create_card assigned to a second human identity sets agent_claimable=false (not just rebecca)',
+            momCardRes.card.agent_claimable === false
+        );
+
+        const momClaimRes = await callTool(client, 'claim_card', {
+            card_id: momCardId,
+            agent: 'claude-code:smoke-test',
+            expected_status: momCardRes.card.status
+        });
+        check("claim_card on a second-human-assigned card is denied", momClaimRes.claimed === false);
+        check(
+            "claim_card on a second-human-assigned card reason='reserved_for_human'",
+            momClaimRes.reason === 'reserved_for_human',
+            momClaimRes.reason
+        );
+
+        // claim_card must also reject agent:<second human id> outright, same
+        // as it rejects agent:'rebecca'.
+        let rejectedMomAgent = false;
+        try {
+            await callTool(client, 'claim_card', { card_id: momCardId, agent: humanIdentityId });
+        } catch (e) {
+            rejectedMomAgent = /human identity/i.test(e.message);
+        }
+        check("claim_card rejects agent:<second human identity> outright", rejectedMomAgent);
+
+        // create_card assigned to a persona: agent_claimable stays TRUE (a
+        // persona/pen-name card may be executed by an agent acting as that
+        // persona), and an agent may claim it using the persona's own id.
+        const personaCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: 'Post to socials as the persona',
+            assignee: personaIdentityId
+        });
+        const personaCardId = personaCardRes.card.id;
+        check(
+            'create_card assigned to a persona leaves agent_claimable=true',
+            personaCardRes.card.agent_claimable === true
+        );
+
+        const personaClaimRes = await callTool(client, 'claim_card', {
+            card_id: personaCardId,
+            agent: personaIdentityId,
+            expected_status: personaCardRes.card.status
+        });
+        check(
+            'claim_card succeeds claiming a persona-assigned card as that persona',
+            personaClaimRes.claimed === true
+        );
+        check(
+            "claim_card on a persona card leaves it agent-claimable in principle (kind unaffected)",
+            personaClaimRes.card?.assignee === personaIdentityId
+        );
+
+        // Unknown assignee cannot be written via tools -- create_card and
+        // update_card must reject it (no silent auto-create).
+        let createRejectedUnknown = false;
+        try {
+            await callTool(client, 'create_card', {
+                board_id: testBoardId,
+                title: 'Card for an unregistered assignee',
+                assignee: 'smoke-test-unknown-nobody'
+            });
+        } catch (e) {
+            createRejectedUnknown = /unknown assignee/i.test(e.message);
+        }
+        check('create_card rejects an unknown assignee id', createRejectedUnknown);
+
+        let updateRejectedUnknown = false;
+        try {
+            await callTool(client, 'update_card', {
+                card_id: personaCardId,
+                assignee: 'smoke-test-unknown-nobody'
+            });
+        } catch (e) {
+            updateRejectedUnknown = /unknown assignee/i.test(e.message);
+        }
+        check('update_card rejects an unknown assignee id', updateRejectedUnknown);
+
+        // Fail-safe: if an unrecognized assignee reaches the table anyway
+        // (bypassing tool validation via raw SQL), the trigger must still
+        // treat it as human -- agent_claimable forced FALSE.
+        const bypassCardResult = await pool.query(
+            `INSERT INTO fictionlab.kanban_cards (board_id, title, assignee)
+             VALUES ($1, 'Bypassed unknown-assignee card', 'smoke-test-unknown-nobody')
+             RETURNING agent_claimable`,
+            [testBoardId]
+        );
+        check(
+            'DB trigger fail-safe treats an unrecognized assignee (reaching the table directly) as human',
+            bypassCardResult.rows[0].agent_claimable === false
+        );
+
         // update_card due_at patch + '__clear__' sentinel
         const setDueRes = await callTool(client, 'update_card', { card_id: noDeadlineCardId, due_at: nextWeek });
         check('update_card sets due_at', !!setDueRes.card.due_at);
@@ -345,6 +502,13 @@ async function main() {
         await client.close();
         // Cascade-delete the ephemeral test board (columns/cards/comments/links/activity all go with it).
         await pool.query('DELETE FROM fictionlab.kanban_boards WHERE id = $1', [testBoardId]);
+        // Clean up the test-only identities registered above (GH issue #62),
+        // plus the two claiming-agent ids auto-registered as kind='agent' by
+        // claim_card -- this smoke test leaves nothing behind, same as the board.
+        await pool.query(
+            `DELETE FROM fictionlab.kanban_identities
+             WHERE id IN ('smoke-test-mom', 'smoke-test-persona', 'claude-code:smoke-test', 'claude-code:other-session')`
+        );
         console.log(`\nCleaned up ephemeral test board ${testBoardKey}`);
         await pool.end();
     }
