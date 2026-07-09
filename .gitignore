@@ -34,3 +34,8 @@ diagnostic-report.json
 server.log
 error.log
 .claude/settings.local.json
+
+# kanban-server GitHub sync poller (GH issue #64) -- runtime-generated
+# watermark state + log, never checked in (the config json IS checked in).
+src/mcps/kanban-server/tools/github-sync.state.json
+src/mcps/kanban-server/tools/github-sync.log
