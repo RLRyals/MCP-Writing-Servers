@@ -1,0 +1,9 @@
+{
+    "watched_repos": [
+        "RLRyals/MCP-Electron-App",
+        "RLRyals/MCP-Writing-Servers",
+        "RLRyals/fictionlab-workflow"
+    ],
+    "dry_run_default": false,
+    "initial_lookback_hours": 24
+}
