@@ -11,6 +11,27 @@ Storage is `fictionlab.kanban_boards` / `kanban_columns` / `kanban_cards` /
 Live-DB integration scripts (ephemeral throwaway board, real gh/DB): `test/kanban-server/`.
 Mocked-DB unit tests (CI-safe): `tests/kanban-server/`.
 
+## Free-text card search (GH issue #66)
+
+`list_cards` accepts an optional `q` (string) parameter that does a
+case-insensitive free-text search across card `title`, card `body`, and every
+`fictionlab.kanban_comments` row for that card (parameterized `ILIKE`, never
+string-interpolated). `q` combines with AND against every other `list_cards`
+filter (`board_key`/`board_id`, `assignee`, `status`, `label`, `priority`,
+etc.).
+
+When `q` is set and neither `board_key` nor `board_id` is given, the search
+runs across **all** boards (it does not implicitly narrow to `dev-backlog`),
+and each returned card includes `board_key` so a hit is attributable to its
+board. Results are ranked title hits first, then body-only hits, then
+comment-only hits, before falling back to the tool's normal ordering
+(due-date, priority/position, etc.) within each rank.
+
+`ILIKE` is sufficient at current scale (hundreds of cards). If the boards grow
+large enough that this gets slow, the upgrade path is `pg_trgm` or Postgres
+full-text search (`tsvector`/`tsquery`) on `title`/`body`/comment `body` — no
+new migration is needed for the current `q` implementation.
+
 ## GitHub Sync (GH issue #64)
 
 `tools/github-sync.js` is a standalone poller (not part of the MCP server

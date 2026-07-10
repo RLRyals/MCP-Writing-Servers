@@ -25,12 +25,16 @@ export const kanbanToolsSchema = [
     },
     {
         name: 'list_cards',
-        description: 'Lists cards with filters: board, assignee, agent, status, label, priority, agent_claimable_only, include_archived, include_workflow_phase, due_filter. The workhorse read tool.',
+        description: 'Lists cards with filters: board, assignee, agent, status, label, priority, agent_claimable_only, include_archived, include_workflow_phase, due_filter, q. The workhorse read tool.',
         inputSchema: {
             type: 'object',
             properties: {
                 board_key: { type: 'string' },
                 board_id: { type: 'string' },
+                q: {
+                    type: 'string',
+                    description: "Free-text search over card title, body, and comments (case-insensitive, ILIKE). Combines with AND with all other filters. When set and no board_key/board_id is given, searches across ALL boards (not just dev-backlog) and each returned card includes board_key so hits are attributable. Ranks title hits above body-only hits above comment-only hits."
+                },
                 assignee: {
                     type: 'string',
                     description: "Exact match against an identity id (see list_identities), e.g. 'rebecca' (her queue). Special: '__unassigned__' (assignee IS NULL)"

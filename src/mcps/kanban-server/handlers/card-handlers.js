@@ -16,7 +16,7 @@ export class CardHandlers {
     /**
      * list_cards — the workhorse filter. board_key/board_id, assignee, agent,
      * status, label, priority, agent_claimable_only, include_archived,
-     * include_workflow_phase, due_filter, limit.
+     * include_workflow_phase, due_filter, q, limit.
      */
     async handleListCards(args) {
         const {
@@ -31,12 +31,16 @@ export class CardHandlers {
             include_archived = false,
             include_workflow_phase = false,
             due_filter,
+            q,
             limit = 200
         } = args || {};
 
         const conditions = [];
         const params = [];
         let i = 1;
+        // Set below when q is present -- reused (never re-interpolated) in both
+        // the WHERE clause and the ORDER BY rank expression.
+        let qParamIndex = null;
 
         if (board_id) {
             conditions.push(`c.board_id = $${i++}`);
@@ -66,6 +70,27 @@ export class CardHandlers {
         if (priority) {
             conditions.push(`c.priority = $${i++}`);
             params.push(priority);
+        }
+
+        // Free-text search (GH issue #66). Combines with AND against every
+        // other filter above. Matches title OR body OR any comment body --
+        // parameterized throughout, q is NEVER string-interpolated into the
+        // SQL text. When no board_key/board_id filter is given, this already
+        // searches every board (the board conditions above simply add no
+        // predicate in that case) -- no separate "search all boards" branch
+        // needed. ILIKE is sufficient at current scale (hundreds of cards);
+        // pg_trgm/full-text search is the upgrade path if it ever gets slow.
+        if (q) {
+            qParamIndex = i++;
+            conditions.push(`(
+                c.title ILIKE '%' || $${qParamIndex} || '%'
+                OR c.body ILIKE '%' || $${qParamIndex} || '%'
+                OR EXISTS (
+                    SELECT 1 FROM fictionlab.kanban_comments cm
+                    WHERE cm.card_id = c.id AND cm.body ILIKE '%' || $${qParamIndex} || '%'
+                )
+            )`);
+            params.push(q);
         }
 
         // agent_claimable_only MUST exclude every card assigned to an active
@@ -119,22 +144,40 @@ export class CardHandlers {
         // When filtering by due date, the soonest-due card matters more than
         // priority/position ordering -- lead with due_at ascending. Otherwise
         // keep the existing priority-then-position-then-created_at order.
-        const orderClause = due_filter
-            ? 'ORDER BY c.due_at ASC NULLS LAST, c.priority, c.position'
-            : `ORDER BY
-                CASE c.priority
+        const baseOrder = due_filter
+            ? 'c.due_at ASC NULLS LAST, c.priority, c.position'
+            : `CASE c.priority
                     WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 ELSE 4
                 END,
                 c.position,
                 c.created_at`;
 
+        // When q is set, title hits outrank body-only hits outrank
+        // comment-only hits; the existing due/priority ordering above is the
+        // secondary sort within each rank. Reuses the same $qParamIndex bound
+        // parameter already used in the WHERE clause -- never re-interpolated.
+        const searchRank = q
+            ? `CASE
+                    WHEN c.title ILIKE '%' || $${qParamIndex} || '%' THEN 0
+                    WHEN c.body ILIKE '%' || $${qParamIndex} || '%' THEN 1
+                    ELSE 2
+                END,
+                `
+            : '';
+
+        const orderClause = `ORDER BY ${searchRank}${baseOrder}`;
+
+        // board_key is always joined in so q's cross-board results are
+        // attributable to a board without a second round trip.
         const result = await this.db.query(
             `SELECT
                 c.*,
+                b.board_key,
                 (SELECT COUNT(*) FROM fictionlab.kanban_comments cm WHERE cm.card_id = c.id) AS comment_count,
                 (SELECT COUNT(*) FROM fictionlab.kanban_card_links l WHERE l.card_id = c.id) AS link_count
                 ${workflowSelect}
              FROM fictionlab.kanban_cards c
+             JOIN fictionlab.kanban_boards b ON b.id = c.board_id
              ${workflowJoin}
              ${whereClause}
              ${orderClause}
