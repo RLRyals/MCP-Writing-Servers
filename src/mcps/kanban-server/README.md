@@ -1,36 +1,46 @@
-# Kanban Server
+# Kanban MCP Server
 
-MCP server for the FictionLab kanban board (S11 kanban plugin, GH issue #58).
+MCP tool server for the FictionLab kanban boards (dev-backlog, broadquill-business,
+ffa-system-gaps, …) — S11 kanban plugin, GH issue #58. This is the **server** layer
+only — the board UI ships separately (see "The three layers" below).
+
 Tools live in `handlers/` (board/card/claim/comment/identity), schema in
 `schemas/kanban-tools-schema.js`, and shared helpers (activity log, NOTIFY,
 review-policy inference, identity validation) in `handlers/kanban-helpers.js`.
-Storage is `fictionlab.kanban_boards` / `kanban_columns` / `kanban_cards` /
-`kanban_card_links` / `kanban_comments` / `kanban_activity` in `mcp_writing_db`
-(migration `042_kanban_tables.sql`, extended by `043_...` and `044_...`).
 
-Live-DB integration scripts (ephemeral throwaway board, real gh/DB): `test/kanban-server/`.
-Mocked-DB unit tests (CI-safe): `tests/kanban-server/`.
+## The three layers
 
-## Free-text card search (GH issue #66)
+| Layer | Where | What it does |
+|-------|-------|--------------|
+| Server (this dir) | `MCP-Writing-Servers/src/mcps/kanban-server/` | MCP tools over the Postgres tables; all reads/writes go through here |
+| Plugin | `fictionlab-workflow` repo, `packages/kanban-plugin/` | FictionLab plugin: main-process IPC handlers + Postgres LISTEN refresh |
+| Board view | `MCP-Electron-App/src/renderer/views/KanbanViewReact.tsx` + `components/kanban/` | React board UI (v1 lives in the app; slated to move into the plugin's renderer bundle) |
 
-`list_cards` accepts an optional `q` (string) parameter that does a
-case-insensitive free-text search across card `title`, card `body`, and every
-`fictionlab.kanban_comments` row for that card (parameterized `ILIKE`, never
-string-interpolated). `q` combines with AND against every other `list_cards`
-filter (`board_key`/`board_id`, `assignee`, `status`, `label`, `priority`,
-etc.).
+## Data
 
-When `q` is set and neither `board_key` nor `board_id` is given, the search
-runs across **all** boards (it does not implicitly narrow to `dev-backlog`),
-and each returned card includes `board_key` so a hit is attributable to its
-board. Results are ranked title hits first, then body-only hits, then
-comment-only hits, before falling back to the tool's normal ordering
-(due-date, priority/position, etc.) within each rank.
+- Database: `mcp_writing_db` in the `fictionlab-postgres` Docker container, schema `fictionlab`.
+- Tables: `kanban_boards`, `kanban_columns`, `kanban_cards`, `kanban_comments`,
+  `kanban_card_links`, `kanban_activity`, `identities` — created by migration
+  `042_kanban_tables.sql`, extended by `043_kanban_cards_add_due_at.sql` and
+  `044_kanban_identities.sql`.
 
-`ILIKE` is sufficient at current scale (hundreds of cards). If the boards grow
-large enough that this gets slow, the upgrade path is `pg_trgm` or Postgres
-full-text search (`tsvector`/`tsquery`) on `title`/`body`/comment `body` — no
-new migration is needed for the current `q` implementation.
+## Tools (13)
+
+Read: `list_boards`, `get_board`, `list_cards` (the workhorse — filters by board, assignee,
+agent, status, label, priority, claimability, due_filter), `get_card`, `list_identities`.
+
+Write: `create_card` (title-only quick-add is valid; board defaults to `dev-backlog`),
+`update_card`, `move_card`, `comment_card`, `add_card_link`, `archive_card`,
+`claim_card` (agent claim with human fail-safe), `upsert_identity`.
+
+Full input schemas: `schemas/kanban-tools-schema.js`.
+
+## Identity / claim model
+
+`identities` rows have a `kind` (human vs agent/persona). Humans are **never**
+agent-claimable: `claim_card` and the `agent_claimable_only` filter exclude cards assigned
+to an active human identity. Assignee filtering matches identity ids exactly
+(e.g. `rebecca`); `__unassigned__` selects cards with no assignee.
 
 ## GitHub Sync (GH issue #64)
 
@@ -42,8 +52,8 @@ or a closed issue matches a card's link, the card auto-moves
 **Why a local poller and not a webhook/GitHub Action:** the `fictionlab`
 schema only exists in the local Docker Postgres (`fictionlab-postgres`) --
 GitHub-hosted runners can't reach it, and a webhook would require exposing a
-public endpoint. A local script using the same `gh` CLI auth Rebecca already
-has on this machine needs neither. This follows the existing pattern:
+public endpoint. A local script using the same `gh` CLI auth already present
+on the machine needs neither. This follows the existing pattern:
 daemons/pollers are standalone Scheduled-Task scripts that write to Postgres;
 interactive surfaces are the Electron app.
 
@@ -106,15 +116,15 @@ logged to `tools/github-sync.log` (gitignored), and never crash the run.
 
 ### Registering the Scheduled Task
 
-**Not registered automatically.** Rebecca enables it deliberately by running
-(PowerShell or cmd, one time):
+**Not registered automatically.** It is enabled deliberately by running
+(PowerShell or cmd, one time, substituting your clone path):
 
 ```
-schtasks /create /tn "Kanban GitHub Sync" /tr "node C:\github\MCP-Writing-Servers\src\mcps\kanban-server\tools\github-sync.js" /sc minute /mo 15 /f
+schtasks /create /tn "Kanban GitHub Sync" /tr "node <path-to-clone>\src\mcps\kanban-server\tools\github-sync.js" /sc minute /mo 15 /f
 ```
 
 This runs every 15 minutes as the current Windows user (so it inherits the
-same `gh auth login` session already on this machine) and only fires while
+same `gh auth login` session already on the machine) and only fires while
 that user is logged on. Verify / manage it with:
 
 ```
@@ -132,3 +142,43 @@ node tests/kanban-server/github-sync.test.js       # orchestration, DB + gh both
 
 Both are wired into CI (`.github/workflows/test.yml`, job
 `kanban-github-sync-tests`) and require no live database or `gh` auth.
+
+## Free-text card search (GH issue #66)
+
+`list_cards` accepts an optional `q` (string) parameter that does a
+case-insensitive free-text search across card `title`, card `body`, and every
+`fictionlab.kanban_comments` row for that card (parameterized `ILIKE`, never
+string-interpolated). `q` combines with AND against every other `list_cards`
+filter (`board_key`/`board_id`, `assignee`, `status`, `label`, `priority`,
+etc.).
+
+When `q` is set and neither `board_key` nor `board_id` is given, the search
+runs across **all** boards (it does not implicitly narrow to `dev-backlog`),
+and each returned card includes `board_key` so a hit is attributable to its
+board. Results are ranked title hits first, then body-only hits, then
+comment-only hits, before falling back to the tool's normal ordering
+(due-date, priority/position, etc.) within each rank.
+
+`ILIKE` is sufficient at current scale (hundreds of cards). If the boards grow
+large enough that this gets slow, the upgrade path is `pg_trgm` or Postgres
+full-text search (`tsvector`/`tsquery`) on `title`/`body`/comment `body` — no
+new migration is needed for the current `q` implementation.
+
+## Conventions
+
+- One card per GitHub issue. Batch/summary cards get **no** `issue_ref`/GitHub links —
+  the poller auto-completes any card whose linked PR says "Fixes #N", and a batch card
+  would be closed by its first sub-issue. (Poller currently ships disabled.)
+- Never set `due_at` unless the human board owner stated the date herself; suggested
+  dates go in the card body.
+- `dev-backlog` is the active working board.
+
+## Running / testing
+
+The server is wired into `mcp-config/mcp-config.json` and runs under
+`single-server-runner.js` / `http-sse-server.js` like the other servers; `stdio-adapter.js`
+provides stdio transport.
+
+- Live-DB integration scripts (ephemeral throwaway board, real gh/DB): `test/kanban-server/`,
+  including `smoke-test.js` and `concurrent-claim-test.js`.
+- Mocked-DB unit tests (CI-safe): `tests/kanban-server/`.
