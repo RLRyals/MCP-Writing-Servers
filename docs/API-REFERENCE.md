@@ -4,6 +4,8 @@ Version: 1.0.0
 Last Updated: 2024
 Coverage: All 25 MCP Tools
 
+> **This is the generic-CRUD server, not the authoring path.** `database-admin-server` is for admin, migration, and bulk-repair work against whitelisted tables. For normal authoring (chapters, characters, scenes, plot threads, …), use the purpose-built domain servers instead — see the [routing map in the root README](../README.md#which-server-for-which-task).
+
 ---
 
 ## Table of Contents

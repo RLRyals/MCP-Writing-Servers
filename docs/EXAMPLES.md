@@ -2,6 +2,8 @@
 
 A collection of 50+ real-world code examples for all 25 database admin server tools, organized by use case and featuring a writing/publishing database schema.
 
+> **Anti-pattern warning:** The examples below that insert/update `chapters`, `characters`, `scenes`, `plot_threads`, and similar writing tables via `db_insert_record` / `db_update_records` are **admin/migration/bulk-repair patterns, not the normal authoring path**. For normal authoring, use the purpose-built domain servers (`character-planning`, `chapter-planning`, `scene`, `book-planning`, …) — see the [routing map in the root README](../README.md#which-server-for-which-task). Reaching for raw CRUD on these tables bypasses continuity/knowledge-state/arc invariants the domain servers enforce.
+
 ---
 
 ## Table of Contents

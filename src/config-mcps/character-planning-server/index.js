@@ -82,7 +82,7 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             tools.push({
                 ...updateCharacterSchema,
                 name: 'update_character',
-                description: 'Update character status/development for this book'
+                description: 'Update character status/development for this book — canonical write path; a raw database-admin update on the characters table bypasses this server\'s arc/continuity wiring.'
             });
         }
 

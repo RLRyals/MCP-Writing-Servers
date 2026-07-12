@@ -1,5 +1,7 @@
 # Database CRUD Operations Specification
 
+> **Scope note:** this spec covers `database-admin-server` — the generic, whitelisted-table CRUD/batch/admin layer. It is the admin/migration/bulk-repair layer, not the normal authoring path for chapters, characters, scenes, plot threads, etc. — those go through the purpose-built domain servers. See the [routing map in the root README](README.md#which-server-for-which-task).
+
 ## Overview
 
 This document specifies the design and implementation requirements for database CRUD (Create, Read, Update, Delete) operations and batch actions for the MCP Writing System. These operations should be implemented in the **MCP-Writing-Servers** repository as they involve business logic and direct database access.
