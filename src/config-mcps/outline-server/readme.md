@@ -11,10 +11,10 @@ bottom-up, manuscript-structure counterpart to the top-down, multi-book
 `plot_*` tools folded into `book-planning-server`/`chapter-planning-server`
 (open plot threads, series-level reveals, world systems) — **the two use
 separate ID spaces and are not interchangeable.** See the root README's
-"outline vs plot_* tools" section, and the fuller decision guide tracked in
-[#74](https://github.com/RLRyals/MCP-Writing-Servers/issues/74) /
-`docs/outline-vs-plot.md`, before assuming a tool from one accepts an id from
-the other.
+"outline vs plot_* tools" section, and the fuller decision guide at
+[`docs/outline-vs-plot.md`](../../../docs/outline-vs-plot.md) (tracked in
+[#74](https://github.com/RLRyals/MCP-Writing-Servers/issues/74)), before
+assuming a tool from one accepts an id from the other.
 
 Owns the `outline_*` tables. Composed from handlers in
 [`src/mcps/outline-server`](../../mcps/outline-server) — see

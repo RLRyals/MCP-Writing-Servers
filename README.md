@@ -63,12 +63,12 @@ The `outline` server's own tree (`outline_works`, `outline_facts`,
 `plot_create_plot_thread` / `plot_update_plot_thread` / `create_information_reveal`
 tools folded into `book-planning` and `chapter-planning` are **two different
 systems with two different ID spaces** — do not pass an `outline_works.id` where a
-plot tool expects a `series_id`/`chapter_id`, or vice versa. A full decision guide
-(what each owns, where they overlap, when to use which) is tracked in
-[RLRyals/MCP-Writing-Servers#74](https://github.com/RLRyals/MCP-Writing-Servers/issues/74)
-and will land at `docs/outline-vs-plot.md`. Until that lands: outline = per-scene
-manuscript structure + character-knowledge replay; plot = multi-book arcs,
-series-level reveals, and world-systems.
+plot tool expects a `series_id`/`chapter_id`, or vice versa (the one exception:
+both share `characters.id`). See
+[`docs/outline-vs-plot.md`](docs/outline-vs-plot.md) for the full decision table
+— what each owns, where they overlap, known dead code. Short version: outline =
+per-scene manuscript structure + character-knowledge replay; plot = multi-book
+arcs, series-level reveals, and world-systems.
 
 ## Everything under `docs/`
 
