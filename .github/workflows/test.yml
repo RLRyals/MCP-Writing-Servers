@@ -126,6 +126,31 @@ jobs:
       - name: Run definition-handlers tests (mocked DB)
         run: node tests/workflow-manager-server/definition-handlers.test.js
 
+  single-server-runner-tests:
+    name: Single Server Runner Route Tests
+    runs-on: ubuntu-latest
+    # bead mws-1783883496459-8-4a224c2b: regression coverage for Express
+    # route registration order in src/single-server-runner.js. Spawns the
+    # real server as a child process against an unreachable-but-valid
+    # DATABASE_URL (pg.Pool connects lazily, so no postgres service needed)
+    # and hits it over real HTTP.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run route precedence regression test
+        run: node test/single-server-runner/route-precedence-test.js
+
   lint:
     name: Lint Code
     runs-on: ubuntu-latest
