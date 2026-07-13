@@ -18,10 +18,12 @@ import { CharacterDetailHandlers } from '../../mcps/character-server/handlers/ch
 import { CharacterKnowledgeHandlers } from '../../mcps/character-server/handlers/character-knowledge-handlers.js';
 import { CharacterTimelineHandlers } from '../../mcps/character-server/handlers/character-timeline-handlers.js';
 import { PlotThreadHandlers } from '../../mcps/plot-server/handlers/plot-thread-handlers.js';
+import { GenreExtensions } from '../../mcps/plot-server/handlers/genre-extensions.js';
 import { RelationshipHandlers } from '../../mcps/relationship-server/handlers/relationship-handlers.js';
 import { EventChapterMappingHandlers } from '../../mcps/timeline-server/handlers/timeline-chapter-mapping-handler.js';
 import { LookupManagementHandlers } from '../../mcps/metadata-server/handlers/lookup-management-handlers.js';
 import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
+import { genreExtensionToolsSchema } from '../../mcps/plot-server/schemas/plot-tools-schema.js';
 
 class CoreContinuityMCPServer extends BaseMCPServer {
     constructor() {
@@ -43,6 +45,7 @@ class CoreContinuityMCPServer extends BaseMCPServer {
         this.characterKnowledgeHandlers = new CharacterKnowledgeHandlers(this.db);
         this.characterTimelineHandlers = new CharacterTimelineHandlers(this.db);
         this.plotThreadHandlers = new PlotThreadHandlers(this.db);
+        this.genreExtensions = new GenreExtensions(this.db);
         this.relationshipHandlers = new RelationshipHandlers(this.db);
         this.eventChapterMappingHandlers = new EventChapterMappingHandlers(this.db);
         this.lookupHandlers = new LookupManagementHandlers(this.db);
@@ -103,6 +106,16 @@ class CoreContinuityMCPServer extends BaseMCPServer {
                 ...getPlotThreads,
                 name: 'get_plot_threads',
                 description: 'Get plot threads for checking continuity'
+            });
+        }
+
+        // WORLD SYSTEM TOOLS - read-only access for continuity checks
+        const getWorldSystems = genreExtensionToolsSchema.find(t => t.name === 'get_world_systems');
+        if (getWorldSystems) {
+            tools.push({
+                ...getWorldSystems,
+                name: 'get_world_systems',
+                description: 'Get world system definitions for checking power-system continuity'
             });
         }
 
@@ -176,6 +189,7 @@ class CoreContinuityMCPServer extends BaseMCPServer {
 
             // Plot handlers
             'get_plot_threads': (args) => this.plotThreadHandlers.handleGetPlotThreads(args),
+            'get_world_systems': (args) => this.genreExtensions.handleGetWorldSystems(args),
 
             // Relationship handlers
             'get_relationship_arc': (args) => this.relationshipHandlers.handleGetRelationshipArc(args),

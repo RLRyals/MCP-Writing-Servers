@@ -69,12 +69,13 @@ class PlotMCPServer extends BaseMCPServer {
             this.handleCreatePlotThread = this.plotThreadHandlers.handleCreatePlotThread.bind(this.plotThreadHandlers);
             this.handleUpdatePlotThread = this.plotThreadHandlers.handleUpdatePlotThread.bind(this.plotThreadHandlers);
             this.handleGetPlotThreads = this.plotThreadHandlers.handleGetPlotThreads.bind(this.plotThreadHandlers);
-            //this.handleLinkPlotThreads = this.plotThreadHandlers.handleLinkPlotThreads.bind(this.plotThreadHandlers);
+            this.handleLinkPlotThreads = this.plotThreadHandlers.handleLinkPlotThreads.bind(this.plotThreadHandlers);
             this.handleResolvePlotThread = this.plotThreadHandlers.handleResolvePlotThread.bind(this.plotThreadHandlers);
 
             // Bind universal genre extension methods
             this.handleCreateInformationReveal = this.genreExtensions.handleCreateInformationReveal.bind(this.genreExtensions);
             this.handleDefineWorldSystem = this.genreExtensions.handleDefineWorldSystem.bind(this.genreExtensions);
+            this.handleGetWorldSystems = this.genreExtensions.handleGetWorldSystems.bind(this.genreExtensions);
             this.handleAddRevealEvidence = this.genreExtensions.handleAddRevealEvidence.bind(this.genreExtensions);
             this.handleTrackSystemProgression = this.genreExtensions.handleTrackSystemProgression.bind(this.genreExtensions);
 
@@ -139,12 +140,13 @@ class PlotMCPServer extends BaseMCPServer {
             'create_plot_thread': this.handleCreatePlotThread,
             'update_plot_thread': this.handleUpdatePlotThread,
             'get_plot_threads': this.handleGetPlotThreads,
-            //'link_plot_threads': this.handleLinkPlotThreads,
+            'link_plot_threads': this.handleLinkPlotThreads,
             'resolve_plot_thread': this.handleResolvePlotThread,
 
             // Universal Genre Handlers (replaces old genre-specific ones)
             'create_information_reveal': this.handleCreateInformationReveal,
             'define_world_system': this.handleDefineWorldSystem,
+            'get_world_systems': this.handleGetWorldSystems,
             'add_reveal_evidence': this.handleAddRevealEvidence,
             'track_system_progression': this.handleTrackSystemProgression
         };

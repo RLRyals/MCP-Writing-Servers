@@ -115,8 +115,8 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
                 });
             });
 
-        // Plot/Genre extension tools - only define_world_system
-        const neededPlotTools = ['define_world_system'];
+        // Plot/Genre extension tools - define_world_system + get_world_systems
+        const neededPlotTools = ['define_world_system', 'get_world_systems'];
         genreExtensionToolsSchema
             .filter(tool => neededPlotTools.includes(tool.name))
             .forEach(tool => {
@@ -168,6 +168,7 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
 
             // Plot/Genre extension handlers
             'define_world_system': this.genreExtensions.handleDefineWorldSystem.bind(this.genreExtensions),
+            'get_world_systems': this.genreExtensions.handleGetWorldSystems.bind(this.genreExtensions),
 
             // Trope handlers (create only; lookups in core-continuity)
             'create_trope': this.tropeHandlers.handleCreateTrope.bind(this.tropeHandlers)
