@@ -118,98 +118,13 @@ async function startServer() {
             }
         });
 
-        // POST endpoint for SSE message handling
-        app.post('/:sessionId', express.json(), async (req, res) => {
-            const sessionId = req.params.sessionId;
-
-            try {
-                const session = activeTransports.get(sessionId);
-                if (!session) {
-                    return res.status(404).json({
-                        error: 'Session not found',
-                        message: `No active session with id: ${sessionId}`
-                    });
-                }
-
-                // Let the transport handle the incoming message
-                await session.transport.handlePostMessage(req, res, req.body);
-
-            } catch (error) {
-                console.error(`[${serverName}:${port}] Error handling POST:`, error);
-                if (!res.headersSent) {
-                    res.status(500).json({ error: error.message });
-                }
-            }
-        });
-
-        // Health check endpoint
-        app.get('/health', async (req, res) => {
-            try {
-                // Use shared server instance instead of creating new one
-                const health = await sharedMCPServer.db.healthCheck();
-                res.json({
-                    server: serverName,
-                    port: port,
-                    status: 'healthy',
-                    database: health,
-                    activeSessions: activeTransports.size,
-                    timestamp: new Date().toISOString()
-                });
-            } catch (error) {
-                res.status(500).json({
-                    server: serverName,
-                    port: port,
-                    status: 'unhealthy',
-                    error: error.message,
-                    timestamp: new Date().toISOString()
-                });
-            }
-        });
-
-        // Info endpoint
-        app.get('/info', async (req, res) => {
-            try {
-                // Use shared server instance instead of creating new one
-                res.json({
-                    server: serverName,
-                    port: port,
-                    version: sharedMCPServer.serverVersion,
-                    tools: sharedMCPServer.tools.map(tool => ({
-                        name: tool.name,
-                        description: tool.description
-                    })),
-                    endpoints: {
-                        sse: `http://localhost:${port}/`,
-                        health: `http://localhost:${port}/health`,
-                        info: `http://localhost:${port}/info`,
-                        tools: `http://localhost:${port}/tools`,
-                        mcp: `http://localhost:${port}/mcp`
-                    }
-                });
-            } catch (error) {
-                res.status(500).json({
-                    error: 'Failed to get server info',
-                    message: error.message
-                });
-            }
-        });
-
-        // Tools endpoint for Typing Mind and other HTTP clients
-        app.get('/tools', async (req, res) => {
-            try {
-                // Return the raw tools array as expected by some clients
-                res.json({
-                    tools: sharedMCPServer.tools
-                });
-            } catch (error) {
-                res.status(500).json({
-                    error: 'Failed to get tools',
-                    message: error.message
-                });
-            }
-        });
-
         // MCP JSON-RPC endpoint for stdio adapter
+        // NOTE: this literal route MUST be registered before the parameterized
+        // POST /:sessionId route below -- Express matches routes in
+        // registration order, and /:sessionId would otherwise capture
+        // POST /mcp requests (sessionId === 'mcp'), which look up a
+        // non-existent session and 404 instead of reaching the JSON-RPC
+        // handler. See bead mws-1783883496459-8-4a224c2b.
         app.post('/mcp', express.json(), async (req, res) => {
             try {
                 // Use shared server instance instead of creating new one
@@ -322,6 +237,97 @@ async function startServer() {
                             message: error.message
                         }
                     }
+                });
+            }
+        });
+
+        // POST endpoint for SSE message handling
+        app.post('/:sessionId', express.json(), async (req, res) => {
+            const sessionId = req.params.sessionId;
+
+            try {
+                const session = activeTransports.get(sessionId);
+                if (!session) {
+                    return res.status(404).json({
+                        error: 'Session not found',
+                        message: `No active session with id: ${sessionId}`
+                    });
+                }
+
+                // Let the transport handle the incoming message
+                await session.transport.handlePostMessage(req, res, req.body);
+
+            } catch (error) {
+                console.error(`[${serverName}:${port}] Error handling POST:`, error);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: error.message });
+                }
+            }
+        });
+
+        // Health check endpoint
+        app.get('/health', async (req, res) => {
+            try {
+                // Use shared server instance instead of creating new one
+                const health = await sharedMCPServer.db.healthCheck();
+                res.json({
+                    server: serverName,
+                    port: port,
+                    status: 'healthy',
+                    database: health,
+                    activeSessions: activeTransports.size,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                res.status(500).json({
+                    server: serverName,
+                    port: port,
+                    status: 'unhealthy',
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        });
+
+        // Info endpoint
+        app.get('/info', async (req, res) => {
+            try {
+                // Use shared server instance instead of creating new one
+                res.json({
+                    server: serverName,
+                    port: port,
+                    version: sharedMCPServer.serverVersion,
+                    tools: sharedMCPServer.tools.map(tool => ({
+                        name: tool.name,
+                        description: tool.description
+                    })),
+                    endpoints: {
+                        sse: `http://localhost:${port}/`,
+                        health: `http://localhost:${port}/health`,
+                        info: `http://localhost:${port}/info`,
+                        tools: `http://localhost:${port}/tools`,
+                        mcp: `http://localhost:${port}/mcp`
+                    }
+                });
+            } catch (error) {
+                res.status(500).json({
+                    error: 'Failed to get server info',
+                    message: error.message
+                });
+            }
+        });
+
+        // Tools endpoint for Typing Mind and other HTTP clients
+        app.get('/tools', async (req, res) => {
+            try {
+                // Return the raw tools array as expected by some clients
+                res.json({
+                    tools: sharedMCPServer.tools
+                });
+            } catch (error) {
+                res.status(500).json({
+                    error: 'Failed to get tools',
+                    message: error.message
                 });
             }
         });
