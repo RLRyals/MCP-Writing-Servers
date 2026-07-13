@@ -236,10 +236,11 @@ export const kanbanToolsSchema = [
         }
     },
 
-    // ---- 2 identity tools (GH issue #62 — identities model) ----
+    // ---- 3 identity tools (GH issue #62 — identities model; delete_identity
+    // added by bead mws-1783883496146-1) ----
     {
         name: 'list_identities',
-        description: "Lists registered kanban identities (human/persona/agent) — the set of ids create_card/update_card will accept as assignee. Defaults to active only.",
+        description: "Lists registered kanban identities (human/persona/agent) — the set of ids create_card/update_card will accept as assignee. Defaults to active only. Always excludes the 'test:' id namespace (reserved for throwaway ids minted by tests).",
         inputSchema: {
             type: 'object',
             properties: {
@@ -264,6 +265,17 @@ export const kanbanToolsSchema = [
                 active: { type: 'boolean', default: true }
             },
             required: ['id', 'kind']
+        }
+    },
+    {
+        name: 'delete_identity',
+        description: "Hard-removes an identity row (e.g. a mis-registered or throwaway id). upsert_identity(active:false) is the softer 'hide from the dropdown' path (list_identities excludes inactive by default) — use delete_identity when the row should not exist at all. Not FK-enforced against kanban_cards.assignee: a card still pointing at a deleted id falls through the human-reserve fail-safe (treated as not agent-claimable) on its next write.",
+        inputSchema: {
+            type: 'object',
+            properties: {
+                id: { type: 'string', description: 'The identity id to delete.' }
+            },
+            required: ['id']
         }
     }
 ];

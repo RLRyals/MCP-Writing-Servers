@@ -90,9 +90,11 @@ class KanbanMCPServer extends BaseMCPServer {
             'claim_card': this.claimHandlers.handleClaimCard.bind(this.claimHandlers),
             // Comment handler (1 tool)
             'comment_card': this.commentHandlers.handleCommentCard.bind(this.commentHandlers),
-            // Identity handlers (2 tools) — GH issue #62 identities model
+            // Identity handlers (3 tools) — GH issue #62 identities model;
+            // delete_identity added by bead mws-1783883496146-1
             'list_identities': this.identityHandlers.handleListIdentities.bind(this.identityHandlers),
-            'upsert_identity': this.identityHandlers.handleUpsertIdentity.bind(this.identityHandlers)
+            'upsert_identity': this.identityHandlers.handleUpsertIdentity.bind(this.identityHandlers),
+            'delete_identity': this.identityHandlers.handleDeleteIdentity.bind(this.identityHandlers)
         };
         return handlers[toolName];
     }
