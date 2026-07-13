@@ -118,6 +118,24 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             });
         }
 
+        const updateCharacterKnowledge = characterKnowledgeTools.find(t => t.name === 'update_character_knowledge');
+        if (updateCharacterKnowledge) {
+            tools.push({
+                ...updateCharacterKnowledge,
+                name: 'update_character_knowledge',
+                description: 'Correct an existing character knowledge entry (identify by id)'
+            });
+        }
+
+        const deleteCharacterKnowledge = characterKnowledgeTools.find(t => t.name === 'delete_character_knowledge');
+        if (deleteCharacterKnowledge) {
+            tools.push({
+                ...deleteCharacterKnowledge,
+                name: 'delete_character_knowledge',
+                description: 'Delete a character knowledge entry (identify by id)'
+            });
+        }
+
         // =============================================
         //  CHARACTER ARC TOOLS (Phase-specific)
         // =============================================
@@ -217,6 +235,8 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             'add_character_detail': (args) => this.characterDetailHandlers.handleAddCharacterDetail(args),
             'update_character_detail': (args) => this.characterDetailHandlers.handleUpdateCharacterDetail(args),
             'check_character_knowledge': (args) => this.characterKnowledgeHandlers.handleCheckCharacterKnowledge(args),
+            'update_character_knowledge': (args) => this.characterKnowledgeHandlers.handleUpdateCharacterKnowledge(args),
+            'delete_character_knowledge': (args) => this.characterKnowledgeHandlers.handleDeleteCharacterKnowledge(args),
             'create_character_arc': (args) => this.characterArcHandlers.handleCreateCharacterArc(args),
             'update_character_arc': (args) => this.characterArcHandlers.handleUpdateCharacterArc(args),
             'delete_character_arc': (args) => this.characterArcHandlers.handleDeleteCharacterArc(args),
