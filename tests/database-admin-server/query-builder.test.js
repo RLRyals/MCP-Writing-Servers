@@ -292,9 +292,12 @@ describe('QueryBuilder', () => {
 
     describe('buildSoftDeleteQuery', () => {
         it('should build soft DELETE query', () => {
-            const result = QueryBuilder.buildSoftDeleteQuery('books', { id: 1 });
+            // 'books' has no deleted_at column in the live schema (see
+            // security-validator.js SOFT_DELETE_TABLES), so this uses 'chapters',
+            // which does support soft delete, to exercise the query builder.
+            const result = QueryBuilder.buildSoftDeleteQuery('chapters', { id: 1 });
 
-            assert(result.text.includes('UPDATE books'));
+            assert(result.text.includes('UPDATE chapters'));
             assert(result.text.includes('SET deleted_at = CURRENT_TIMESTAMP'));
             assert(result.text.includes('updated_at = CURRENT_TIMESTAMP'));
             assert(result.text.includes('WHERE id = $1 AND deleted_at IS NULL'));

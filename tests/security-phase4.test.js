@@ -73,7 +73,9 @@ describe('Phase 4: Security Controls & Audit Logging', () => {
 
         it('should only allow whitelisted columns for each table', () => {
             // Valid columns for 'books' table
-            expect(() => SecurityValidator.validateColumns('books', ['id', 'title', 'author_id'])).not.toThrow();
+            // ('author_id' is not a books column in the live schema -- books
+            // reach their author via series.author_id, see mws-7r6)
+            expect(() => SecurityValidator.validateColumns('books', ['id', 'title', 'book_number'])).not.toThrow();
 
             // Invalid columns for 'books' table
             expect(() => SecurityValidator.validateColumns('books', ['password'])).toThrow(/not whitelisted/);
@@ -280,13 +282,15 @@ describe('Phase 4: Security Controls & Audit Logging', () => {
 
         it('should correctly identify tables that support soft delete', () => {
             // Tables with soft delete
-            expect(SecurityValidator.supportsSoftDelete('books')).toBe(true);
             expect(SecurityValidator.supportsSoftDelete('characters')).toBe(true);
             expect(SecurityValidator.supportsSoftDelete('scenes')).toBe(true);
 
             // Tables without soft delete
             expect(SecurityValidator.supportsSoftDelete('genres')).toBe(false);
             expect(SecurityValidator.supportsSoftDelete('series_genres')).toBe(false);
+            // 'books' has no deleted_at column in the live schema, so it was
+            // removed from SOFT_DELETE_TABLES (see mws-7r6).
+            expect(SecurityValidator.supportsSoftDelete('books')).toBe(false);
         });
     });
 

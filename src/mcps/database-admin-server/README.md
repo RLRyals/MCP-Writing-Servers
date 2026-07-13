@@ -266,7 +266,7 @@ node server.js
   },
   "order_by": [
     { "column": "publication_year", "direction": "DESC" },
-    { "column": "book_order", "direction": "ASC" }
+    { "column": "book_number", "direction": "ASC" }
   ],
   "limit": 20
 }
