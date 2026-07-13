@@ -11,7 +11,7 @@ export const WHITELIST = {
     // Core entities
     authors: ['id', 'name', 'bio', 'created_at', 'updated_at'],
     series: ['id', 'title', 'author_id', 'description', 'start_year', 'status', 'created_at', 'updated_at'],
-    books: ['id', 'series_id', 'title', 'author_id', 'description', 'publication_year', 'status', 'book_order', 'created_at', 'updated_at'],
+    books: ['id', 'series_id', 'title', 'description', 'publication_year', 'status', 'book_number', 'created_at', 'updated_at'],
     chapters: ['id', 'book_id', 'chapter_number', 'title', 'content', 'word_count', 'status', 'created_at', 'updated_at'],
     scenes: ['id', 'chapter_id', 'scene_number', 'title', 'content', 'word_count', 'pov_character_id', 'location_id', 'created_at', 'updated_at'],
 
@@ -81,7 +81,6 @@ export const WHITELIST = {
  * Tables that support soft delete (have deleted_at column)
  */
 export const SOFT_DELETE_TABLES = new Set([
-    'books',
     'chapters',
     'scenes',
     'characters',

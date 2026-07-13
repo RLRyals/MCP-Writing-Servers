@@ -239,13 +239,16 @@ describe('SecurityValidator', () => {
 
     describe('supportsSoftDelete', () => {
         it('should return true for tables with soft delete support', () => {
-            assert.strictEqual(SecurityValidator.supportsSoftDelete('books'), true);
+            assert.strictEqual(SecurityValidator.supportsSoftDelete('chapters'), true);
             assert.strictEqual(SecurityValidator.supportsSoftDelete('characters'), true);
         });
 
         it('should return false for tables without soft delete support', () => {
             assert.strictEqual(SecurityValidator.supportsSoftDelete('authors'), false);
             assert.strictEqual(SecurityValidator.supportsSoftDelete('genres'), false);
+            // 'books' has no deleted_at column in the live schema, so it was
+            // removed from SOFT_DELETE_TABLES (see mws-7r6).
+            assert.strictEqual(SecurityValidator.supportsSoftDelete('books'), false);
         });
     });
 
