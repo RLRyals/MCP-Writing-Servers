@@ -326,10 +326,96 @@ export class GenreExtensions {
         }
     }
     
+    async handleGetWorldSystems(args) {
+        try {
+            if (!args.series_id || typeof args.series_id !== 'number' || args.series_id < 1) {
+                throw new Error('series_id must be a positive number');
+            }
+
+            // Validate series exists
+            const seriesCheck = await this.db.query(
+                'SELECT id, title FROM series WHERE id = $1',
+                [args.series_id]
+            );
+
+            if (seriesCheck.rows.length === 0) {
+                throw new Error(`Series with ID ${args.series_id} not found`);
+            }
+
+            let query = `
+                SELECT id, series_id, system_name, system_type, power_source,
+                       access_method, limitations, system_rules, power_scaling,
+                       system_users, created_at, updated_at
+                FROM world_systems
+                WHERE series_id = $1
+            `;
+            const queryParams = [args.series_id];
+
+            if (args.system_type) {
+                query += ' AND system_type = $2';
+                queryParams.push(args.system_type);
+            }
+
+            query += ' ORDER BY system_name';
+
+            const result = await this.db.query(query, queryParams);
+            const systems = result.rows;
+
+            if (systems.length === 0) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `No world systems found for series "${seriesCheck.rows[0].title}"${args.system_type ? ` with type "${args.system_type}"` : ''}.`
+                        }
+                    ]
+                };
+            }
+
+            let output = `# World Systems for "${seriesCheck.rows[0].title}"\n\n`;
+            output += `Found ${systems.length} system(s):\n\n`;
+
+            systems.forEach(system => {
+                output += `### ${system.system_name} (ID: ${system.id})\n`;
+                output += `- **Type:** ${system.system_type}\n`;
+                output += `- **Power Source:** ${system.power_source}\n`;
+                output += `- **Access Method:** ${system.access_method}\n`;
+                if (system.limitations && system.limitations.length > 0) {
+                    output += `- **Limitations:** ${system.limitations.join('; ')}\n`;
+                }
+                if (system.system_rules && system.system_rules.length > 0) {
+                    output += `- **Rules:** ${system.system_rules.join('; ')}\n`;
+                }
+                if (system.power_scaling) {
+                    const scaling = typeof system.power_scaling === 'string'
+                        ? JSON.parse(system.power_scaling)
+                        : system.power_scaling;
+                    if (scaling && (scaling.lowest_level || scaling.highest_level || scaling.progression_method)) {
+                        output += `- **Power Scaling:** ${scaling.lowest_level || '?'} to ${scaling.highest_level || '?'}` +
+                            `${scaling.progression_method ? ` (via ${scaling.progression_method})` : ''}\n`;
+                    }
+                }
+                output += '\n';
+            });
+
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: output
+                    }
+                ]
+            };
+
+        } catch (error) {
+            throw new Error(`Failed to get world systems: ${error.message}`);
+        }
+    }
+
     // =============================================
     // EVIDENCE AND RELATIONSHIP TRACKING
     // =============================================
-    
+
     async handleAddRevealEvidence(args) {
         try {
             // Validate reveal exists

@@ -106,6 +106,15 @@ class BookPlanningMCPServer extends BaseMCPServer {
             });
         }
 
+        const linkPlotThreads = plotThreadTools.find(t => t.name === 'link_plot_threads');
+        if (linkPlotThreads) {
+            tools.push({
+                ...linkPlotThreads,
+                name: 'link_plot_threads',
+                description: `${linkPlotThreads.description}`
+            });
+        }
+
         // =============================================
         // 4. TIMELINE EVENT CREATION (Phase-specific)
         // =============================================
@@ -163,6 +172,7 @@ class BookPlanningMCPServer extends BaseMCPServer {
             // Plot thread handlers
             'create_plot_thread': (args) => this.plotThreadHandlers.handleCreatePlotThread(args),
             'update_plot_thread': (args) => this.plotThreadHandlers.handleUpdatePlotThread(args),
+            'link_plot_threads': (args) => this.plotThreadHandlers.handleLinkPlotThreads(args),
 
             // Timeline handlers
             'create_timeline_event': (args) => this.timelineEventHandlers.handleCreateTimelineEvent(args),
