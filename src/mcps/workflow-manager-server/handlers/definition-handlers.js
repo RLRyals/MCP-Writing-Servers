@@ -30,8 +30,9 @@ export class DefinitionHandlers {
                 workflow_id, name, version, description, graph_json, dependencies,
                 tags, metadata, created_by, is_system
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
-            ON CONFLICT (workflow_id, version) DO UPDATE SET
+            ON CONFLICT (workflow_id) DO UPDATE SET
                 name = EXCLUDED.name,
+                version = EXCLUDED.version,
                 description = EXCLUDED.description,
                 graph_json = EXCLUDED.graph_json,
                 dependencies = EXCLUDED.dependencies,
