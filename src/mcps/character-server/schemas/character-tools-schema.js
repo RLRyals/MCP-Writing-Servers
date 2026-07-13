@@ -41,7 +41,7 @@ export const characterToolsSchema = [
     },
     {
         name: 'create_character',
-        description: 'Create character',
+        description: 'Create a character. Canonical entry point for new characters — a raw database-admin insert on the characters table skips this and won\'t be visible to knowledge/relationship/continuity tools.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -70,7 +70,7 @@ export const characterToolsSchema = [
     },
     {
         name: 'update_character',
-        description: 'Update character',
+        description: 'Update core character fields (name, type, status). Prefer this over raw database-admin CRUD so status changes stay consistent with arc and continuity tracking.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -191,7 +191,7 @@ export const characterDetailToolsSchema = [
 export const characterKnowledgeToolsSchema = [
     {
         name: 'add_character_knowledge',
-        description: 'Track character knowledge',
+        description: 'Record what a character knows, when, and how — maintains knowledge-state continuity. A raw table write bypasses the checks that catch "character knows something before they learned it" plot holes.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -332,7 +332,7 @@ export const characterKnowledgeToolsSchema = [
 export const characterTimelineToolsSchema = [
     {
         name: 'track_character_presence',
-        description: 'Track character in chapter',
+        description: 'Record a character\'s presence/state in a chapter or scene — feeds continuity and knowledge-timing checks. A raw insert bypasses those checks.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -385,7 +385,7 @@ export const characterTimelineToolsSchema = [
     },
     {
         name: 'check_character_continuity',
-        description: 'Check character continuity',
+        description: 'Validate a character\'s state and knowledge stay consistent across a chapter range — catches contradictions a raw CRUD read can\'t, because it has no notion of "consistent."',
         inputSchema: {
             type: 'object',
             properties: {

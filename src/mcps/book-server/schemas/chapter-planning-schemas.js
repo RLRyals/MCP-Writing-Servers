@@ -9,7 +9,7 @@
 export const chapterPlanningSchemas = {
     create_chapter: {
         name: 'create_chapter',
-        description: 'Create chapter',
+        description: 'Create a chapter. Canonical entry point for new chapters — a raw database-admin insert on the chapters table skips chapter-scoped timeline/world/knowledge wiring that other tools depend on.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -73,7 +73,7 @@ export const chapterPlanningSchemas = {
 
     update_chapter: {
         name: 'update_chapter',
-        description: 'Update chapter',
+        description: 'Update chapter fields (status, word count, summary, etc.). Prefer this over raw database-admin CRUD so status transitions stay consistent with other chapter-scoped tracking.',
         inputSchema: {
             type: 'object',
             properties: {

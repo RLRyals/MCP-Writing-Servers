@@ -94,7 +94,7 @@ class CoreContinuityMCPServer extends BaseMCPServer {
             tools.push({
                 ...checkCharacterContinuity,
                 name: 'check_character_continuity',
-                description: 'Check character continuity across chapters'
+                description: 'Validate a character\'s state and knowledge stay consistent across a chapter range — catches contradictions a raw CRUD read can\'t.'
             });
         }
 

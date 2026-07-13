@@ -4,6 +4,8 @@
 
 A secure MCP (Model Context Protocol) server that provides comprehensive database management including CRUD operations, batch processing, schema introspection, security controls, and backup/restore capabilities.
 
+> **Not the normal authoring path.** This server is for admin, migration, and bulk-repair work against whitelisted tables. Writing a chapter, character, scene, or plot thread through `db_insert_record`/`db_update_records` bypasses the continuity/knowledge-state/arc invariants the purpose-built domain servers enforce. For normal authoring, use those servers instead — see the [routing map in the root README](../../../README.md#which-server-for-which-task).
+
 ## 🎯 Overview
 
 The Database Admin Server enables AI assistants to safely manage database records with:

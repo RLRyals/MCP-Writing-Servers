@@ -2,6 +2,8 @@
 
 Comprehensive guides for different user personas
 
+> **Scope note:** this page (and the rest of `docs/`) documents `database-admin-server` — the generic, whitelisted-table CRUD layer for admin/migration/bulk-repair work. It is not the normal authoring path, including for the "For AI Agents" section below. For the purpose-built domain servers (and which one to use for a given writing task), see the [routing map in the root README](../README.md#which-server-for-which-task).
+
 ---
 
 ## Table of Contents

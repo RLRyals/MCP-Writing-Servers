@@ -2,6 +2,8 @@
 
 Comprehensive guide for production operations and data migrations
 
+> **Scope note:** this is genuinely `database-admin-server`'s home turf — ops and data migration are exactly what it's for. Just don't extrapolate from this guide to normal authoring; for writing chapters/characters/scenes day-to-day, use the purpose-built domain servers — see the [routing map in the root README](../README.md#which-server-for-which-task).
+
 ---
 
 ## Table of Contents
