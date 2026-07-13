@@ -153,6 +153,137 @@ export class CharacterKnowledgeHandlers {
         }
     }
 
+    async handleUpdateCharacterKnowledge(args) {
+        try {
+            const { id, knowledge_level, knowledge_item, learned_context, learned_book_id } = args;
+
+            if (!id) {
+                throw new Error('id is required to identify the knowledge entry to update');
+            }
+
+            // Check if the entry exists first
+            const checkResult = await this.db.query(
+                `SELECT * FROM character_knowledge WHERE id = $1`,
+                [id]
+            );
+
+            if (checkResult.rows.length === 0) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `No character knowledge entry found with id: ${id}`
+                        }
+                    ]
+                };
+            }
+
+            // Build dynamic update query - only provided fields are changed
+            const updates = [];
+            const params = [];
+            let p = 0;
+
+            const setField = (column, value) => {
+                if (value !== undefined) {
+                    updates.push(`${column} = $${++p}`);
+                    params.push(value);
+                }
+            };
+
+            setField('knowledge_level', knowledge_level);
+            setField('knowledge_item', knowledge_item);
+            setField('learned_context', learned_context);
+            setField('learned_book_id', learned_book_id);
+
+            if (updates.length === 0) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: 'No fields provided to update.'
+                        }
+                    ]
+                };
+            }
+
+            updates.push('updated_at = CURRENT_TIMESTAMP');
+            params.push(id);
+
+            const result = await this.db.query(
+                `UPDATE character_knowledge SET ${updates.join(', ')} WHERE id = $${++p} RETURNING *`,
+                params
+            );
+            const knowledge = result.rows[0];
+
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Character knowledge updated successfully!\n\n` +
+                              `ID: ${knowledge.id}\n` +
+                              `Character ID: ${knowledge.character_id}\n` +
+                              `Category: ${knowledge.knowledge_category}\n` +
+                              `Knowledge: ${knowledge.knowledge_item}\n` +
+                              `Level: ${knowledge.knowledge_level}\n` +
+                              `Context: ${knowledge.learned_context || 'Not specified'}`
+                    }
+                ]
+            };
+        } catch (error) {
+            throw new Error(`Failed to update character knowledge: ${error.message}`);
+        }
+    }
+
+    async handleDeleteCharacterKnowledge(args) {
+        try {
+            const { id } = args;
+
+            if (!id) {
+                throw new Error('id is required to identify the knowledge entry to delete');
+            }
+
+            const checkResult = await this.db.query(
+                `SELECT ck.*, c.name as character_name
+                 FROM character_knowledge ck
+                 JOIN characters c ON ck.character_id = c.id
+                 WHERE ck.id = $1`,
+                [id]
+            );
+
+            if (checkResult.rows.length === 0) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `No character knowledge entry found to delete with id: ${id}`
+                        }
+                    ]
+                };
+            }
+
+            const deletedKnowledge = checkResult.rows[0];
+
+            await this.db.query(
+                `DELETE FROM character_knowledge WHERE id = $1`,
+                [id]
+            );
+
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `Character knowledge deleted successfully!\n\n` +
+                              `Character: ${deletedKnowledge.character_name}\n` +
+                              `Deleted: ${deletedKnowledge.knowledge_category}/${deletedKnowledge.knowledge_item}\n` +
+                              `Previous Level: ${deletedKnowledge.knowledge_level}`
+                    }
+                ]
+            };
+        } catch (error) {
+            throw new Error(`Failed to delete character knowledge: ${error.message}`);
+        }
+    }
+
     async handleGetCharactersWhoKnow(args) {
         try {
             const { series_id, knowledge_item, knowledge_level } = args;

@@ -75,6 +75,8 @@ class CharacterMCPServer extends BaseMCPServer {
         this.handleAddCharacterKnowledgeWithChapter = this.characterKnowledgeHandlers.handleAddCharacterKnowledgeWithChapter.bind(this.characterKnowledgeHandlers);
         this.handleCheckCharacterKnowledge = this.characterKnowledgeHandlers.handleCheckCharacterKnowledge.bind(this.characterKnowledgeHandlers);
         this.handleGetCharactersWhoKnow = this.characterKnowledgeHandlers.handleGetCharactersWhoKnow.bind(this.characterKnowledgeHandlers);
+        this.handleUpdateCharacterKnowledge = this.characterKnowledgeHandlers.handleUpdateCharacterKnowledge.bind(this.characterKnowledgeHandlers);
+        this.handleDeleteCharacterKnowledge = this.characterKnowledgeHandlers.handleDeleteCharacterKnowledge.bind(this.characterKnowledgeHandlers);
 
         // Bind character timeline handler methods
         this.handleTrackCharacterPresence = this.characterTimelineHandlers.handleTrackCharacterPresence.bind(this.characterTimelineHandlers);
@@ -154,6 +156,8 @@ class CharacterMCPServer extends BaseMCPServer {
             'add_character_knowledge_with_chapter': this.handleAddCharacterKnowledgeWithChapter,
             'check_character_knowledge': this.handleCheckCharacterKnowledge,
             'get_characters_who_know': this.handleGetCharactersWhoKnow,
+            'update_character_knowledge': this.handleUpdateCharacterKnowledge,
+            'delete_character_knowledge': this.handleDeleteCharacterKnowledge,
 
             // Character Timeline Handlers
             'track_character_presence': this.handleTrackCharacterPresence,

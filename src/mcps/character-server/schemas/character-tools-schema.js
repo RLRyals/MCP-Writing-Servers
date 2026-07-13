@@ -250,6 +250,42 @@ export const characterKnowledgeToolsSchema = [
         }
     },
     {
+        name: 'update_character_knowledge',
+        description: 'Correct an existing character knowledge entry. Identify by `id`. Only provided fields are changed.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                id: { type: 'integer', description: 'character_knowledge row id (required)' },
+                knowledge_level: {
+                    type: 'string',
+                    enum: ['knows', 'suspects', 'unaware', 'forgot'],
+                    description: 'Corrected knowledge level?'
+                },
+                knowledge_item: {
+                    type: 'string',
+                    description: 'Corrected description of what they know?'
+                },
+                learned_context: {
+                    type: 'string',
+                    description: 'Corrected how/when learned?'
+                },
+                learned_book_id: { type: 'integer', description: 'Corrected book learned in?' }
+            },
+            required: ['id']
+        }
+    },
+    {
+        name: 'delete_character_knowledge',
+        description: 'Delete a character knowledge entry. Identify by `id`.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                id: { type: 'integer', description: 'character_knowledge row id (required)' }
+            },
+            required: ['id']
+        }
+    },
+    {
         name: 'check_character_knowledge',
         description: 'Check character knowledge',
         inputSchema: {
