@@ -229,7 +229,21 @@ async function loadServers() {
         console.error('✗ Failed to load Kanban Server:', error.message);
     }
 
-    console.error(`\n✅ Successfully loaded ${servers.length}/13 servers\n`);
+    try {
+        // Story Analysis Server (phase-based wrapper, bead mws-1783883496278-4-e2749385)
+        const { StoryAnalysisMCPServer } = await import('./config-mcps/story-analysis-server/index.js');
+        servers.push({
+            name: 'story-analysis',
+            path: '/story-analysis',
+            serverClass: StoryAnalysisMCPServer,
+            port: 3016
+        });
+        console.error('✓ Story Analysis Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Story Analysis Server:', error.message);
+    }
+
+    console.error(`\n✅ Successfully loaded ${servers.length}/15 servers\n`);
     return servers;
 }
 
