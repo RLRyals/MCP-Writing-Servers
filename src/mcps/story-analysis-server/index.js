@@ -13,10 +13,12 @@ if (process.env.MCP_STDIO_MODE === 'true') {
 
 import { BaseMCPServer } from '../../shared/base-server.js';
 import { StoryAnalysisHandlers } from './handlers/story-analysis-handlers.js';
+import { StoryformHandlers } from './handlers/storyform-handlers.js';
 import {
     lookupSystemToolsSchema,
     storyAnalysisToolsSchema
 } from './schemas/story-analysis-tools-schema.js';
+import { storyformToolsSchema } from './schemas/storyform-tools-schema.js';
 
 class StoryAnalysisMCPServer extends BaseMCPServer {
     constructor() {
@@ -32,6 +34,7 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
         // Initialize handler module
         try {
             this.storyAnalysisHandlers = new StoryAnalysisHandlers(this.db);
+            this.storyformHandlers = new StoryformHandlers(this.db);
             console.error('[STORY-ANALYSIS-SERVER] Story analysis handlers initialized');
         } catch (error) {
             console.error('[STORY-ANALYSIS-SERVER] Handler initialization failed:', error.message);
@@ -63,6 +66,11 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
             this.handleTrackCharacterThroughlines = this.storyAnalysisHandlers.handleTrackCharacterThroughlines.bind(this.storyAnalysisHandlers);
             this.handleIdentifyStoryAppreciations = this.storyAnalysisHandlers.handleIdentifyStoryAppreciations.bind(this.storyAnalysisHandlers);
             this.handleMapProblemSolutions = this.storyAnalysisHandlers.handleMapProblemSolutions.bind(this.storyAnalysisHandlers);
+
+            // Bind storyform handler methods
+            this.handleCreateStoryform = this.storyformHandlers.handleCreateStoryform.bind(this.storyformHandlers);
+            this.handleUpdateStoryform = this.storyformHandlers.handleUpdateStoryform.bind(this.storyformHandlers);
+            this.handleGetStoryform = this.storyformHandlers.handleGetStoryform.bind(this.storyformHandlers);
 
             console.error('[STORY-ANALYSIS-SERVER] All handler methods bound successfully');
         } catch (error) {
@@ -98,7 +106,10 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
                 ...lookupSystemToolsSchema,
 
                 // Story analysis tools
-                ...storyAnalysisToolsSchema
+                ...storyAnalysisToolsSchema,
+
+                // Storyform read/CRUD tools
+                ...storyformToolsSchema
             ];
 
             console.error(`[STORY-ANALYSIS-SERVER] Tools registered: ${tools.length} total`);
@@ -115,7 +126,12 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
             'analyze_story_dynamics': this.handleAnalyzeStoryDynamics,
             'track_character_throughlines': this.handleTrackCharacterThroughlines,
             'identify_story_appreciations': this.handleIdentifyStoryAppreciations,
-            'map_problem_solutions': this.handleMapProblemSolutions
+            'map_problem_solutions': this.handleMapProblemSolutions,
+
+            // Storyform Handlers
+            'create_storyform': this.handleCreateStoryform,
+            'update_storyform': this.handleUpdateStoryform,
+            'get_storyform': this.handleGetStoryform
         };
 
         const handler = handlers[toolName];

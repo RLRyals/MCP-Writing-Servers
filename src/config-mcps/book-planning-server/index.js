@@ -23,6 +23,7 @@ import { OrganizationHandlers } from '../../mcps/world-server/handlers/organizat
 import { PlotThreadHandlers } from '../../mcps/plot-server/handlers/plot-thread-handlers.js';
 import { LookupManagementHandlers } from '../../mcps/metadata-server/handlers/lookup-management-handlers.js';
 import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
+import { StoryformHandlers } from '../../mcps/story-analysis-server/handlers/storyform-handlers.js';
 
 // Import phase-specific schemas directly to reduce token usage
 import { bookPlanningSchemas } from '../../mcps/book-server/schemas/book-planning-schemas.js';
@@ -49,6 +50,7 @@ class BookPlanningMCPServer extends BaseMCPServer {
         this.plotThreadHandlers = new PlotThreadHandlers(this.db);
         this.lookupHandlers = new LookupManagementHandlers(this.db);
         this.tropeHandlers = new TropeHandlers(this.db);
+        this.storyformHandlers = new StoryformHandlers(this.db);
 
         console.error('[BOOK-PLANNING-SERVER] Phase-specific handlers initialized');
     }
@@ -157,6 +159,12 @@ class BookPlanningMCPServer extends BaseMCPServer {
             }
         });
 
+        // =============================================
+        // 7. STORYFORM TOOLS (Phase-specific) - per-book storyform read/CRUD (canon-DB flip 01)
+        // =============================================
+        this.storyformHandlers.getStoryformTools()
+            .forEach(tool => tools.push({ ...tool }));
+
         return tools;
     }
 
@@ -183,7 +191,12 @@ class BookPlanningMCPServer extends BaseMCPServer {
             // Trope instance handlers
             'create_trope_instance': (args) => this.tropeHandlers.handleCreateTropeInstance(args),
             'list_trope_instances': (args) => this.tropeHandlers.handleListTropeInstances(args),
-            'get_trope_instance': (args) => this.tropeHandlers.handleGetTropeInstance(args)
+            'get_trope_instance': (args) => this.tropeHandlers.handleGetTropeInstance(args),
+
+            // Storyform handlers (per-book storyform)
+            'create_storyform': (args) => this.storyformHandlers.handleCreateStoryform(args),
+            'update_storyform': (args) => this.storyformHandlers.handleUpdateStoryform(args),
+            'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args)
         };
 
         return handlerMap[toolName] || null;

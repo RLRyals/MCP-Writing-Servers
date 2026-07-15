@@ -10,6 +10,10 @@
 // wrapper registers/exposes the four analysis tools through its
 // buildTools()/getToolHandler(), without re-declaring the tool schemas.
 //
+// bead mws-rev added the storyform read/CRUD layer (create_storyform,
+// update_storyform, get_storyform -- StoryformHandlers, migration 046) to
+// this same wrapper, so the tool count grew from 4 to 7.
+//
 // No live DB writes are exercised here (the prerequisite migration for
 // story_analysis / character_throughlines / story_appreciations /
 // problem_solutions merged in PR #84, but this test only checks wrapper
@@ -20,6 +24,7 @@ import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
 import { StoryAnalysisMCPServer } from '../../src/config-mcps/story-analysis-server/index.js';
 import { storyAnalysisToolsSchema } from '../../src/mcps/story-analysis-server/schemas/story-analysis-tools-schema.js';
+import { storyformToolsSchema } from '../../src/mcps/story-analysis-server/schemas/storyform-tools-schema.js';
 
 describe('story-analysis-server wrapper tool visibility (mws-4)', () => {
     let server;
@@ -30,7 +35,7 @@ describe('story-analysis-server wrapper tool visibility (mws-4)', () => {
         }
     });
 
-    it('exposes the four story-analysis tools', () => {
+    it('exposes the four story-analysis tools plus the three storyform tools', () => {
         server = new StoryAnalysisMCPServer();
         const toolNames = server.tools.map(t => t.name);
 
@@ -38,7 +43,10 @@ describe('story-analysis-server wrapper tool visibility (mws-4)', () => {
         assert.ok(toolNames.includes('track_character_throughlines'));
         assert.ok(toolNames.includes('identify_story_appreciations'));
         assert.ok(toolNames.includes('map_problem_solutions'));
-        assert.strictEqual(server.tools.length, 4, 'wrapper should expose exactly the 4 story-analysis tools, no more/no less');
+        assert.ok(toolNames.includes('create_storyform'));
+        assert.ok(toolNames.includes('update_storyform'));
+        assert.ok(toolNames.includes('get_storyform'));
+        assert.strictEqual(server.tools.length, 7, 'wrapper should expose exactly the 4 story-analysis + 3 storyform tools, no more/no less');
     });
 
     it('maps each tool to a callable handler function', () => {
@@ -46,11 +54,14 @@ describe('story-analysis-server wrapper tool visibility (mws-4)', () => {
         assert.strictEqual(typeof server.getToolHandler('track_character_throughlines'), 'function');
         assert.strictEqual(typeof server.getToolHandler('identify_story_appreciations'), 'function');
         assert.strictEqual(typeof server.getToolHandler('map_problem_solutions'), 'function');
+        assert.strictEqual(typeof server.getToolHandler('create_storyform'), 'function');
+        assert.strictEqual(typeof server.getToolHandler('update_storyform'), 'function');
+        assert.strictEqual(typeof server.getToolHandler('get_storyform'), 'function');
         assert.strictEqual(server.getToolHandler('not_a_real_tool'), null);
     });
 
     it('references (does not copy) the source schema -- inputSchema matches the handler-owned schema', () => {
-        for (const sourceTool of storyAnalysisToolsSchema) {
+        for (const sourceTool of [...storyAnalysisToolsSchema, ...storyformToolsSchema]) {
             const wrapperTool = server.tools.find(t => t.name === sourceTool.name);
             assert.ok(wrapperTool, `wrapper should expose ${sourceTool.name}`);
             assert.deepStrictEqual(
