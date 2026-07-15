@@ -201,6 +201,29 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/writing_server_test
         run: node --test tests/story-analysis-server/story-analysis-wrapper.test.js
 
+  outline-server-tests:
+    name: Outline Server Tests
+    runs-on: ubuntu-latest
+    # bead mws-e14: outline_works cross-link FK validation (create_work +
+    # update_work) and get_works_for_book. DB is fully mocked (see
+    # tests/outline-server/), so no postgres service is needed here.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run outline-server tests
+        run: node --test tests/outline-server/works-handlers.test.js
+
   lint:
     name: Lint Code
     runs-on: ubuntu-latest

@@ -71,6 +71,7 @@ class OutlinePhaseMCPServer extends BaseMCPServer {
             'delete_work':                this.worksHandlers.handleDeleteWork.bind(this.worksHandlers),
             'get_outline':                this.worksHandlers.handleGetOutline.bind(this.worksHandlers),
             'get_ancestry':               this.worksHandlers.handleGetAncestry.bind(this.worksHandlers),
+            'get_works_for_book':         this.worksHandlers.handleGetWorksForBook.bind(this.worksHandlers),
             'list_series_roots':          this.worksHandlers.handleListSeriesRoots.bind(this.worksHandlers),
             'list_works':                 this.worksHandlers.handleListWorks.bind(this.worksHandlers),
             'search_works':               this.worksHandlers.handleSearchWorks.bind(this.worksHandlers),

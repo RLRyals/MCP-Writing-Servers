@@ -4,6 +4,14 @@
 
 import { worksToolsSchema } from '../schemas/outline-tools-schema.js';
 
+// Canonical tables each outline_works cross-link column points at.
+const CROSS_LINK_TABLES = {
+    series_id: 'series',
+    book_id: 'books',
+    chapter_id: 'chapters',
+    scene_id: 'chapter_scenes'
+};
+
 export class WorksHandlers {
     constructor(db) {
         this.db = db;
@@ -11,6 +19,21 @@ export class WorksHandlers {
 
     getWorksTools() {
         return worksToolsSchema;
+    }
+
+    // Validates any provided cross-link ids (series_id/book_id/chapter_id/scene_id)
+    // against their canonical tables. Ignores undefined/null fields (optional links).
+    // Throws a clear error naming the field and id on the first miss.
+    async validateCrossLinks(links) {
+        for (const [field, table] of Object.entries(CROSS_LINK_TABLES)) {
+            const value = links[field];
+            if (value === undefined || value === null) continue;
+
+            const check = await this.db.query(`SELECT id FROM ${table} WHERE id = $1`, [value]);
+            if (check.rows.length === 0) {
+                throw new Error(`${field} ${value} not found in ${table} -- cross-links must be real ids`);
+            }
+        }
     }
 
     async handleCreateWork(args) {
@@ -27,6 +50,8 @@ export class WorksHandlers {
             if (work_type === 'series' && parent_id) {
                 throw new Error('A "series" work cannot have a parent_id.');
             }
+
+            await this.validateCrossLinks({ series_id, book_id, chapter_id, scene_id });
 
             const result = await this.db.query(
                 `INSERT INTO outline_works
@@ -61,7 +86,17 @@ export class WorksHandlers {
 
     async handleUpdateWork(args) {
         try {
-            const { work_id, title, summary, content, status, sequence, pov_character_id } = args;
+            const {
+                work_id, title, summary, content, status, sequence, pov_character_id,
+                series_id, book_id, chapter_id, scene_id
+            } = args;
+
+            await this.validateCrossLinks({
+                series_id: series_id || null,
+                book_id: book_id || null,
+                chapter_id: chapter_id || null,
+                scene_id: scene_id || null
+            });
 
             const updates = [];
             const values = [];
@@ -75,6 +110,10 @@ export class WorksHandlers {
                 updates.push(`pov_character_id = $${p++}`);
                 values.push(pov_character_id || null);
             }
+            if (series_id !== undefined)  { updates.push(`series_id = $${p++}`);  values.push(series_id || null); }
+            if (book_id !== undefined)    { updates.push(`book_id = $${p++}`);    values.push(book_id || null); }
+            if (chapter_id !== undefined) { updates.push(`chapter_id = $${p++}`); values.push(chapter_id || null); }
+            if (scene_id !== undefined)   { updates.push(`scene_id = $${p++}`);   values.push(scene_id || null); }
 
             if (updates.length === 0) {
                 return { content: [{ type: 'text', text: 'No fields to update.' }] };
@@ -148,45 +187,93 @@ export class WorksHandlers {
         }
     }
 
+    // Shared by get_outline and get_works_for_book: renders a node plus
+    // descendants to N levels deep as nested markdown lines. Returns null if
+    // work_id doesn't exist.
+    async renderTreeLines(workId, depth, includeContent) {
+        const result = await this.db.query(
+            `WITH RECURSIVE tree AS (
+                 SELECT id, parent_id, work_type, sequence, title, summary, content, status,
+                        0 AS rel_depth,
+                        ARRAY[sequence]::int[] AS path
+                   FROM outline_works WHERE id = $1
+                 UNION ALL
+                 SELECT w.id, w.parent_id, w.work_type, w.sequence, w.title, w.summary, w.content, w.status,
+                        t.rel_depth + 1,
+                        t.path || w.sequence
+                   FROM outline_works w
+                   JOIN tree t ON w.parent_id = t.id
+                  WHERE t.rel_depth < $2
+             )
+             SELECT * FROM tree ORDER BY path`,
+            [workId, depth]
+        );
+
+        if (result.rows.length === 0) return null;
+
+        const lines = [];
+        for (const r of result.rows) {
+            const indent = '  '.repeat(r.rel_depth);
+            const heading = '#'.repeat(Math.min(r.rel_depth + 1, 6));
+            lines.push(`${indent}${heading} [${r.work_type}#${r.id}] ${r.title ?? '(untitled)'} (seq ${r.sequence}, ${r.status})`);
+            if (r.summary) lines.push(`${indent}_${r.summary}_`);
+            if (includeContent && r.content) lines.push(`${indent}${r.content}`);
+            lines.push('');
+        }
+        return lines;
+    }
+
     async handleGetOutline(args) {
         try {
             const { work_id, depth = 2, include_content = true } = args;
 
-            const result = await this.db.query(
-                `WITH RECURSIVE tree AS (
-                     SELECT id, parent_id, work_type, sequence, title, summary, content, status,
-                            0 AS rel_depth,
-                            ARRAY[sequence]::int[] AS path
-                       FROM outline_works WHERE id = $1
-                     UNION ALL
-                     SELECT w.id, w.parent_id, w.work_type, w.sequence, w.title, w.summary, w.content, w.status,
-                            t.rel_depth + 1,
-                            t.path || w.sequence
-                       FROM outline_works w
-                       JOIN tree t ON w.parent_id = t.id
-                      WHERE t.rel_depth < $2
-                 )
-                 SELECT * FROM tree ORDER BY path`,
-                [work_id, depth]
-            );
-
-            if (result.rows.length === 0) {
+            const lines = await this.renderTreeLines(work_id, depth, include_content);
+            if (lines === null) {
                 return { content: [{ type: 'text', text: `No work found with ID ${work_id}.` }] };
-            }
-
-            const lines = [];
-            for (const r of result.rows) {
-                const indent = '  '.repeat(r.rel_depth);
-                const heading = '#'.repeat(Math.min(r.rel_depth + 1, 6));
-                lines.push(`${indent}${heading} [${r.work_type}#${r.id}] ${r.title ?? '(untitled)'} (seq ${r.sequence}, ${r.status})`);
-                if (r.summary) lines.push(`${indent}_${r.summary}_`);
-                if (include_content && r.content) lines.push(`${indent}${r.content}`);
-                lines.push('');
             }
 
             return { content: [{ type: 'text', text: lines.join('\n') }] };
         } catch (err) {
             throw new Error(`get_outline failed: ${err.message}`);
+        }
+    }
+
+    async handleGetWorksForBook(args) {
+        try {
+            const { book_id, depth = 2, include_content = true } = args;
+
+            if (!book_id || typeof book_id !== 'number' || book_id < 1) {
+                throw new Error('book_id must be a positive number');
+            }
+
+            const bookCheck = await this.db.query('SELECT id, title FROM books WHERE id = $1', [book_id]);
+            if (bookCheck.rows.length === 0) {
+                throw new Error(`Book with ID ${book_id} not found`);
+            }
+
+            const roots = await this.db.query(
+                `SELECT id, work_type, title FROM outline_works WHERE book_id = $1 ORDER BY work_type, sequence, id`,
+                [book_id]
+            );
+
+            if (roots.rows.length === 0) {
+                return { content: [{ type: 'text', text:
+                    `No outline nodes are cross-linked to book_id ${book_id} ("${bookCheck.rows[0].title}") yet.`
+                }] };
+            }
+
+            const sections = [];
+            for (const root of roots.rows) {
+                const lines = await this.renderTreeLines(root.id, depth, include_content);
+                sections.push((lines || []).join('\n'));
+            }
+
+            return { content: [{ type: 'text', text:
+                `${roots.rows.length} outline node(s) cross-linked to book_id ${book_id} ("${bookCheck.rows[0].title}"):\n\n` +
+                sections.join('\n---\n\n')
+            }] };
+        } catch (err) {
+            throw new Error(`get_works_for_book failed: ${err.message}`);
         }
     }
 
