@@ -26,6 +26,7 @@ import { OrganizationHandlers } from '../../mcps/world-server/handlers/organizat
 import { WorldElementHandlers } from '../../mcps/world-server/handlers/world-element-handlers.js';
 import { GenreExtensions } from '../../mcps/plot-server/handlers/genre-extensions.js';
 import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
+import { StoryformHandlers } from '../../mcps/story-analysis-server/handlers/storyform-handlers.js';
 
 class SeriesPlanningMCPServer extends BaseMCPServer {
     constructor() {
@@ -55,6 +56,9 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
 
         // Trope handlers
         this.tropeHandlers = new TropeHandlers(this.db);
+
+        // Storyform handlers (series-master storyform)
+        this.storyformHandlers = new StoryformHandlers(this.db);
 
         console.error('[SERIES-PLANNING-SERVER] Handlers initialized with shared DB');
     }
@@ -139,6 +143,10 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
                 });
             });
 
+        // Storyform tools - series-master storyform read/CRUD (canon-DB flip 01)
+        this.storyformHandlers.getStoryformTools()
+            .forEach(tool => tools.push({ ...tool }));
+
         return tools;
     }
 
@@ -171,7 +179,12 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
             'get_world_systems': this.genreExtensions.handleGetWorldSystems.bind(this.genreExtensions),
 
             // Trope handlers (create only; lookups in core-continuity)
-            'create_trope': this.tropeHandlers.handleCreateTrope.bind(this.tropeHandlers)
+            'create_trope': this.tropeHandlers.handleCreateTrope.bind(this.tropeHandlers),
+
+            // Storyform handlers (series-master storyform)
+            'create_storyform': this.storyformHandlers.handleCreateStoryform.bind(this.storyformHandlers),
+            'update_storyform': this.storyformHandlers.handleUpdateStoryform.bind(this.storyformHandlers),
+            'get_storyform': this.storyformHandlers.handleGetStoryform.bind(this.storyformHandlers)
         };
 
         return handlerMap[toolName] || null;

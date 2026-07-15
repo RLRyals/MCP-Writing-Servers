@@ -199,7 +199,7 @@ jobs:
       - name: Run story-analysis-server wrapper tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/writing_server_test
-        run: node --test tests/story-analysis-server/story-analysis-wrapper.test.js
+        run: node --test tests/story-analysis-server/story-analysis-wrapper.test.js tests/story-analysis-server/storyform-handlers.test.js
 
   lint:
     name: Lint Code

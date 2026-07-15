@@ -15,6 +15,7 @@ import { BaseMCPServer } from '../../shared/base-server.js';
 
 // Import ONLY the handler class - NOT the full server
 import { StoryAnalysisHandlers } from '../../mcps/story-analysis-server/handlers/story-analysis-handlers.js';
+import { StoryformHandlers } from '../../mcps/story-analysis-server/handlers/storyform-handlers.js';
 
 class StoryAnalysisMCPServer extends BaseMCPServer {
     constructor() {
@@ -32,6 +33,7 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
     initializeHandlers() {
         // Create handler instance passing our shared database
         this.storyAnalysisHandlers = new StoryAnalysisHandlers(this.db);
+        this.storyformHandlers = new StoryformHandlers(this.db);
 
         console.error('[STORY-ANALYSIS-SERVER] Handlers initialized with shared DB');
     }
@@ -78,6 +80,10 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
             });
         }
 
+        // STORYFORM READ/CRUD TOOLS
+        const storyformTools = this.storyformHandlers.getStoryformTools();
+        storyformTools.forEach(tool => tools.push({ ...tool }));
+
         return tools;
     }
 
@@ -88,7 +94,12 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
             'analyze_story_dynamics': (args) => this.storyAnalysisHandlers.handleAnalyzeStoryDynamics(args),
             'track_character_throughlines': (args) => this.storyAnalysisHandlers.handleTrackCharacterThroughlines(args),
             'identify_story_appreciations': (args) => this.storyAnalysisHandlers.handleIdentifyStoryAppreciations(args),
-            'map_problem_solutions': (args) => this.storyAnalysisHandlers.handleMapProblemSolutions(args)
+            'map_problem_solutions': (args) => this.storyAnalysisHandlers.handleMapProblemSolutions(args),
+
+            // Storyform handlers
+            'create_storyform': (args) => this.storyformHandlers.handleCreateStoryform(args),
+            'update_storyform': (args) => this.storyformHandlers.handleUpdateStoryform(args),
+            'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args)
         };
 
         return handlerMap[toolName] || null;
