@@ -20,17 +20,17 @@ export const worksToolsSchema = [
                 content: { type: 'string', description: 'Long-form outline text at this zoom level' },
                 status: { type: 'string', description: 'planned, outlined, drafted, abandoned, etc.' },
                 pov_character_id: { type: 'integer', description: 'POV character (FK to characters.id). Usually set on scene nodes.' },
-                series_id: { type: 'integer', description: 'Optional cross-link to series(id)' },
-                book_id: { type: 'integer', description: 'Optional cross-link to books(id)' },
-                chapter_id: { type: 'integer', description: 'Optional cross-link to chapters(id)' },
-                scene_id: { type: 'integer', description: 'Optional cross-link to chapter_scenes(id)' }
+                series_id: { type: 'integer', description: 'Optional cross-link to series(id). Must already exist -- validated before insert.' },
+                book_id: { type: 'integer', description: 'Optional cross-link to books(id). Must already exist -- validated before insert. Read back via get_works_for_book.' },
+                chapter_id: { type: 'integer', description: 'Optional cross-link to chapters(id). Must already exist -- validated before insert.' },
+                scene_id: { type: 'integer', description: 'Optional cross-link to chapter_scenes(id). Must already exist -- validated before insert.' }
             },
             required: ['work_type','sequence']
         }
     },
     {
         name: 'update_work',
-        description: 'Update an outline node\'s title, summary, content, status, sequence, or POV character. Setting status to "abandoned" is the soft-delete convention.',
+        description: 'Update an outline node\'s title, summary, content, status, sequence, POV character, or canonical cross-links. Setting status to "abandoned" is the soft-delete convention.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -40,7 +40,11 @@ export const worksToolsSchema = [
                 content: { type: 'string' },
                 status: { type: 'string' },
                 sequence: { type: 'integer' },
-                pov_character_id: { type: 'integer', description: 'Pass null/0 to clear' }
+                pov_character_id: { type: 'integer', description: 'Pass null/0 to clear' },
+                series_id: { type: 'integer', description: 'Cross-link to series(id). Must already exist -- validated before update. Pass null/0 to clear.' },
+                book_id: { type: 'integer', description: 'Cross-link to books(id). Must already exist -- validated before update. Pass null/0 to clear.' },
+                chapter_id: { type: 'integer', description: 'Cross-link to chapters(id). Must already exist -- validated before update. Pass null/0 to clear.' },
+                scene_id: { type: 'integer', description: 'Cross-link to chapter_scenes(id). Must already exist -- validated before update. Pass null/0 to clear.' }
             },
             required: ['work_id']
         }
@@ -133,6 +137,19 @@ export const worksToolsSchema = [
                 work_id: { type: 'integer' }
             },
             required: ['work_id']
+        }
+    },
+    {
+        name: 'get_works_for_book',
+        description: 'Find the outline node(s) cross-linked to a canonical book_id (books.id) and render each as a nested outline (same shape as get_outline). The read path for "render an outline from the DB by book" -- unlike get_outline, this looks a node up BY the canonical book_id instead of requiring an outline_works.id you already know.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                book_id: { type: 'integer', description: 'Canonical books(id) to look up' },
+                depth: { type: 'integer', description: 'How many levels of children to include under each matching node (default 2)' },
+                include_content: { type: 'boolean', description: 'Include long-form content field? (default true)' }
+            },
+            required: ['book_id']
         }
     }
 ];

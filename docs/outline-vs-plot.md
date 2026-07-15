@@ -39,21 +39,21 @@ analysis](#corrections-to-the-original-analysis-gh-74).
 | Altitude | Bottom-up: per-scene/chapter structure + drafting context | Top-down: multi-book arcs and reveals |
 | Spine table | `outline_works` (self-referential tree: `parent_id`) | `plot_threads` (flat, keyed to `series_id`, spans `start_book`/`end_book`) |
 | Primary ID | `outline_works.id` (own SERIAL sequence, own tree) | `plot_threads.id`, `information_reveals.id`, `reveal_evidence.id`, `world_systems.id`, `character_system_progression.id` (each its own SERIAL sequence) |
-| Tool count | 22 (verified: 9 works + 4 facts + 3 promises + 3 evidence + 2 scene-events + 1 brief) | 8 (verified: 4 plot-thread + 4 genre-extension; a 5th plot-thread tool exists in code but is commented out — see [Dead code](#known-dead-code)) |
+| Tool count | 23 (verified: 10 works + 4 facts + 3 promises + 3 evidence + 2 scene-events + 1 brief) | 8 (verified: 4 plot-thread + 4 genre-extension; a 5th plot-thread tool exists in code but is commented out — see [Dead code](#known-dead-code)) |
 | Also owns | facts (atomic truths), promises (clue/setup/payoff ledger), evidence-chain (finding→conversion gap), scene-events (polymorphic event log), `get_scene_brief` (one-call drafting context) | information-reveals, reveal-evidence (child of a reveal), world-systems (magic/tech rules), character-system-progression (power levels) |
 | Server class / file | `OutlineMCPServer`, `src/mcps/outline-server/index.js` | `PlotMCPServer`, `src/mcps/plot-server/index.js` |
 | Standalone MCP name | `outline-manager` | `plot-management` |
 
 ## Tool inventory (verified against source)
 
-### outline-server — 22 tools
+### outline-server — 23 tools
 
 Registered in `src/mcps/outline-server/index.js:42-51` (`getTools()`), dispatched
 `53-85` (`getToolHandler()`). Schemas: `src/mcps/outline-server/schemas/outline-tools-schema.js`.
 
 | Group | Tools | Handler file |
 |---|---|---|
-| works (9) | `create_work`, `update_work`, `move_work`, `delete_work`, `get_outline`, `get_ancestry`, `list_series_roots`, `list_works`, `search_works` | `handlers/works-handlers.js` |
+| works (10) | `create_work`, `update_work`, `move_work`, `delete_work`, `get_outline`, `get_ancestry`, `get_works_for_book`, `list_series_roots`, `list_works`, `search_works` | `handlers/works-handlers.js` |
 | facts (4) | `create_fact`, `list_facts`, `update_fact`, `delete_fact` | `handlers/facts-handlers.js` |
 | promises (3) | `create_promise`, `update_promise`, `list_open_promises` | `handlers/promises-handlers.js` |
 | evidence (3) | `create_evidence`, `update_evidence`, `list_unconverted_evidence` | `handlers/evidence-handlers.js` |
@@ -82,7 +82,7 @@ don't go looking for a file that doesn't exist.
 Neither raw server is the only way an agent sees these tools — several
 `config-mcps/*` aggregators bundle subsets under a shared DB connection:
 
-- `config-mcps/outline-server` (`outline-phase`) — re-exports **all 22**
+- `config-mcps/outline-server` (`outline-phase`) — re-exports **all 23**
   outline tools verbatim, no renaming.
 - `config-mcps/series-planning-server` — pulls in exactly one plot-server
   tool, `define_world_system`, from `genreExtensionToolsSchema`. No outline
@@ -184,27 +184,40 @@ also shared:**
 so on). These genuinely reference the same canonical `series`, `books`,
 `chapters`, `chapter_scenes` tables that plot-server's `series_id`/
 `start_book`/`end_book` arguments also point at. So far, that sounds like a
-second shared ID space. In practice it isn't a useful one, because:
+second shared ID space. It's real, but with two things to know:
 
-- `create_work`'s handler (`works-handlers.js:16-60`) inserts whatever
-  integers you pass for `series_id`/`book_id`/`chapter_id`/`scene_id`
-  straight into the row with **no existence check** — unlike plot-server,
-  which validates `series_id` against the `series` table before every insert
-  (`plot-thread-handlers.js:25-32`).
-- No outline-server tool ever reads those columns back out. `get_outline`,
-  `get_ancestry`, `list_works`, `search_works`, and `get_scene_brief` all
-  `SELECT` specific column lists (or `SELECT *` in `get_scene_brief`, but the
-  rendered brief text never surfaces `series_id`/`book_id`/`chapter_id`/
-  `scene_id` — verified against `brief-handlers.js:158-235`). They're
-  write-only bookkeeping today.
+- **RATIFIED 2026-07-15 (Rebecca's ruling on the phantom-bridge finding,
+  dev-backlog card a169f982): "MAKE IT REAL" (bead mws-e14).** As of that
+  fix, `create_work` and `update_work`
+  (`works-handlers.js` — `validateCrossLinks()`) reject any provided
+  `series_id`/`book_id`/`chapter_id`/`scene_id` that doesn't already exist in
+  its canonical table, with a clear handler-level error (`series_id 999 not
+  found in series`, etc.) — matching plot-server's existing
+  `create_plot_thread` convention (`plot-thread-handlers.js:25-32`). The
+  columns stay optional; omitting one is fine, but a value that IS supplied
+  must be real. The underlying FK constraints
+  (`outline_works_legacy_book_id_fkey` etc., `ON DELETE SET NULL`) were
+  already present since migration 037/039 — this fix adds the handler-level
+  check so callers get a clean error instead of a raw Postgres FK-violation
+  message, and extends the same validation (and the fields themselves) to
+  `update_work`, which previously couldn't touch these columns at all.
+- **`get_works_for_book(book_id)`** (added alongside the fix above) is now
+  the read path: given a canonical `books.id`, it finds the outline node(s)
+  cross-linked to that book and renders each as a nested tree (same shape as
+  `get_outline`). `get_outline`, `get_ancestry`, `list_works`, and
+  `search_works` still don't surface `series_id`/`book_id`/`chapter_id`/
+  `scene_id` in their own output — `get_works_for_book` is the one tool that
+  looks a node up BY the canonical id instead of requiring an
+  `outline_works.id` you already know.
 
-So: **don't rely on outline's `series_id`/`book_id`/`chapter_id`/`scene_id`
-cross-links to do anything beyond storage.** They're an intentional escape
-hatch (per the migration comments: "Cross-link via the optional legacy_*_id
-columns if you want to point at existing rows") but no current tool consumes
-them. If you need outline-server and plot-server to agree on "which book/
-chapter," track that correspondence yourself — don't assume the schema does
-it for you.
+So: outline's `series_id`/`book_id`/`chapter_id`/`scene_id` cross-links are
+now validated on write and have exactly one read path
+(`get_works_for_book`, book-scoped only — there's no equivalent
+`get_works_for_series`/`get_works_for_chapter`/`get_works_for_scene` yet).
+They're still an intentional escape hatch, not a full second query surface.
+If you need outline-server and plot-server to agree on "which book/chapter"
+beyond what `get_works_for_book` gives you, track that correspondence
+yourself — don't assume the schema does all of it for you.
 
 ## Overlap / confusion risks
 
@@ -235,6 +248,7 @@ adjacent-sounding things:
 | Task | Use | Tool |
 |---|---|---|
 | Add a scene / chapter / act to the manuscript structure | outline-server | `create_work` (`work_type='scene'` etc.) |
+| Render the outline tree for a canonical `books.id` | outline-server | `get_works_for_book` |
 | Get everything needed to draft a specific scene in one call | outline-server | `get_scene_brief` |
 | Register a fact a character can/can't know yet | outline-server | `create_fact` |
 | Check what a character knows at a given point in the manuscript | outline-server | `what_does_character_know_at` |
@@ -288,12 +302,11 @@ card).
   corroborating evidence to an EXISTING information reveal (requires
   `reveal_id`). NOT for tracking findings the protagonist can't act on yet —
   see outline-server's `create_evidence` for that."*
-- **`create_work` (outline-server)** — the `series_id`/`book_id`/
-  `chapter_id`/`scene_id` parameters are documented only as "Optional
-  cross-link to X(id)" with no warning that nothing validates them and no
-  tool reads them back. Worth an explicit note: *"Write-only bookkeeping;
-  not validated against the target table and not surfaced by any
-  outline-server query."*
+- **`create_work` (outline-server)** — **DONE, bead mws-e14 (2026-07-15).**
+  The `series_id`/`book_id`/`chapter_id`/`scene_id` parameters on both
+  `create_work` and `update_work` now document "Must already exist --
+  validated before insert/update", and `book_id` calls out the
+  `get_works_for_book` read path.
 - **`create_plot_thread` / `get_plot_threads` (plot-server)** — already
   reasonably precise (`series_id` is validated, `book_number` filter is
   clear). No change needed.
