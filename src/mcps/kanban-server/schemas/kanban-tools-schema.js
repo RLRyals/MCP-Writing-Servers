@@ -94,6 +94,10 @@ export const kanbanToolsSchema = [
                     type: 'string',
                     enum: ['auto-done', 'review-required'],
                     description: 'Optional override for callers that already know the risk class; otherwise defaulted from title/body/labels/refs.'
+                },
+                metadata: {
+                    type: 'object',
+                    description: "Arbitrary key/value bag, e.g. { pr_ref: 'owner/repo#N' } -- the merge-watcher's primary match key. If a non-done card already exists on this board with the same metadata.pr_ref, that existing card is returned instead of inserting a duplicate (retry-safe)."
                 }
             },
             required: ['title']

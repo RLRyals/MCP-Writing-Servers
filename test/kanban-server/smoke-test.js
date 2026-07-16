@@ -498,6 +498,69 @@ async function main() {
             'list_cards due_filter=overdue excludes a done card even with a past due_at',
             !overdueAfterDoneRes.cards.some((c) => c.id === overdueCardId)
         );
+
+        // --- mws-9e9: create_card metadata round-trip + retry-shaped dedupe ---
+
+        // Regression test: create_card with metadata.pr_ref, read back, assert non-empty.
+        const metaCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: 'PR-linked review card',
+            metadata: { pr_ref: 'RLRyals/MCP-Writing-Servers#999', bead_id: 'mws-9e9' }
+        });
+        const metaCardId = metaCardRes.card.id;
+        check(
+            'create_card round-trips metadata.pr_ref',
+            metaCardRes.card.metadata?.pr_ref === 'RLRyals/MCP-Writing-Servers#999',
+            JSON.stringify(metaCardRes.card.metadata)
+        );
+        check(
+            'create_card round-trips metadata.bead_id',
+            metaCardRes.card.metadata?.bead_id === 'mws-9e9'
+        );
+
+        // Retry-shaped duplicate create: same board + same metadata.pr_ref,
+        // non-done -> must return the existing card, no second row.
+        const retryCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: 'PR-linked review card',
+            metadata: { pr_ref: 'RLRyals/MCP-Writing-Servers#999', bead_id: 'mws-9e9' }
+        });
+        check(
+            'create_card retry with same board+pr_ref returns the existing card, not a new one',
+            retryCardRes.card.id === metaCardId
+        );
+
+        const pr999CountRes = await pool.query(
+            `SELECT id, title, status, metadata, created_at FROM fictionlab.kanban_cards WHERE board_id = $1 AND metadata->>'pr_ref' = $2`,
+            [testBoardId, 'RLRyals/MCP-Writing-Servers#999']
+        );
+        check(
+            'no second row was inserted for the retried pr_ref',
+            pr999CountRes.rows.length === 1,
+            JSON.stringify(pr999CountRes.rows)
+        );
+
+        const pr999ActivityCountRes = await pool.query(
+            `SELECT COUNT(*) FROM fictionlab.kanban_activity WHERE card_id = $1 AND action = 'created'`,
+            [metaCardId]
+        );
+        check(
+            'kanban_activity gets no duplicate create entry for the retried pr_ref',
+            parseInt(pr999ActivityCountRes.rows[0].count, 10) === 1
+        );
+
+        // Once the original card is done, a new pr_ref create is a fresh card
+        // (dedupe only guards non-done cards).
+        await callTool(client, 'move_card', { card_id: metaCardId, to_status: 'done', actor: 'rebecca' });
+        const afterDoneCardRes = await callTool(client, 'create_card', {
+            board_id: testBoardId,
+            title: 'PR-linked review card (reopened)',
+            metadata: { pr_ref: 'RLRyals/MCP-Writing-Servers#999', bead_id: 'mws-9e9' }
+        });
+        check(
+            'create_card with same pr_ref makes a fresh card once the prior one is done',
+            afterDoneCardRes.card.id !== metaCardId
+        );
     } finally {
         await client.close();
         // Cascade-delete the ephemeral test board (columns/cards/comments/links/activity all go with it).
