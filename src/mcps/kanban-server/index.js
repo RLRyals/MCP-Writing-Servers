@@ -124,7 +124,7 @@ const normalizedCurrentModuleUrl = import.meta.url.replace(/\/{3,}/g, '///')
 const isDirectExecution = normalizedCurrentModuleUrl === normalizedScriptPath ||
     decodeURIComponent(normalizedCurrentModuleUrl) === normalizedScriptPath;
 
-if (process.env.MCP_STDIO_MODE) {
+if (process.env.MCP_STDIO_MODE && isDirectExecution) {
     console.error('[KANBAN] Running in MCP stdio mode - starting server...');
     try {
         const server = new KanbanMCPServer();

@@ -103,6 +103,9 @@ jobs:
       - name: Run github-sync orchestration tests (mocked DB + gh client)
         run: node tests/kanban-server/github-sync.test.js
 
+      - name: Run stdio-adapter single-instance regression test (mws-xi7)
+        run: node test/kanban-server/stdio-single-instance-test.js
+
   workflow-manager-server-tests:
     name: Workflow Manager Server Tests
     runs-on: ubuntu-latest
