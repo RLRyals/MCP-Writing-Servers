@@ -22,7 +22,8 @@ const servers = [
     { name: 'reporting', port: 3008 },
     { name: 'author', port: 3009 },
     { name: 'database-admin', port: 3010 },
-    { name: 'workflow-manager', port: 3012 }
+    { name: 'workflow-manager', port: 3012 },
+    { name: 'outline', port: 3013 }
 ];
 
 // Store child process references
@@ -60,6 +61,7 @@ function log(serverName, message, level = 'info') {
         'author': colors.cyan,
         'database-admin': colors.green,
         'workflow-manager': colors.yellow,
+        'outline': colors.red,
         'orchestrator': colors.bright + colors.white
     };
 

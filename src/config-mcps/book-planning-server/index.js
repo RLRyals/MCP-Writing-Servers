@@ -130,6 +130,24 @@ class BookPlanningMCPServer extends BaseMCPServer {
             });
         }
 
+        const listTimelineEvents = timelineTools.find(t => t.name === 'list_timeline_events');
+        if (listTimelineEvents) {
+            tools.push({
+                ...listTimelineEvents,
+                name: 'list_timeline_events',
+                description: `${listTimelineEvents.description}`
+            });
+        }
+
+        const deleteTimelineEvent = timelineTools.find(t => t.name === 'delete_timeline_event');
+        if (deleteTimelineEvent) {
+            tools.push({
+                ...deleteTimelineEvent,
+                name: 'delete_timeline_event',
+                description: `${deleteTimelineEvent.description}`
+            });
+        }
+
         // =============================================
         // 5. METADATA TOOLS (Phase-specific)
         // =============================================
@@ -184,6 +202,8 @@ class BookPlanningMCPServer extends BaseMCPServer {
 
             // Timeline handlers
             'create_timeline_event': (args) => this.timelineEventHandlers.handleCreateTimelineEvent(args),
+            'list_timeline_events': (args) => this.timelineEventHandlers.handleListTimelineEvents(args),
+            'delete_timeline_event': (args) => this.timelineEventHandlers.handleDeleteTimelineEvent(args),
 
             // Metadata handlers
             'assign_book_genres': (args) => this.lookupHandlers.handleAssignBookGenres(args),
