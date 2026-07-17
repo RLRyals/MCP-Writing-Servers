@@ -212,7 +212,8 @@ export class CardHandlers {
             issue_ref,
             created_by = 'rebecca',
             due_at,
-            review_policy
+            review_policy,
+            metadata
         } = args || {};
 
         if (!title) {
@@ -236,29 +237,83 @@ export class CardHandlers {
         // "never downgrade" is enforced by update_card not exposing
         // review_policy as a patchable field (see update_card below).
         const resolvedReviewPolicy = review_policy || inferReviewPolicy({ labels, spec_ref, issue_ref, title, body });
+        const resolvedMetadata = metadata || {};
 
-        const result = await this.db.query(
-            `INSERT INTO fictionlab.kanban_cards
-                (board_id, title, body, status, assignee, priority, labels, spec_ref, issue_ref, review_policy, created_by, due_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-             RETURNING *`,
-            [
-                resolvedBoardId,
-                title,
-                body || null,
-                status,
-                assignee || null,
-                priority,
-                labels,
-                spec_ref || null,
-                issue_ref || null,
-                resolvedReviewPolicy,
-                created_by,
-                due_at || null
-            ]
-        );
+        const insertParams = [
+            resolvedBoardId,
+            title,
+            body || null,
+            status,
+            assignee || null,
+            priority,
+            labels,
+            spec_ref || null,
+            issue_ref || null,
+            resolvedReviewPolicy,
+            created_by,
+            due_at || null,
+            resolvedMetadata
+        ];
+        const insertColumns = `(board_id, title, body, status, assignee, priority, labels, spec_ref, issue_ref, review_policy, created_by, due_at, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`;
 
-        const card = result.rows[0];
+        let card;
+        if (resolvedMetadata.pr_ref) {
+            // Retry-shaped duplicate guard (mws-9e9 defect 2): a plain
+            // SELECT-then-INSERT check cannot close the race window (two
+            // concurrent callers can both pass the SELECT before either
+            // commits its INSERT -- this is exactly the twin-card evidence
+            // the bead was filed from, 1ms apart). metadata.pr_ref is the
+            // merge-watcher's primary match key, so this is enforced with a
+            // real partial unique index (migration 047) + ON CONFLICT, which
+            // Postgres arbitrates atomically across concurrent inserts.
+            const insertResult = await this.db.query(
+                `INSERT INTO fictionlab.kanban_cards ${insertColumns}
+                 ON CONFLICT (board_id, (metadata->>'pr_ref'))
+                    WHERE status <> 'done' AND metadata->>'pr_ref' IS NOT NULL
+                    DO NOTHING
+                 RETURNING *`,
+                insertParams
+            );
+
+            if (insertResult.rows.length > 0) {
+                card = insertResult.rows[0];
+            } else {
+                // Lost the race (or this genuinely is a retry): another
+                // non-done card already holds this board+pr_ref. Return it
+                // as-is -- no activity log, no second 'created' entry.
+                const existing = await this.db.query(
+                    `SELECT * FROM fictionlab.kanban_cards
+                     WHERE board_id = $1 AND status <> 'done' AND metadata->>'pr_ref' = $2
+                     ORDER BY created_at LIMIT 1`,
+                    [resolvedBoardId, resolvedMetadata.pr_ref]
+                );
+                return { card: existing.rows[0] };
+            }
+        } else {
+            // No pr_ref to dedupe on atomically. Best-effort fallback: same
+            // board+status+title created in the last few seconds is almost
+            // certainly a retry, not a deliberate second card. This window
+            // IS racy under true concurrent double-fire (unlike the pr_ref
+            // path above, which a real unique index protects) -- it only
+            // guards the common sequential-retry case.
+            const recentDuplicate = await this.db.query(
+                `SELECT * FROM fictionlab.kanban_cards
+                 WHERE board_id = $1 AND status = $2 AND title = $3
+                   AND created_at > NOW() - INTERVAL '5 seconds'
+                 ORDER BY created_at LIMIT 1`,
+                [resolvedBoardId, status, title]
+            );
+            if (recentDuplicate.rows.length > 0) {
+                return { card: recentDuplicate.rows[0] };
+            }
+
+            const insertResult = await this.db.query(
+                `INSERT INTO fictionlab.kanban_cards ${insertColumns} RETURNING *`,
+                insertParams
+            );
+            card = insertResult.rows[0];
+        }
 
         await logActivity(this.db, {
             boardId: resolvedBoardId,
