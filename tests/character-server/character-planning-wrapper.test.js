@@ -8,6 +8,11 @@
 // new update_character_knowledge / delete_character_knowledge tools (and the
 // already-registered arc tools) are exposed through that wrapper's
 // buildTools()/getToolHandler(), not just on the raw character-server.
+//
+// bead mws-bpu added delete_character_detail and the book/character-scoped
+// add_character_knowledge (sibling of update/delete_character_knowledge,
+// which were already exposed) -- both existed only on the unwrapped
+// src/mcps/character-server/index.js before this.
 
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
@@ -45,6 +50,22 @@ describe('character-planning-server wrapper tool visibility (mws-6)', () => {
         assert.strictEqual(typeof server.getToolHandler('update_character_arc'), 'function');
         assert.strictEqual(typeof server.getToolHandler('delete_character_arc'), 'function');
         assert.strictEqual(typeof server.getToolHandler('list_character_arcs'), 'function');
+    });
+
+    it('exposes delete_character_detail and add_character_knowledge (mws-bpu)', () => {
+        const toolNames = server.tools.map(t => t.name);
+
+        assert.ok(toolNames.includes('delete_character_detail'), 'wrapper should expose delete_character_detail');
+        assert.ok(toolNames.includes('add_character_knowledge'), 'wrapper should expose add_character_knowledge');
+
+        assert.strictEqual(typeof server.getToolHandler('delete_character_detail'), 'function');
+        assert.strictEqual(typeof server.getToolHandler('add_character_knowledge'), 'function');
+
+        const deleteDetail = server.tools.find(t => t.name === 'delete_character_detail');
+        assert.deepStrictEqual(deleteDetail.inputSchema.required, ['character_id', 'category', 'attribute']);
+
+        const addKnowledge = server.tools.find(t => t.name === 'add_character_knowledge');
+        assert.deepStrictEqual(addKnowledge.inputSchema.required, ['character_id', 'knowledge_category', 'knowledge_item']);
     });
 
     it('new schemas carry a usable inputSchema (id-based identification)', () => {

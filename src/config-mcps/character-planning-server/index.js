@@ -104,10 +104,28 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             });
         }
 
+        const deleteCharacterDetailSchema = characterDetailToolsSchema.find(t => t.name === 'delete_character_detail');
+        if (deleteCharacterDetailSchema) {
+            tools.push({
+                ...deleteCharacterDetailSchema,
+                name: 'delete_character_detail',
+                description: 'Delete an existing character detail'
+            });
+        }
+
         // =============================================
         //  CHARACTER KNOWLEDGE TOOLS (Phase-specific)
         // =============================================
         const characterKnowledgeTools = this.characterKnowledgeHandlers.getCharacterKnowledgeTools();
+
+        const addCharacterKnowledge = characterKnowledgeTools.find(t => t.name === 'add_character_knowledge');
+        if (addCharacterKnowledge) {
+            tools.push({
+                ...addCharacterKnowledge,
+                name: 'add_character_knowledge',
+                description: 'Record what a character knows, when, and how (book/character-scoped; use add_character_knowledge_with_chapter for chapter-scoped tracking)'
+            });
+        }
 
         const checkCharacterKnowledge = characterKnowledgeTools.find(t => t.name === 'check_character_knowledge');
         if (checkCharacterKnowledge) {
@@ -234,6 +252,8 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             'update_character': (args) => this.characterHandlers.handleUpdateCharacter(args),
             'add_character_detail': (args) => this.characterDetailHandlers.handleAddCharacterDetail(args),
             'update_character_detail': (args) => this.characterDetailHandlers.handleUpdateCharacterDetail(args),
+            'delete_character_detail': (args) => this.characterDetailHandlers.handleDeleteCharacterDetail(args),
+            'add_character_knowledge': (args) => this.characterKnowledgeHandlers.handleAddCharacterKnowledge(args),
             'check_character_knowledge': (args) => this.characterKnowledgeHandlers.handleCheckCharacterKnowledge(args),
             'update_character_knowledge': (args) => this.characterKnowledgeHandlers.handleUpdateCharacterKnowledge(args),
             'delete_character_knowledge': (args) => this.characterKnowledgeHandlers.handleDeleteCharacterKnowledge(args),
