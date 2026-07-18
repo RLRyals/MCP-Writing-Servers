@@ -16,6 +16,18 @@ const { Pool } = pg;
 /** Singleton pool instance */
 let _pool = null;
 
+// SSL is opt-in via DB_SSL/PGSSLMODE, not inferred from NODE_ENV: pgbouncer
+// (edoburu/pgbouncer, see mws-58d) ships with client_tls_sslmode=disable and no
+// certs, so forcing SSL whenever NODE_ENV=production breaks every pooled
+// connection (mws-qz0). Set DB_SSL=true/require once TLS is actually provisioned.
+function resolveSslConfig() {
+  const mode = (process.env.DB_SSL || process.env.PGSSLMODE || '').toLowerCase();
+  if (['true', '1', 'require', 'verify-ca', 'verify-full'].includes(mode)) {
+    return { rejectUnauthorized: false };
+  }
+  return false;
+}
+
 /**
  * Create (or replace) the shared database pool.
  * Call once at application startup.
@@ -35,7 +47,7 @@ export function createPool(config = {}) {
     max: config.max || 20,
     idleTimeoutMillis: config.idleTimeoutMillis || 30000,
     connectionTimeoutMillis: config.connectionTimeoutMillis || 5000,
-    ssl: config.ssl ?? (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false),
+    ssl: config.ssl ?? resolveSslConfig(),
   };
 
   // If connectionString is set, it takes precedence — remove individual fields

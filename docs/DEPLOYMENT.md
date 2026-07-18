@@ -638,6 +638,7 @@ MCP_AUTH_TOKEN=your-secure-token
 ### Optional Variables
 
 ```env
+DB_SSL=require              # opt-in only; pgbouncer has no TLS certs by default, leave unset unless configured
 LOG_LEVEL=info              # debug, info, warn, error
 LOG_FORMAT=json             # json, text
 POSTGRES_SHARED_BUFFERS=256MB
