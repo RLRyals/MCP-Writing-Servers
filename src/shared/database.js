@@ -30,6 +30,18 @@ if (!process.env.DATABASE_URL) {
     }
 }
 
+// SSL is opt-in via DB_SSL/PGSSLMODE, not inferred from NODE_ENV: pgbouncer
+// (edoburu/pgbouncer, see mws-58d) ships with client_tls_sslmode=disable and no
+// certs, so forcing SSL whenever NODE_ENV=production breaks every pooled
+// connection (mws-qz0). Set DB_SSL=true/require once TLS is actually provisioned.
+function resolveSslConfig() {
+    const mode = (process.env.DB_SSL || process.env.PGSSLMODE || '').toLowerCase();
+    if (['true', '1', 'require', 'verify-ca', 'verify-full'].includes(mode)) {
+        return { rejectUnauthorized: false };
+    }
+    return false;
+}
+
 export class DatabaseManager {
     constructor() {
         try {
@@ -57,7 +69,7 @@ export class DatabaseManager {
 
             this.pool = new Pool({
                 connectionString: process.env.DATABASE_URL,
-                ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+                ssl: resolveSslConfig(),
                 // Connection pool optimization (reduced for PGBouncer compatibility)
                 // When using PGBouncer, each application instance should use fewer connections
                 // since PGBouncer handles connection multiplexing
