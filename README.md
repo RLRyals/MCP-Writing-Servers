@@ -91,7 +91,9 @@ chapter or character.
   [`src/single-server-runner.js`](src/single-server-runner.js) for the full
   `server-name` → module map).
 - [`docker-compose.yml`](docker-compose.yml) — full production stack (Postgres,
-  PgBouncer, the 13-port server set, Prometheus, Grafana).
+  PgBouncer, the 13-port server set, Prometheus, Grafana). Run
+  `node scripts/generate-pgbouncer-config.js` before `docker-compose up` to generate
+  PgBouncer's `pgbouncer.ini`/`userlist.txt` (see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 
 ## Docs index
 
