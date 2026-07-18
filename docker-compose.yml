@@ -5,7 +5,7 @@
 # Complete production stack with:
 # - PostgreSQL database with optimized settings
 # - PgBouncer connection pooling
-# - MCP Writing Servers (13 servers on ports 3001-3013)
+# - MCP Writing Servers (15 servers on ports 3001-3013, 3015-3016)
 # - Prometheus monitoring
 # - Grafana dashboards
 # - Health checks and auto-restart
@@ -126,6 +126,8 @@ services:
       - "3011:3011"  # npe
       - "3012:3012"  # workflow-manager
       - "3013:3013"  # outline
+      - "3015:3015"  # kanban
+      - "3016:3016"  # story-analysis
     depends_on:
       pgbouncer:
         condition: service_healthy
