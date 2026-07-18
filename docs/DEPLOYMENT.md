@@ -128,7 +128,20 @@ MCP_AUTH_TOKEN=your_secure_token_here
 GRAFANA_ADMIN_PASSWORD=your_grafana_password
 ```
 
-### 3. Start Services
+### 3. Generate PgBouncer Config
+
+PgBouncer (`edoburu/pgbouncer`) reads its config from mounted files rather than env vars.
+Generate them from your `.env` before every `docker-compose up` (re-run whenever
+`POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` change):
+
+```bash
+node scripts/generate-pgbouncer-config.js
+```
+
+This writes `pgbouncer.ini` and `userlist.txt` to the repo root (gitignored — they contain
+the DB password/hash). Both are mounted read-only into the `pgbouncer` service.
+
+### 4. Start Services
 
 ```bash
 # Build and start all services
@@ -141,7 +154,7 @@ docker-compose logs -f
 docker-compose ps
 ```
 
-### 4. Verify Deployment
+### 5. Verify Deployment
 
 ```bash
 # Check health of all services
@@ -498,8 +511,8 @@ docker-compose logs pgbouncer
 # Test direct PostgreSQL connection
 docker-compose exec postgres psql -U writer -d mcp_series
 
-# Verify connection pool
-docker-compose exec pgbouncer psql -p 6432 -U writer -d pgbouncer -c "SHOW POOLS;"
+# Verify connection pool (edoburu/pgbouncer has no psql client -- connect from postgres)
+docker-compose exec postgres psql -h pgbouncer -p 6432 -U writer -d pgbouncer -c "SHOW POOLS;"
 ```
 
 #### 4. Monitoring Not Working
@@ -532,13 +545,13 @@ SELECT pg_reload_conf();
 
 #### PgBouncer Tuning
 
-Edit `docker-compose.yml`:
+PgBouncer reads `pgbouncer.ini`, not `docker-compose.yml` env vars. Edit the pool-sizing
+values in `scripts/generate-pgbouncer-config.js` (or the generated `pgbouncer.ini`
+directly for a one-off test), then regenerate and restart:
 
-```yaml
-pgbouncer:
-  environment:
-    PGBOUNCER_DEFAULT_POOL_SIZE: 50
-    PGBOUNCER_MAX_CLIENT_CONN: 2000
+```bash
+node scripts/generate-pgbouncer-config.js
+docker-compose restart pgbouncer
 ```
 
 ### Log Analysis
