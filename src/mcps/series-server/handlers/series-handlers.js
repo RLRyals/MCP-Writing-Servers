@@ -44,21 +44,18 @@ export class SeriesHandlers {
             }));
 
             return {
-                content: [
-                    {
-                        type: 'text',
-                        text: `Found ${seriesWithAuthors.length} series:\n\n` +
-                              seriesWithAuthors.map(series =>
-                                  `ID: ${series.id}\n` +
-                                  `Title: ${series.title}\n` +
-                                  `Author: ${series.author_name}\n` +
-                                  `Genres: ${series.genre_names?.length > 0 ? series.genre_names.join(', ') : 'None'}\n` +
-                                  `Status: ${series.status || 'Unknown'}\n` +
-                                  `Start Year: ${series.start_year || 'Unknown'}\n` +
-                                  `Description: ${series.description || 'No description available'}\n`
-                              ).join('\n---\n\n')
-                    }
-                ]
+                series: seriesWithAuthors.map(series => ({
+                    id: series.id,
+                    title: series.title,
+                    author_id: series.author_id,
+                    author_name: series.author_name,
+                    genre_names: series.genre_names || [],
+                    status: series.status,
+                    start_year: series.start_year,
+                    description: series.description,
+                    created_at: series.created_at,
+                    updated_at: series.updated_at
+                }))
             };
         } catch (error) {
             console.error('[SERIES-HANDLERS] handleListSeries error:', error);
@@ -84,12 +81,9 @@ export class SeriesHandlers {
 
             if (result.rows.length === 0) {
                 return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `No series found with ID: ${series_id}`
-                        }
-                    ]
+                    error: 'not_found',
+                    series_id,
+                    message: `No series found with ID: ${series_id}`
                 };
             }
 
@@ -100,19 +94,18 @@ export class SeriesHandlers {
             const authorName = authorResult.rows[0]?.name || 'Unknown';
 
             return {
-                content: [
-                    {
-                        type: 'text',
-                        text: `Series Details:\n\n` +
-                              `ID: ${series.id}\n` +
-                              `Title: ${series.title}\n` +
-                              `Author: ${authorName}\n` +
-                              `Genres: ${series.genre_names?.length > 0 ? series.genre_names.join(', ') : 'None'}\n` +
-                              `Status: ${series.status || 'Unknown'}\n` +
-                              `Start Year: ${series.start_year || 'Unknown'}\n` +
-                              `Description: ${series.description || 'No description available'}\n`
-                    }
-                ]
+                series: {
+                    id: series.id,
+                    title: series.title,
+                    author_id: series.author_id,
+                    author_name: authorName,
+                    genre_names: series.genre_names || [],
+                    status: series.status,
+                    start_year: series.start_year,
+                    description: series.description,
+                    created_at: series.created_at,
+                    updated_at: series.updated_at
+                }
             };
         } catch (error) {
             throw new Error(`Failed to get series: ${error.message}`);
@@ -227,12 +220,9 @@ export class SeriesHandlers {
 
                 if (result.rows.length === 0) {
                     return {
-                        content: [
-                            {
-                                type: 'text',
-                                text: `No series found with ID: ${series_id}`
-                            }
-                        ]
+                        error: 'not_found',
+                        series_id,
+                        message: `No series found with ID: ${series_id}`
                     };
                 }
             }
@@ -264,19 +254,18 @@ export class SeriesHandlers {
             const authorName = authorResult.rows[0]?.name || 'Unknown';
 
             return {
-                content: [
-                    {
-                        type: 'text',
-                        text: `Updated series successfully!\n\n` +
-                              `ID: ${series.id}\n` +
-                              `Title: ${series.title}\n` +
-                              `Author: ${authorName}\n` +
-                              `Genres: ${series.genre_names?.length > 0 ? series.genre_names.join(', ') : 'None'}\n` +
-                              `Status: ${series.status || 'Not specified'}\n` +
-                              `Start Year: ${series.start_year || 'Not specified'}\n` +
-                              `Description: ${series.description || 'No description available'}\n`
-                    }
-                ]
+                series: {
+                    id: series.id,
+                    title: series.title,
+                    author_id: series.author_id,
+                    author_name: authorName,
+                    genre_names: series.genre_names || [],
+                    status: series.status,
+                    start_year: series.start_year,
+                    description: series.description,
+                    created_at: series.created_at,
+                    updated_at: series.updated_at
+                }
             };
         } catch (error) {
             if (error.code === '23503') { // Foreign key violation

@@ -26,18 +26,15 @@ export class AuthorHandlers {
             const result = await this.db.query(query);
 
             return {
-                content: [
-                    {
-                        type: 'text',
-                        text: `Found ${result.rows.length} authors:\n\n` +
-                              result.rows.map(author =>
-                                  `ID: ${author.id}\n` +
-                                  `Name: ${author.name}\n` +
-                                  `Birth Year: ${author.birth_year || 'Unknown'}\n` +
-                                  `Bio: ${author.bio || 'No biography available'}\n`
-                              ).join('\n---\n\n')
-                    }
-                ]
+                authors: result.rows.map(author => ({
+                    id: author.id,
+                    name: author.name,
+                    email: author.email,
+                    birth_year: author.birth_year,
+                    bio: author.bio,
+                    created_at: author.created_at,
+                    updated_at: author.updated_at
+                }))
             };
         } catch (error) {
             throw new Error(`Failed to list authors: ${error.message}`);
@@ -52,29 +49,24 @@ export class AuthorHandlers {
 
             if (result.rows.length === 0) {
                 return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `No author found with ID: ${author_id}`
-                        }
-                    ]
+                    error: 'not_found',
+                    author_id,
+                    message: `No author found with ID: ${author_id}`
                 };
             }
 
             const author = result.rows[0];
 
             return {
-                content: [
-                    {
-                        type: 'text',
-                        text: `Author Details:\n\n` +
-                              `ID: ${author.id}\n` +
-                              `Name: ${author.name}\n` +
-                              `Email: ${author.email}\n` +
-                              `Birth Year: ${author.birth_year || 'Unknown'}\n` +
-                              `Bio: ${author.bio || 'No biography available'}\n`
-                    }
-                ]
+                author: {
+                    id: author.id,
+                    name: author.name,
+                    email: author.email,
+                    birth_year: author.birth_year,
+                    bio: author.bio,
+                    created_at: author.created_at,
+                    updated_at: author.updated_at
+                }
             };
         } catch (error) {
             throw new Error(`Failed to get author: ${error.message}`);
@@ -154,28 +146,24 @@ export class AuthorHandlers {
 
             if (result.rows.length === 0) {
                 return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `No author found with ID: ${author_id}`
-                        }
-                    ]
+                    error: 'not_found',
+                    author_id,
+                    message: `No author found with ID: ${author_id}`
                 };
             }
 
             const author = result.rows[0];
 
             return {
-                content: [
-                    {
-                        type: 'text',
-                        text: `Updated author successfully!\n\n` +
-                              `ID: ${author.id}\n` +
-                              `Name: ${author.name}\n` +
-                              `Birth Year: ${author.birth_year || 'Unknown'}\n` +
-                              `Bio: ${author.bio || 'No biography available'}\n`
-                    }
-                ]
+                author: {
+                    id: author.id,
+                    name: author.name,
+                    email: author.email,
+                    birth_year: author.birth_year,
+                    bio: author.bio,
+                    created_at: author.created_at,
+                    updated_at: author.updated_at
+                }
             };
         } catch (error) {
             throw new Error(`Failed to update author: ${error.message}`);

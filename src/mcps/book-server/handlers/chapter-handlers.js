@@ -148,36 +148,35 @@ export class ChapterHandlers {
             `;
             
             const result = await this.db.query(query, params);
-            
+
             if (result.rows.length === 0) {
                 return {
-                    content: [{
-                        type: 'text',
-                        text: `No chapter found with ID: ${chapter_id}`
-                    }]
+                    error: 'not_found',
+                    chapter_id,
+                    message: `No chapter found with ID: ${chapter_id}`
                 };
             }
-            
+
             const chapter = result.rows[0];
-            
+
             // Get book title for display
             const bookQuery = 'SELECT title FROM books WHERE id = $1';
             const bookResult = await this.db.query(bookQuery, [chapter.book_id]);
             const bookTitle = bookResult.rows[0]?.title || 'Unknown';
-            
-            let responseText = `Updated chapter successfully!\n\n`;
-            responseText += `ID: ${chapter.id}\n`;
-            responseText += `Book: ${bookTitle}\n`;
-            responseText += `Chapter: ${chapter.chapter_number}${chapter.title ? ` - ${chapter.title}` : ''}\n`;
-            responseText += `Status: ${chapter.status}\n`;
-            responseText += `Word Count: ${chapter.word_count || 0}\n`;
-            responseText += `Target: ${chapter.target_word_count || 'Not specified'}\n`;
-            
+
             return {
-                content: [{
-                    type: 'text',
-                    text: responseText
-                }]
+                chapter: {
+                    id: chapter.id,
+                    book_id: chapter.book_id,
+                    book_title: bookTitle,
+                    chapter_number: chapter.chapter_number,
+                    title: chapter.title,
+                    status: chapter.status,
+                    word_count: chapter.word_count || 0,
+                    target_word_count: chapter.target_word_count,
+                    created_at: chapter.created_at,
+                    updated_at: chapter.updated_at
+                }
             };
         } catch (error) {
             throw new Error(`Failed to update chapter: ${error.message}`);
@@ -198,87 +197,54 @@ export class ChapterHandlers {
             `;
             
             const result = await this.db.query(query, [chapter_id]);
-            
+
             if (result.rows.length === 0) {
                 return {
-                    content: [{
-                        type: 'text',
-                        text: `No chapter found with ID: ${chapter_id}`
-                    }]
+                    error: 'not_found',
+                    chapter_id,
+                    message: `No chapter found with ID: ${chapter_id}`
                 };
             }
-            
+
             const chapter = result.rows[0];
-            
-            let chapterText = `Chapter Details:\n\n`;
-            chapterText += `ID: ${chapter.id}\n`;
-            chapterText += `Book: ${chapter.book_title}\n`;
-            chapterText += `Chapter: ${chapter.chapter_number}${chapter.title ? ` - ${chapter.title}` : ''}\n`;
-            
-            if (chapter.subtitle) {
-                chapterText += `Subtitle: ${chapter.subtitle}\n`;
-            }
-            
-            chapterText += `Status: ${chapter.status}\n`;
-            chapterText += `Word Count: ${chapter.word_count || 0}\n`;
-            chapterText += `Target Words: ${chapter.target_word_count || 'Not specified'}\n`;
-            
-            if (chapter.pov_character_name) {
-                chapterText += `POV Character: ${chapter.pov_character_name}\n`;
-            }
-            
-            if (chapter.primary_location) {
-                chapterText += `Primary Location: ${chapter.primary_location}\n`;
-            }
-            
-            if (chapter.story_time_start) {
-                chapterText += `Timeline: ${chapter.story_time_start}`;
-                if (chapter.story_time_end) {
-                    chapterText += ` - ${chapter.story_time_end}`;
-                }
-                if (chapter.story_duration) {
-                    chapterText += ` (Duration: ${chapter.story_duration})`;
-                }
-                chapterText += `\n`;
-            }
-            
-            if (chapter.summary) {
-                chapterText += `Summary: ${chapter.summary}\n`;
-            }
-            
-            if (chapter.author_notes) {
-                chapterText += `Author Notes: ${chapter.author_notes}\n`;
-            }
-            
-            if (chapter.writing_notes) {
-                chapterText += `Writing Notes: ${chapter.writing_notes}\n`;
-            }
+
+            const chapterData = {
+                id: chapter.id,
+                book_id: chapter.book_id,
+                book_title: chapter.book_title,
+                chapter_number: chapter.chapter_number,
+                title: chapter.title,
+                subtitle: chapter.subtitle,
+                status: chapter.status,
+                word_count: chapter.word_count || 0,
+                target_word_count: chapter.target_word_count,
+                pov_character_id: chapter.pov_character_id,
+                pov_character_name: chapter.pov_character_name,
+                primary_location: chapter.primary_location,
+                story_time_start: chapter.story_time_start,
+                story_time_end: chapter.story_time_end,
+                story_duration: chapter.story_duration,
+                summary: chapter.summary,
+                author_notes: chapter.author_notes,
+                writing_notes: chapter.writing_notes,
+                created_at: chapter.created_at,
+                updated_at: chapter.updated_at
+            };
 
             if (include_scenes) {
                 const scenesQuery = `
                     SELECT id, scene_number, scene_title, word_count, location
-                    FROM chapter_scenes 
-                    WHERE chapter_id = $1 
+                    FROM chapter_scenes
+                    WHERE chapter_id = $1
                     ORDER BY scene_number
                 `;
                 const scenesResult = await this.db.query(scenesQuery, [chapter_id]);
-                
-                if (scenesResult.rows.length > 0) {
-                    chapterText += `\nScenes (${scenesResult.rows.length}):\n`;
-                    scenesResult.rows.forEach(scene => {
-                        chapterText += `  Scene ${scene.scene_number}${scene.scene_title ? `: ${scene.scene_title}` : ''} `;
-                        chapterText += `(${scene.word_count || 0} words)`;
-                        if (scene.location) chapterText += ` @ ${scene.location}`;
-                        chapterText += `\n`;
-                    });
-                } else {
-                    chapterText += `\nNo scenes created yet.\n`;
-                }
+                chapterData.scenes = scenesResult.rows;
             }
 
             if (include_characters) {
                 const charactersQuery = `
-                    SELECT ch.name, ccp.presence_type, ccp.importance_level, 
+                    SELECT ch.name, ccp.presence_type, ccp.importance_level,
                            ccp.physical_state, ccp.emotional_state
                     FROM character_chapter_presence ccp
                     JOIN characters ch ON ccp.character_id = ch.id
@@ -286,30 +252,10 @@ export class ChapterHandlers {
                     ORDER BY ccp.importance_level, ch.name
                 `;
                 const charactersResult = await this.db.query(charactersQuery, [chapter_id]);
-                
-                if (charactersResult.rows.length > 0) {
-                    chapterText += `\nCharacter Presence (${charactersResult.rows.length}):\n`;
-                    charactersResult.rows.forEach(char => {
-                        chapterText += `  ${char.name} (${char.presence_type}`;
-                        if (char.importance_level) chapterText += `, ${char.importance_level}`;
-                        chapterText += `)`;
-                        if (char.physical_state || char.emotional_state) {
-                            const states = [char.physical_state, char.emotional_state].filter(Boolean);
-                            chapterText += ` - ${states.join(', ')}`;
-                        }
-                        chapterText += `\n`;
-                    });
-                } else {
-                    chapterText += `\nNo character presence tracked yet.\n`;
-                }
+                chapterData.character_presence = charactersResult.rows;
             }
-            
-            return {
-                content: [{
-                    type: 'text',
-                    text: chapterText
-                }]
-            };
+
+            return { chapter: chapterData };
         } catch (error) {
             throw new Error(`Failed to get chapter: ${error.message}`);
         }
@@ -338,67 +284,52 @@ export class ChapterHandlers {
             query += ' ORDER BY c.chapter_number';
             
             const result = await this.db.query(query, params);
-            
+
             if (result.rows.length === 0) {
                 return {
-                    content: [{
-                        type: 'text',
-                        text: `No chapters found for book ID: ${book_id}`
-                    }]
+                    book_id,
+                    chapters: [],
+                    message: `No chapters found for book ID: ${book_id}`
                 };
             }
-            
+
             // Get book title
             const bookQuery = 'SELECT title FROM books WHERE id = $1';
             const bookResult = await this.db.query(bookQuery, [book_id]);
             const bookTitle = bookResult.rows[0]?.title || 'Unknown';
-            
-            let chaptersText = `Chapters for "${bookTitle}" (${result.rows.length} chapters):\n\n`;
-            
+
+            const chapters = [];
             for (const chapter of result.rows) {
-                chaptersText += `Id: ${chapter.id}\n`;
-                chaptersText += `  Chapter ${chapter.chapter_number}${chapter.title ? `: ${chapter.title}` : ' (Untitled)'}\n`;
-                chaptersText += `  Status: ${chapter.status}\n`;
-                chaptersText += `  Words: ${chapter.word_count || 0}`;
-                
-                if (chapter.target_word_count) {
-                    const progress = Math.round(((chapter.word_count || 0) / chapter.target_word_count) * 100);
-                    chaptersText += ` / ${chapter.target_word_count} (${progress}%)`;
-                }
-                chaptersText += `\n`;
-                
-                if (chapter.pov_character_name) {
-                    chaptersText += `  POV: ${chapter.pov_character_name}\n`;
-                }
-                
-                if (chapter.primary_location) {
-                    chaptersText += `  Location: ${chapter.primary_location}\n`;
-                }
-                
+                const chapterData = {
+                    id: chapter.id,
+                    chapter_number: chapter.chapter_number,
+                    title: chapter.title,
+                    status: chapter.status,
+                    word_count: chapter.word_count || 0,
+                    target_word_count: chapter.target_word_count,
+                    pov_character_name: chapter.pov_character_name,
+                    primary_location: chapter.primary_location,
+                    summary: chapter.summary,
+                    created_at: chapter.created_at,
+                    updated_at: chapter.updated_at
+                };
+
                 if (include_stats) {
                     // Get scene count
                     const sceneCountQuery = 'SELECT COUNT(*) as scene_count FROM chapter_scenes WHERE chapter_id = $1';
                     const sceneCountResult = await this.db.query(sceneCountQuery, [chapter.id]);
-                    const sceneCount = sceneCountResult.rows[0].scene_count;
-                    
-                    chaptersText += `  Scenes: ${sceneCount}\n`;
+                    chapterData.scene_count = parseInt(sceneCountResult.rows[0].scene_count) || 0;
                 }
-                
-                if (chapter.summary) {
-                    const shortSummary = chapter.summary.length > 100 
-                        ? chapter.summary.substring(0, 100) + '...' 
-                        : chapter.summary;
-                    chaptersText += `  Summary: ${shortSummary}\n`;
-                }
-                
-                chaptersText += `\n`;
+
+                chapters.push(chapterData);
             }
-            
+
             return {
-                content: [{
-                    type: 'text',
-                    text: chaptersText
-                }]
+                book: {
+                    id: book_id,
+                    title: bookTitle
+                },
+                chapters
             };
         } catch (error) {
             throw new Error(`Failed to list chapters: ${error.message}`);
