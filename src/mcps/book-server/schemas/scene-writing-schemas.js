@@ -110,6 +110,10 @@ export const sceneWritingSchemas = {
                     type: 'integer',
                     description: 'Scene ID'
                 },
+                expected_updated_at: {
+                    type: 'string',
+                    description: 'Optimistic concurrency guard: the scene\'s updated_at (from a prior get_scene/list_scenes/update_scene call). If provided and the row has changed since, the update is rejected with a conflict result (status 409) instead of overwriting.'
+                },
                 scene_title: {
                     type: 'string',
                     description: 'Title'
@@ -206,6 +210,11 @@ export const sceneWritingSchemas = {
                     type: 'boolean',
                     default: false,
                     description: 'Include character details'
+                },
+                full_content: {
+                    type: 'boolean',
+                    default: false,
+                    description: 'Return scene_content in full, untruncated. Default (false) truncates prose content at 1000 characters (content_truncated/content_length in the response indicate this).'
                 }
             },
             required: ['scene_id']

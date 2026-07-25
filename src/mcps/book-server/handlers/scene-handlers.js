@@ -156,7 +156,7 @@ export class SceneHandlers {
 
     async handleUpdateScene(args) {
         try {
-            const { scene_id, ...updates } = args;
+            const { scene_id, expected_updated_at, ...updates } = args;
 
             // Auto-create lookup values if they don't exist
             if (updates.scene_purpose) {
@@ -185,29 +185,56 @@ export class SceneHandlers {
             if (updateFields.length === 0) {
                 throw new Error('No fields to update');
             }
-            
+
             updateFields.push('updated_at = CURRENT_TIMESTAMP');
-            
-            const query = `
-                UPDATE chapter_scenes 
+
+            let query = `
+                UPDATE chapter_scenes
                 SET ${updateFields.join(', ')}
                 WHERE id = $1
-                RETURNING *
             `;
-            
+
+            // Optimistic concurrency guard: only apply the update if the row
+            // hasn't changed since the caller last read it. Millisecond
+            // truncation avoids false conflicts from sub-millisecond
+            // precision the caller's JSON round-trip can't preserve.
+            if (expected_updated_at) {
+                paramCount++;
+                query += ` AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $${paramCount}::timestamp)`;
+                params.push(expected_updated_at);
+            }
+
+            query += ' RETURNING *';
+
             const result = await this.db.query(query, params);
-            
+
             if (result.rows.length === 0) {
+                // Distinguish "no such scene" from "row changed underneath you"
+                const existsResult = await this.db.query(
+                    'SELECT updated_at FROM chapter_scenes WHERE id = $1',
+                    [scene_id]
+                );
+
+                if (existsResult.rows.length === 0) {
+                    return {
+                        error: 'not_found',
+                        scene_id,
+                        message: `No scene found with ID: ${scene_id}`
+                    };
+                }
+
                 return {
-                    content: [{
-                        type: 'text',
-                        text: `No scene found with ID: ${scene_id}`
-                    }]
+                    error: 'conflict',
+                    status: 409,
+                    scene_id,
+                    expected_updated_at,
+                    current_updated_at: existsResult.rows[0].updated_at,
+                    message: 'Scene was modified since expected_updated_at; refetch the current version before retrying.'
                 };
             }
-            
+
             const scene = result.rows[0];
-            
+
             // Get chapter and book info
             const contextQuery = `
                 SELECT c.chapter_number, c.title as chapter_title, b.title as book_title
@@ -218,41 +245,27 @@ export class SceneHandlers {
             `;
             const contextResult = await this.db.query(contextQuery, [scene_id]);
             const context = contextResult.rows[0] || {};
-            
-            let responseText = `Updated scene successfully!\n\n`;
-            responseText += `Scene ID: ${scene.id}\n`;
-            if (context.book_title) {
-                responseText += `Book: ${context.book_title}\n`;
-                responseText += `Chapter ${context.chapter_number}${context.chapter_title ? `: ${context.chapter_title}` : ''}\n`;
-            }
-            responseText += `Scene ${scene.scene_number}${scene.scene_title ? `: ${scene.scene_title}` : ''}\n`;
-            responseText += `Status: ${scene.writing_status}\n`;
-            responseText += `Words: ${scene.word_count || 0}\n`;
-            if (scene.target_word_count) {
-                responseText += `Target: ${scene.target_word_count}\n`;
-            }
-            if (scene.intensity_level) {
-                responseText += `Intensity Level: ${scene.intensity_level}/10\n`;
-            }
-            if (scene.scene_elements && scene.scene_elements.length > 0) {
-                responseText += `Scene Elements: ${scene.scene_elements.join(', ')}\n`;
-            }
-            if (scene.scene_outline) {
-                responseText += `Outline: ${scene.scene_outline.substring(0, 100)}${scene.scene_outline.length > 100 ? '...' : ''}\n`;
-            }
-            if (scene.scene_content) {
-                const wordCount = scene.scene_content.split(/\s+/).length;
-                responseText += `Content: ${wordCount} words (${scene.scene_content.substring(0, 50)}...)\n`;
-            }
-            if (scene.scene_revisions && scene.scene_revisions.length > 0) {
-                responseText += `Revisions: ${scene.scene_revisions.length} version(s)\n`;
-            }
-            
+
             return {
-                content: [{
-                    type: 'text',
-                    text: responseText
-                }]
+                scene: {
+                    id: scene.id,
+                    chapter_id: scene.chapter_id,
+                    book_title: context.book_title || null,
+                    chapter_number: context.chapter_number ?? null,
+                    chapter_title: context.chapter_title || null,
+                    scene_number: scene.scene_number,
+                    scene_title: scene.scene_title,
+                    writing_status: scene.writing_status,
+                    word_count: scene.word_count || 0,
+                    target_word_count: scene.target_word_count,
+                    intensity_level: scene.intensity_level,
+                    scene_elements: scene.scene_elements || [],
+                    scene_outline: scene.scene_outline,
+                    scene_content_word_count: scene.scene_content ? scene.scene_content.split(/\s+/).filter(Boolean).length : 0,
+                    scene_revisions_count: scene.scene_revisions ? scene.scene_revisions.length : 0,
+                    created_at: scene.created_at,
+                    updated_at: scene.updated_at
+                }
             };
         } catch (error) {
             throw new Error(`Failed to update scene: ${error.message}`);
@@ -261,10 +274,10 @@ export class SceneHandlers {
     
     async handleGetScene(args) {
         try {
-            const { scene_id, include_characters = false } = args;
-            
+            const { scene_id, include_characters = false, full_content = false } = args;
+
             const query = `
-                SELECT s.*, c.chapter_number, c.title as chapter_title, 
+                SELECT s.*, c.chapter_number, c.title as chapter_title,
                     b.title as book_title, ch.name as pov_character_name
                 FROM chapter_scenes s
                 JOIN chapters c ON s.chapter_id = c.id
@@ -272,116 +285,70 @@ export class SceneHandlers {
                 LEFT JOIN characters ch ON s.pov_character_id = ch.id
                 WHERE s.id = $1
             `;
-            
+
             const result = await this.db.query(query, [scene_id]);
-            
+
             if (result.rows.length === 0) {
                 return {
-                    content: [{
-                        type: 'text',
-                        text: `No scene found with ID: ${scene_id}`
-                    }]
+                    error: 'not_found',
+                    scene_id,
+                    message: `No scene found with ID: ${scene_id}`
                 };
             }
-            
+
             const scene = result.rows[0];
-            
-            let sceneText = `Scene Details:\n\n`;
-            sceneText += `Scene ID: ${scene.id}\n`;
-            sceneText += `Book: ${scene.book_title}\n`;
-            sceneText += `Chapter ${scene.chapter_number}${scene.chapter_title ? `: ${scene.chapter_title}` : ''}\n`;
-            sceneText += `Scene ${scene.scene_number}${scene.scene_title ? `: ${scene.scene_title}` : ' (Untitled)'}\n`;
-            
-            if (scene.scene_purpose) {
-                sceneText += `Purpose: ${scene.scene_purpose}\n`;
-            }
-            if (scene.scene_type) {
-                sceneText += `Type: ${scene.scene_type}\n`;
-            }
-            
-            sceneText += `Status: ${scene.writing_status}\n`;
-            sceneText += `Word Count: ${scene.word_count || 0}\n`;
-            
-            if (scene.target_word_count) {
-                const progress = scene.word_count ? Math.round((scene.word_count / scene.target_word_count) * 100) : 0;
-                sceneText += `Target Words: ${scene.target_word_count} (${progress}% complete)\n`;
-            }
-            
-            if (scene.location) {
-                sceneText += `Location: ${scene.location}\n`;
-            }
-            if (scene.time_of_day) {
-                sceneText += `Time: ${scene.time_of_day}\n`;
-            }
-            if (scene.duration) {
-                sceneText += `Duration: ${scene.duration}\n`;
-            }
-            
-            if (scene.intensity_level) {
-                sceneText += `Intensity Level: ${scene.intensity_level}/10\n`;
-            }
-            
-            if (scene.pov_character_name) {
-                sceneText += `POV Character: ${scene.pov_character_name}\n`;
-            }
-            
-            if (scene.scene_elements && scene.scene_elements.length > 0) {
-                sceneText += `Scene Elements: ${scene.scene_elements.join(', ')}\n`;
-            }
-            
-            if (scene.summary) {
-                sceneText += `Summary: ${scene.summary}\n`;
-            }
-            
-            if (scene.notes) {
-                sceneText += `Notes: ${scene.notes}\n`;
-            }
-            
-            // Display outline information
-            if (scene.scene_outline) {
-                sceneText += `\nScene Outline:\n----------------\n${scene.scene_outline}\n`;
-            }
-            
-            // Display content information (maybe truncate if too long)
-            if (scene.scene_content) {
-                const wordCount = scene.scene_content.split(/\s+/).length;
-                sceneText += `\nScene Content (${wordCount} words):\n----------------\n`;
-                if (scene.scene_content.length > 1000) {
-                    sceneText += `${scene.scene_content.substring(0, 1000)}...\n(Content truncated, ${scene.scene_content.length} characters total)\n`;
-                } else {
-                    sceneText += `${scene.scene_content}\n`;
-                }
-            }
-            
-            // Display revision information
-            if (scene.scene_revisions && scene.scene_revisions.length > 0) {
-                sceneText += `\nRevisions: ${scene.scene_revisions.length} version(s) stored\n`;
-            }
+
+            const contentLength = scene.scene_content ? scene.scene_content.length : 0;
+            const contentTruncated = !full_content && contentLength > 1000;
+            const sceneContent = scene.scene_content == null
+                ? null
+                : (contentTruncated ? scene.scene_content.substring(0, 1000) : scene.scene_content);
+
+            const sceneData = {
+                id: scene.id,
+                chapter_id: scene.chapter_id,
+                book_title: scene.book_title,
+                chapter_number: scene.chapter_number,
+                chapter_title: scene.chapter_title,
+                scene_number: scene.scene_number,
+                scene_title: scene.scene_title,
+                scene_purpose: scene.scene_purpose,
+                scene_type: scene.scene_type,
+                writing_status: scene.writing_status,
+                word_count: scene.word_count || 0,
+                target_word_count: scene.target_word_count,
+                location: scene.location,
+                time_of_day: scene.time_of_day,
+                duration: scene.duration,
+                intensity_level: scene.intensity_level,
+                pov_character_id: scene.pov_character_id,
+                pov_character_name: scene.pov_character_name,
+                scene_participants: scene.scene_participants || [],
+                scene_elements: scene.scene_elements || [],
+                summary: scene.summary,
+                notes: scene.notes,
+                scene_outline: scene.scene_outline,
+                scene_content: sceneContent,
+                content_length: contentLength,
+                content_truncated: contentTruncated,
+                scene_revisions_count: scene.scene_revisions ? scene.scene_revisions.length : 0,
+                created_at: scene.created_at,
+                updated_at: scene.updated_at
+            };
 
             if (include_characters && scene.scene_participants && scene.scene_participants.length > 0) {
                 // Get character names for participants
                 const participantQuery = `
-                    SELECT id, name 
-                    FROM characters 
+                    SELECT id, name
+                    FROM characters
                     WHERE id = ANY($1)
                     ORDER BY name
                 `;
                 const participantResult = await this.db.query(participantQuery, [scene.scene_participants]);
-                
-                if (participantResult.rows.length > 0) {
-                    sceneText += `\nScene Participants (${participantResult.rows.length}):\n`;
-                    participantResult.rows.forEach(char => {
-                        sceneText += `  - ${char.name}\n`;
-                    });
-                }
+                sceneData.participants = participantResult.rows;
             }
-            
-            return {
-                content: [{
-                    type: 'text',
-                    text: sceneText
-                }]
-            };
+
+            return { scene: sceneData };
         } catch (error) {
             throw new Error(`Failed to get scene: ${error.message}`);
         }
@@ -436,145 +403,104 @@ export class SceneHandlers {
             query += ' ORDER BY s.scene_number';
             
             const result = await this.db.query(query, params);
-            
+
             if (result.rows.length === 0) {
                 return {
-                    content: [{
-                        type: 'text',
-                        text: `No scenes found for chapter ID: ${chapter_id}`
-                    }]
+                    chapter_id,
+                    scenes: [],
+                    message: `No scenes found for chapter ID: ${chapter_id}`
                 };
             }
-            
+
             // Get chapter and book info
             const contextQuery = `
                 SELECT c.chapter_number, c.title as chapter_title, b.title as book_title
-                FROM chapters c 
-                JOIN books b ON c.book_id = b.id 
+                FROM chapters c
+                JOIN books b ON c.book_id = b.id
                 WHERE c.id = $1
             `;
             const contextResult = await this.db.query(contextQuery, [chapter_id]);
             const context = contextResult.rows[0] || {};
-            
-            let scenesText = `Scenes in ${context.book_title ? `"${context.book_title}" ` : ''}`;
-            scenesText += `Chapter ${context.chapter_number}${context.chapter_title ? `: ${context.chapter_title}` : ''} `;
-            scenesText += `(${result.rows.length} scenes):\n\n`;
-            
+
             let totalWords = 0;
             let totalTargetWords = 0;
             let intensityStats = { min: 10, max: 0, total: 0, count: 0 };
             let allElements = new Set();
-            
-            result.rows.forEach(scene => {
-                scenesText += `Scene ${scene.scene_number}${scene.scene_title ? `: ${scene.scene_title}` : ''}\n`;
-                scenesText += `  Status: ${scene.writing_status}\n`;
-                
+
+            const scenes = result.rows.map(scene => {
                 const words = scene.word_count || 0;
                 totalWords += words;
-                scenesText += `  Words: ${words}`;
-                
+
                 if (scene.target_word_count) {
                     totalTargetWords += scene.target_word_count;
-                    const progress = words > 0 ? Math.round((words / scene.target_word_count) * 100) : 0;
-                    scenesText += ` / ${scene.target_word_count} (${progress}%)`;
                 }
-                scenesText += `\n`;
-                
-                if (scene.scene_purpose) {
-                    scenesText += `  Purpose: ${scene.scene_purpose}\n`;
-                }
-                if (scene.scene_type) {
-                    scenesText += `  Type: ${scene.scene_type}\n`;
-                }
-                if (scene.location) {
-                    scenesText += `  Location: ${scene.location}\n`;
-                }
-                
+
                 if (scene.intensity_level) {
-                    scenesText += `  Intensity: ${scene.intensity_level}/10\n`;
                     intensityStats.min = Math.min(intensityStats.min, scene.intensity_level);
                     intensityStats.max = Math.max(intensityStats.max, scene.intensity_level);
                     intensityStats.total += scene.intensity_level;
                     intensityStats.count++;
                 }
-                
-                if (scene.pov_character_name) {
-                    scenesText += `  POV: ${scene.pov_character_name}\n`;
-                }
-                
+
                 if (scene.scene_elements && scene.scene_elements.length > 0) {
-                    scenesText += `  Elements: ${scene.scene_elements.join(', ')}\n`;
                     scene.scene_elements.forEach(element => allElements.add(element));
                 }
-                
-                if (scene.notes) {
-                    const shortNotes = scene.notes.length > 60 
-                        ? scene.notes.substring(0, 60) + '...' 
-                        : scene.notes;
-                    scenesText += `  Implementation: ${shortNotes}\n`;
-                }
-                
-                if (scene.scene_outline) {
-                    const shortOutline = scene.scene_outline.length > 60
-                        ? scene.scene_outline.substring(0, 60) + '...'
-                        : scene.scene_outline;
-                    scenesText += `  Outline: ${shortOutline}\n`;
-                }
 
-                if (scene.scene_content) {
-                    const contentWordCount = scene.scene_content.split(/\s+/).filter(Boolean).length;
-                    scenesText += `  Content: ${contentWordCount} words\n`;
-                }
-
-                if (scene.scene_revisions && scene.scene_revisions.length > 0) {
-                    scenesText += `  Revisions: ${scene.scene_revisions.length}\n`;
-                }
-                
-                if (scene.summary) {
-                    const shortSummary = scene.summary.length > 80 
-                        ? scene.summary.substring(0, 80) + '...' 
-                        : scene.summary;
-                    scenesText += `  Summary: ${shortSummary}\n`;
-                }
-                
-                scenesText += `\n`;
+                return {
+                    id: scene.id,
+                    scene_number: scene.scene_number,
+                    scene_title: scene.scene_title,
+                    scene_purpose: scene.scene_purpose,
+                    scene_type: scene.scene_type,
+                    writing_status: scene.writing_status,
+                    word_count: words,
+                    target_word_count: scene.target_word_count,
+                    location: scene.location,
+                    intensity_level: scene.intensity_level,
+                    pov_character_id: scene.pov_character_id,
+                    pov_character_name: scene.pov_character_name,
+                    scene_elements: scene.scene_elements || [],
+                    notes: scene.notes,
+                    summary: scene.summary,
+                    scene_outline: scene.scene_outline,
+                    content_word_count: scene.scene_content ? scene.scene_content.split(/\s+/).filter(Boolean).length : 0,
+                    scene_revisions_count: scene.scene_revisions ? scene.scene_revisions.length : 0,
+                    created_at: scene.created_at,
+                    updated_at: scene.updated_at
+                };
             });
-            
+
+            const responseData = {
+                chapter: {
+                    id: chapter_id,
+                    chapter_number: context.chapter_number ?? null,
+                    chapter_title: context.chapter_title || null,
+                    book_title: context.book_title || null
+                },
+                scenes
+            };
+
             if (include_stats) {
-                scenesText += `Chapter Statistics:\n`;
-                scenesText += `  Total Words: ${totalWords}\n`;
-                if (totalTargetWords > 0) {
-                    const overallProgress = Math.round((totalWords / totalTargetWords) * 100);
-                    scenesText += `  Target Words: ${totalTargetWords}\n`;
-                    scenesText += `  Progress: ${overallProgress}%\n`;
-                }
-                
-                // Status breakdown
                 const statusCounts = result.rows.reduce((counts, scene) => {
                     counts[scene.writing_status] = (counts[scene.writing_status] || 0) + 1;
                     return counts;
                 }, {});
-                
-                scenesText += `  Status Breakdown: ${Object.entries(statusCounts).map(([status, count]) => `${status}: ${count}`).join(', ')}\n`;
-                
-                // Intensity statistics
-                if (intensityStats.count > 0) {
-                    const avgIntensity = Math.round(intensityStats.total / intensityStats.count * 10) / 10;
-                    scenesText += `  Intensity Range: ${intensityStats.min} - ${intensityStats.max} (avg: ${avgIntensity})\n`;
-                }
-                
-                // Element summary
-                if (allElements.size > 0) {
-                    scenesText += `  Scene Elements Used: ${Array.from(allElements).sort().join(', ')}\n`;
-                }
+
+                responseData.stats = {
+                    total_words: totalWords,
+                    total_target_words: totalTargetWords || null,
+                    progress_percent: totalTargetWords > 0 ? Math.round((totalWords / totalTargetWords) * 100) : null,
+                    status_counts: statusCounts,
+                    intensity: intensityStats.count > 0 ? {
+                        min: intensityStats.min,
+                        max: intensityStats.max,
+                        average: Math.round((intensityStats.total / intensityStats.count) * 10) / 10
+                    } : null,
+                    scene_elements_used: Array.from(allElements).sort()
+                };
             }
-            
-            return {
-                content: [{
-                    type: 'text',
-                    text: scenesText
-                }]
-            };
+
+            return responseData;
         } catch (error) {
             throw new Error(`Failed to list scenes: ${error.message}`);
         }
