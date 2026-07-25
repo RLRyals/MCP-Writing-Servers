@@ -80,55 +80,53 @@ export class BookHandlers {
             query += ' ORDER BY s.title, b.book_number';
             
             const result = await this.db.query(query, params);
-            
-            let booksText = `Found ${result.rows.length} books:\n\n`;
-            
+
+            const books = [];
             for (const book of result.rows) {
-                booksText += `ID: ${book.id}\n`;
-                booksText += `Title: ${book.title}\n`;
-                booksText += `Series: ${book.series_title} (#${book.book_number})\n`;
-                booksText += `Author: ${book.author_name}\n`;
-                booksText += `Status: ${book.status}\n`;
-                booksText += `Published: ${book.publication_year || 'Unknown'}\n`;
-                
+                const bookData = {
+                    id: book.id,
+                    title: book.title,
+                    series_id: book.series_id,
+                    series_title: book.series_title,
+                    book_number: book.book_number,
+                    author_name: book.author_name,
+                    status: book.status,
+                    publication_year: book.publication_year,
+                    target_word_count: book.target_word_count,
+                    actual_word_count: book.actual_word_count,
+                    page_count: book.page_count,
+                    isbn: book.isbn,
+                    description: book.description,
+                    genre_names: book.genre_names || [],
+                    created_at: book.created_at,
+                    updated_at: book.updated_at
+                };
+
                 if (include_stats) {
                     // Get chapter count and total word count
                     const statsQuery = `
-                        SELECT 
+                        SELECT
                             COUNT(*) as chapter_count,
                             COALESCE(SUM(word_count), 0) as total_words
-                        FROM chapters 
+                        FROM chapters
                         WHERE book_id = $1
                     `;
                     const statsResult = await this.db.query(statsQuery, [book.id]);
                     const stats = statsResult.rows[0];
-                    
-                    booksText += `Chapters: ${stats.chapter_count}\n`;
-                    booksText += `Current Words: ${stats.total_words}\n`;
-                    booksText += `Target Words: ${book.target_word_count || 'Not specified'}\n`;
-                    if (book.target_word_count && stats.total_words > 0) {
-                        const progress = Math.round((stats.total_words / book.target_word_count) * 100);
-                        booksText += `Progress: ${progress}%\n`;
-                    }
+
+                    bookData.stats = {
+                        chapter_count: parseInt(stats.chapter_count) || 0,
+                        total_words: parseInt(stats.total_words) || 0,
+                        progress_percent: (book.target_word_count && stats.total_words > 0)
+                            ? Math.round((stats.total_words / book.target_word_count) * 100)
+                            : null
+                    };
                 }
-                
-                booksText += `Pages: ${book.page_count || 'Unknown'}\n`;
-                booksText += `ISBN: ${book.isbn || 'Not specified'}\n`;
-                booksText += `Description: ${book.description || 'No description available'}\n`;
-                
-                if (book.genre_names && book.genre_names.length > 0) {
-                    booksText += `Genre Tags: ${book.genre_names.join(', ')}\n`;
-                }
-                
-                booksText += '\n---\n\n';
+
+                books.push(bookData);
             }
-            
-            return {
-                content: [{
-                    type: 'text',
-                    text: booksText
-                }]
-            };
+
+            return { books };
         } catch (error) {
             throw new Error(`Failed to list books: ${error.message}`);
         }
@@ -148,66 +146,49 @@ export class BookHandlers {
                 WHERE b.id = $1
             `;
             const result = await this.db.query(query, [book_id]);
-            
+
             if (result.rows.length === 0) {
                 return {
-                    content: [{
-                        type: 'text',
-                        text: `No book found with ID: ${book_id}`
-                    }]
+                    error: 'not_found',
+                    book_id,
+                    message: `No book found with ID: ${book_id}`
                 };
             }
-            
-            const book = result.rows[0];
-            
-            let bookText = `Book Details:\n\n`;
-            bookText += `ID: ${book.id}\n`;
-            bookText += `Title: ${book.title}\n`;
-            bookText += `Series: ${book.series_title} (#${book.book_number})\n`;
-            bookText += `Author: ${book.author_name}\n`;
-            bookText += `Status: ${book.status}\n`;
-            bookText += `Target Word Count: ${book.target_word_count || 'Not specified'}\n`;
-            bookText += `Current Word Count: ${book.actual_word_count || 0}\n`;
-            bookText += `Published: ${book.publication_year || 'Unknown'}\n`;
-            bookText += `Pages: ${book.page_count || 'Unknown'}\n`;
-            bookText += `ISBN: ${book.isbn || 'Not specified'}\n`;
-            
-            if (book.cover_image_url) {
-                bookText += `Cover Image: ${book.cover_image_url}\n`;
-            }
 
-            if (book.genre_names && book.genre_names.length > 0) {
-                bookText += `Genre Tags: ${book.genre_names.join(', ')}\n`;
-            }
-            
-            bookText += `Description: ${book.description || 'No description available'}\n`;
+            const book = result.rows[0];
+
+            const bookData = {
+                id: book.id,
+                title: book.title,
+                series_id: book.series_id,
+                series_title: book.series_title,
+                book_number: book.book_number,
+                author_name: book.author_name,
+                status: book.status,
+                target_word_count: book.target_word_count,
+                actual_word_count: book.actual_word_count || 0,
+                publication_year: book.publication_year,
+                page_count: book.page_count,
+                isbn: book.isbn,
+                cover_image_url: book.cover_image_url,
+                genre_names: book.genre_names || [],
+                description: book.description,
+                created_at: book.created_at,
+                updated_at: book.updated_at
+            };
 
             if (include_chapters) {
                 const chaptersQuery = `
                     SELECT id, chapter_number, title, word_count, status
-                    FROM chapters 
-                    WHERE book_id = $1 
+                    FROM chapters
+                    WHERE book_id = $1
                     ORDER BY chapter_number
                 `;
                 const chaptersResult = await this.db.query(chaptersQuery, [book_id]);
-                
-                if (chaptersResult.rows.length > 0) {
-                    bookText += `\nChapters (${chaptersResult.rows.length}):\n`;
-                    chaptersResult.rows.forEach(chapter => {
-                        bookText += `  ${chapter.chapter_number}. ${chapter.title || 'Untitled'} `;
-                        bookText += `(${chapter.word_count || 0} words, ${chapter.status})\n`;
-                    });
-                } else {
-                    bookText += `\nNo chapters created yet.\n`;
-                }
+                bookData.chapters = chaptersResult.rows;
             }
-            
-            return {
-                content: [{
-                    type: 'text',
-                    text: bookText
-                }]
-            };
+
+            return { book: bookData };
         } catch (error) {
             throw new Error(`Failed to get book: ${error.message}`);
         }
@@ -349,10 +330,9 @@ export class BookHandlers {
 
                 if (result.rows.length === 0) {
                     return {
-                        content: [{
-                            type: 'text',
-                            text: `No book found with ID: ${book_id}`
-                        }]
+                        error: 'not_found',
+                        book_id,
+                        message: `No book found with ID: ${book_id}`
                     };
                 }
             }
@@ -393,18 +373,25 @@ export class BookHandlers {
             const book = bookResult.rows[0];
 
             return {
-                content: [{
-                    type: 'text',
-                    text: `Updated book successfully!\n\n` +
-                          `ID: ${book.id}\n` +
-                          `Title: ${book.title}\n` +
-                          `Series: ${book.series_title || 'Unknown'} (#${book.book_number})\n` +
-                          `Author: ${book.author_name || 'Unknown'}\n` +
-                          `Status: ${book.status}\n` +
-                          `Target Word Count: ${book.target_word_count || 'Not specified'}\n` +
-                          `Current Word Count: ${book.actual_word_count || 0}\n` +
-                          `Genre Tags: ${book.genre_names && book.genre_names.length > 0 ? book.genre_names.join(', ') : 'None'}\n` 
-                }]
+                book: {
+                    id: book.id,
+                    title: book.title,
+                    series_id: book.series_id,
+                    series_title: book.series_title,
+                    book_number: book.book_number,
+                    author_name: book.author_name,
+                    status: book.status,
+                    target_word_count: book.target_word_count,
+                    actual_word_count: book.actual_word_count || 0,
+                    publication_year: book.publication_year,
+                    page_count: book.page_count,
+                    isbn: book.isbn,
+                    cover_image_url: book.cover_image_url,
+                    genre_names: book.genre_names || [],
+                    description: book.description,
+                    created_at: book.created_at,
+                    updated_at: book.updated_at
+                }
             };
         } catch (error) {
             throw new Error(`Failed to update book: ${error.message}`);
