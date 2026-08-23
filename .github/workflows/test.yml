@@ -227,6 +227,30 @@ jobs:
       - name: Run outline-server tests
         run: node --test tests/outline-server/works-handlers.test.js
 
+  book-server-editing-notes-tests:
+    name: Book Server Editing Notes Tests
+    runs-on: ubuntu-latest
+    # bead mws-00b: chapter_drafts + editing_notes schema and the
+    # add_editing_note/update_editing_note_status/get_editing_notes/
+    # get_lessons tools. DB is fully mocked (see tests/book-server/), so no
+    # postgres service is needed here.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run book-server editing-notes tests
+        run: node --test tests/book-server/editing-notes-handlers.test.js
+
   lint:
     name: Lint Code
     runs-on: ubuntu-latest
