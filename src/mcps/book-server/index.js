@@ -14,6 +14,7 @@ import { BaseMCPServer } from '../../shared/base-server.js';
 import { BookHandlers } from './handlers/book-handlers.js';
 import { ChapterHandlers } from './handlers/chapter-handlers.js';
 import { SceneHandlers } from './handlers/scene-handlers.js';
+import { EditingNotesHandlers } from './handlers/editing-notes-handlers.js';
 
 class BookMCPServer extends BaseMCPServer {
     constructor() {
@@ -30,7 +31,8 @@ class BookMCPServer extends BaseMCPServer {
         this.bookHandlers = new BookHandlers(this.db);
         this.chapterHandlers = new ChapterHandlers(this.db);
         this.sceneHandlers = new SceneHandlers(this.db);
-        
+        this.editingNotesHandlers = new EditingNotesHandlers(this.db);
+
         // FIXED: Properly bind handler methods to maintain context
         this.bindHandlerMethods();
         
@@ -76,6 +78,12 @@ class BookMCPServer extends BaseMCPServer {
         this.handleDeleteScene = this.sceneHandlers.handleDeleteScene.bind(this.sceneHandlers);
         this.handleReorderScenes = this.sceneHandlers.handleReorderScenes.bind(this.sceneHandlers);
         this.handleAnalyzeSceneFlow = this.sceneHandlers.handleAnalyzeSceneFlow.bind(this.sceneHandlers);
+
+        // Bind editing notes handler methods
+        this.handleAddEditingNote = this.editingNotesHandlers.handleAddEditingNote.bind(this.editingNotesHandlers);
+        this.handleUpdateEditingNoteStatus = this.editingNotesHandlers.handleUpdateEditingNoteStatus.bind(this.editingNotesHandlers);
+        this.handleGetEditingNotes = this.editingNotesHandlers.handleGetEditingNotes.bind(this.editingNotesHandlers);
+        this.handleGetLessons = this.editingNotesHandlers.handleGetLessons.bind(this.editingNotesHandlers);
     }
 
     async testDatabaseConnection() {
@@ -110,7 +118,10 @@ class BookMCPServer extends BaseMCPServer {
             ...this.chapterHandlers.getChapterTools(),
             
             // Scene Management Tools (when implemented)
-             ...this.sceneHandlers.getSceneTools()
+             ...this.sceneHandlers.getSceneTools(),
+
+            // Editing Notes & Cross-chapter Lessons Tools
+            ...this.editingNotesHandlers.getEditingNotesTools()
         ];
     }
 
@@ -142,7 +153,13 @@ class BookMCPServer extends BaseMCPServer {
             'delete_scene': this.handleDeleteScene,
             'reorder_scenes': this.handleReorderScenes,
             'analyze_scene_flow': this.handleAnalyzeSceneFlow,
-            
+
+            // Editing Notes & Cross-chapter Lessons Handlers
+            'add_editing_note': this.handleAddEditingNote,
+            'update_editing_note_status': this.handleUpdateEditingNoteStatus,
+            'get_editing_notes': this.handleGetEditingNotes,
+            'get_lessons': this.handleGetLessons,
+
             // Cross-component Analysis Tools
             'get_book_structure': this.handleGetBookStructure,
             'analyze_book_progress': this.handleAnalyzeBookProgress,
