@@ -274,7 +274,7 @@ export class SceneHandlers {
     
     async handleGetScene(args) {
         try {
-            const { scene_id, include_characters = false, full_content = false } = args;
+            const { scene_id, include_characters = false } = args;
 
             const query = `
                 SELECT s.*, c.chapter_number, c.title as chapter_title,
@@ -299,10 +299,7 @@ export class SceneHandlers {
             const scene = result.rows[0];
 
             const contentLength = scene.scene_content ? scene.scene_content.length : 0;
-            const contentTruncated = !full_content && contentLength > 1000;
-            const sceneContent = scene.scene_content == null
-                ? null
-                : (contentTruncated ? scene.scene_content.substring(0, 1000) : scene.scene_content);
+            const sceneContent = scene.scene_content;
 
             const sceneData = {
                 id: scene.id,
@@ -330,7 +327,6 @@ export class SceneHandlers {
                 scene_outline: scene.scene_outline,
                 scene_content: sceneContent,
                 content_length: contentLength,
-                content_truncated: contentTruncated,
                 scene_revisions_count: scene.scene_revisions ? scene.scene_revisions.length : 0,
                 created_at: scene.created_at,
                 updated_at: scene.updated_at
