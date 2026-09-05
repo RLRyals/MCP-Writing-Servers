@@ -23,7 +23,9 @@ export const workflowToolsSchema = [
                 marketplace_metadata: { type: 'object', description: 'Marketplace display metadata' },
                 source_type: { type: 'string', description: 'Import source: marketplace, folder, file, url' },
                 source_path: { type: 'string', description: 'Where it was imported from' },
-                created_by: { type: 'string', description: 'Author/creator' }
+                created_by: { type: 'string', description: 'Author/creator' },
+                force: { type: 'boolean', description: 'Override the overwrite guard (same-or-lower version, or same version with different graph_json). Requires changelog.', default: false },
+                changelog: { type: 'string', description: 'What changed in this import. Required when force=true is needed to override the guard; also recorded against the version otherwise.' }
             },
             required: ['id', 'name', 'graph_json', 'dependencies_json']
         }
@@ -99,6 +101,18 @@ export const workflowToolsSchema = [
                 workflow_id: { type: 'string', description: 'Workflow definition ID' }
             },
             required: ['workflow_id']
+        }
+    },
+    {
+        name: 'restore_workflow_version',
+        description: 'Restores a previously snapshotted version of a workflow definition back into workflow_definitions (the live/current row). Snapshots the current definition first, so a restore is itself undoable.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                workflow_id: { type: 'string', description: 'Workflow definition ID' },
+                version: { type: 'string', description: 'The workflow_versions version to restore' }
+            },
+            required: ['workflow_id', 'version']
         }
     },
     // REMOVED: lock_workflow_version - version locking removed in migration 032
