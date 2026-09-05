@@ -79,6 +79,7 @@ class WorkflowManagerMCPServer extends BaseMCPServer {
             'update_workflow_positions': this.definitionHandlers.handleUpdateWorkflowPositions.bind(this.definitionHandlers),
             'create_workflow_version': this.definitionHandlers.handleCreateWorkflowVersion.bind(this.definitionHandlers),
             'get_workflow_versions': this.definitionHandlers.handleGetWorkflowVersions.bind(this.definitionHandlers),
+            'restore_workflow_version': this.definitionHandlers.handleRestoreWorkflowVersion.bind(this.definitionHandlers),
             // REMOVED: lock_workflow_version - version locking removed in migration 032
             // REMOVED: unlock_workflow_version - version locking removed in migration 032
             'update_phase_execution': this.definitionHandlers.handleUpdatePhaseExecution.bind(this.definitionHandlers),

@@ -1,6 +1,43 @@
 // src/mcps/workflow-manager-server/handlers/definition-handlers.js
 // Workflow Definition Management Handlers - Graph-based workflow system (Migration 032 - FictionLab schema)
 
+// Compares two dotted-numeric version strings (e.g. "1.2.0"). Returns -1, 0, or 1.
+// Falls back to a plain string comparison if either version has a non-numeric
+// segment, so a malformed version never throws -- it just loses precise ordering.
+function compareVersions(a, b) {
+    const partsA = String(a).split('.');
+    const partsB = String(b).split('.');
+    const len = Math.max(partsA.length, partsB.length);
+
+    for (let i = 0; i < len; i++) {
+        const na = Number(partsA[i] ?? 0);
+        const nb = Number(partsB[i] ?? 0);
+
+        if (Number.isNaN(na) || Number.isNaN(nb)) {
+            if (a === b) return 0;
+            return a > b ? 1 : -1;
+        }
+        if (na !== nb) return na > nb ? 1 : -1;
+    }
+    return 0;
+}
+
+function deepEqual(a, b) {
+    if (a === b) return true;
+    if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+    if (Array.isArray(a)) {
+        if (a.length !== b.length) return false;
+        return a.every((value, index) => deepEqual(value, b[index]));
+    }
+
+    const keysA = Object.keys(a).sort();
+    const keysB = Object.keys(b).sort();
+    if (keysA.length !== keysB.length) return false;
+    return keysA.every((key, index) => key === keysB[index] && deepEqual(a[key], b[key]));
+}
+
 export class DefinitionHandlers {
     constructor(db) {
         this.db = db;
@@ -19,39 +56,119 @@ export class DefinitionHandlers {
             marketplace_metadata = {},
             source_type,
             source_path,
-            created_by
+            created_by,
+            force = false,
+            changelog
         } = args;
 
-        // Insert workflow definition into fictionlab schema
-        // Column renames: dependencies_json → dependencies, marketplace_metadata → metadata
-        // phases_json removed (legacy phase-based system)
-        const defResult = await this.db.query(
-            `INSERT INTO fictionlab.workflow_definitions (
-                workflow_id, name, version, description, graph_json, dependencies,
-                tags, metadata, created_by, is_system
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
-            ON CONFLICT (workflow_id) DO UPDATE SET
-                name = EXCLUDED.name,
-                version = EXCLUDED.version,
-                description = EXCLUDED.description,
-                graph_json = EXCLUDED.graph_json,
-                dependencies = EXCLUDED.dependencies,
-                tags = EXCLUDED.tags,
-                metadata = EXCLUDED.metadata,
-                updated_at = NOW()
-            RETURNING workflow_id, version, created_at`,
-            [id, name, version, description, graph_json, dependencies_json, tags, marketplace_metadata, created_by]
-        );
-
-        // Record import if source information provided
-        if (source_type && source_path) {
-            await this.db.query(
-                `INSERT INTO fictionlab.workflow_imports (
-                    workflow_id, source_type, source_path, imported_by, installation_log
-                ) VALUES ($1, $2, $3, $4, $5)`,
-                [id, source_type, source_path, created_by, { timestamp: new Date().toISOString() }]
+        const defResult = await this.db.transaction(async (client) => {
+            const existingResult = await client.query(
+                `SELECT workflow_id, name, version, description, graph_json, dependencies,
+                        tags, metadata, created_by
+                 FROM fictionlab.workflow_definitions
+                 WHERE workflow_id = $1
+                 FOR UPDATE`,
+                [id]
             );
-        }
+            const existing = existingResult.rows[0];
+
+            if (existing) {
+                const cmp = compareVersions(version, existing.version);
+                const sameContent = cmp === 0 && deepEqual(graph_json, existing.graph_json);
+                const isOverwriteAttempt = cmp < 0 || (cmp === 0 && !sameContent);
+
+                if (isOverwriteAttempt && !force) {
+                    throw new Error(
+                        `Refusing to import ${id}: incoming version ${version} would overwrite existing ` +
+                        `version ${existing.version}${cmp === 0 ? ' with different content' : ''}. ` +
+                        `Pass force=true with a changelog to override (garbage-over-good guard).`
+                    );
+                }
+                if (isOverwriteAttempt && force && !changelog) {
+                    throw new Error(
+                        `Forced overwrite of ${id} (version ${existing.version} -> ${version}) requires a non-empty changelog.`
+                    );
+                }
+
+                // SNAPSHOT-BEFORE-OVERWRITE: preserve the outgoing definition so it
+                // stays retrievable/restorable no matter what the incoming import does.
+                await client.query(
+                    `INSERT INTO fictionlab.workflow_versions (
+                        workflow_id, version, definition_json, changelog, parent_version, created_by
+                    ) VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT (workflow_id, version) DO UPDATE SET
+                        definition_json = EXCLUDED.definition_json`,
+                    [
+                        id,
+                        existing.version,
+                        {
+                            name: existing.name,
+                            version: existing.version,
+                            description: existing.description,
+                            graph_json: existing.graph_json,
+                            dependencies: existing.dependencies,
+                            tags: existing.tags,
+                            metadata: existing.metadata
+                        },
+                        isOverwriteAttempt ? `[auto-snapshot before forced overwrite] ${changelog}` : '[auto-snapshot before import]',
+                        null,
+                        existing.created_by
+                    ]
+                );
+            }
+
+            // Insert workflow definition into fictionlab schema
+            // Column renames: dependencies_json → dependencies, marketplace_metadata → metadata
+            // phases_json removed (legacy phase-based system)
+            const result = await client.query(
+                `INSERT INTO fictionlab.workflow_definitions (
+                    workflow_id, name, version, description, graph_json, dependencies,
+                    tags, metadata, created_by, is_system
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE)
+                ON CONFLICT (workflow_id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    version = EXCLUDED.version,
+                    description = EXCLUDED.description,
+                    graph_json = EXCLUDED.graph_json,
+                    dependencies = EXCLUDED.dependencies,
+                    tags = EXCLUDED.tags,
+                    metadata = EXCLUDED.metadata,
+                    updated_at = NOW()
+                RETURNING workflow_id, version, created_at`,
+                [id, name, version, description, graph_json, dependencies_json, tags, marketplace_metadata, created_by]
+            );
+
+            // Record the incoming definition too, so both sides of the overwrite
+            // are recoverable via get_workflow_versions / restore_workflow_version.
+            await client.query(
+                `INSERT INTO fictionlab.workflow_versions (
+                    workflow_id, version, definition_json, changelog, parent_version, created_by
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (workflow_id, version) DO UPDATE SET
+                    definition_json = EXCLUDED.definition_json,
+                    changelog = EXCLUDED.changelog`,
+                [
+                    id,
+                    version,
+                    { name, version, description, graph_json, dependencies: dependencies_json, tags, metadata: marketplace_metadata },
+                    changelog || null,
+                    existing ? existing.version : null,
+                    created_by
+                ]
+            );
+
+            // Record import if source information provided
+            if (source_type && source_path) {
+                await client.query(
+                    `INSERT INTO fictionlab.workflow_imports (
+                        workflow_id, source_type, source_path, imported_by, installation_log
+                    ) VALUES ($1, $2, $3, $4, $5)`,
+                    [id, source_type, source_path, created_by, { timestamp: new Date().toISOString() }]
+                );
+            }
+
+            return result;
+        });
 
         return {
             workflow_id: defResult.rows[0].workflow_id,
@@ -265,6 +382,90 @@ export class DefinitionHandlers {
         );
 
         return result.rows;
+    }
+
+    async handleRestoreWorkflowVersion(args) {
+        const { workflow_id, version } = args;
+
+        const outcome = await this.db.transaction(async (client) => {
+            const versionResult = await client.query(
+                `SELECT workflow_id, version, definition_json
+                 FROM fictionlab.workflow_versions
+                 WHERE workflow_id = $1 AND version = $2`,
+                [workflow_id, version]
+            );
+            if (versionResult.rows.length === 0) {
+                throw new Error(`No stored version ${version} found for workflow ${workflow_id}`);
+            }
+            const target = versionResult.rows[0].definition_json;
+
+            const currentResult = await client.query(
+                `SELECT workflow_id, name, version, description, graph_json, dependencies,
+                        tags, metadata, created_by
+                 FROM fictionlab.workflow_definitions
+                 WHERE workflow_id = $1
+                 FOR UPDATE`,
+                [workflow_id]
+            );
+            const current = currentResult.rows[0];
+            if (!current) {
+                throw new Error(`Workflow ${workflow_id} has no current definition to restore into`);
+            }
+
+            // Snapshot the current definition before overwriting it, so the
+            // restore itself is undoable (restore-of-a-restore just works).
+            await client.query(
+                `INSERT INTO fictionlab.workflow_versions (
+                    workflow_id, version, definition_json, changelog, parent_version, created_by
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (workflow_id, version) DO UPDATE SET
+                    definition_json = EXCLUDED.definition_json`,
+                [
+                    workflow_id,
+                    current.version,
+                    {
+                        name: current.name,
+                        version: current.version,
+                        description: current.description,
+                        graph_json: current.graph_json,
+                        dependencies: current.dependencies,
+                        tags: current.tags,
+                        metadata: current.metadata
+                    },
+                    `[auto-snapshot before restore to v${version}]`,
+                    null,
+                    current.created_by
+                ]
+            );
+
+            const restoredResult = await client.query(
+                `UPDATE fictionlab.workflow_definitions
+                 SET name = $2, version = $3, description = $4, graph_json = $5,
+                     dependencies = $6, tags = $7, metadata = $8, updated_at = NOW()
+                 WHERE workflow_id = $1
+                 RETURNING workflow_id, name, version, description, graph_json, dependencies, tags, metadata, updated_at`,
+                [
+                    workflow_id,
+                    target.name,
+                    target.version,
+                    target.description,
+                    target.graph_json,
+                    target.dependencies,
+                    target.tags,
+                    target.metadata
+                ]
+            );
+
+            return { previousVersion: current.version, restored: restoredResult.rows[0] };
+        });
+
+        return {
+            workflow_id,
+            restored_version: outcome.restored.version,
+            previous_version: outcome.previousVersion,
+            graph_json: outcome.restored.graph_json,
+            message: `Workflow ${workflow_id} restored to version ${version} (previous version ${outcome.previousVersion} snapshotted for undo)`
+        };
     }
 
     // REMOVED: handleLockWorkflowVersion - version locking removed in migration 032
