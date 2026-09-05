@@ -210,11 +210,6 @@ export const sceneWritingSchemas = {
                     type: 'boolean',
                     default: false,
                     description: 'Include character details'
-                },
-                full_content: {
-                    type: 'boolean',
-                    default: false,
-                    description: 'Return scene_content in full, untruncated. Default (false) truncates prose content at 1000 characters (content_truncated/content_length in the response indicate this).'
                 }
             },
             required: ['scene_id']
