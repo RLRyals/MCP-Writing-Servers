@@ -15,6 +15,7 @@ import { BookHandlers } from './handlers/book-handlers.js';
 import { ChapterHandlers } from './handlers/chapter-handlers.js';
 import { SceneHandlers } from './handlers/scene-handlers.js';
 import { EditingNotesHandlers } from './handlers/editing-notes-handlers.js';
+import { PlanningDocumentHandlers } from './handlers/planning-document-handlers.js';
 
 class BookMCPServer extends BaseMCPServer {
     constructor() {
@@ -32,6 +33,7 @@ class BookMCPServer extends BaseMCPServer {
         this.chapterHandlers = new ChapterHandlers(this.db);
         this.sceneHandlers = new SceneHandlers(this.db);
         this.editingNotesHandlers = new EditingNotesHandlers(this.db);
+        this.planningDocumentHandlers = new PlanningDocumentHandlers(this.db);
 
         // FIXED: Properly bind handler methods to maintain context
         this.bindHandlerMethods();
@@ -84,6 +86,14 @@ class BookMCPServer extends BaseMCPServer {
         this.handleUpdateEditingNoteStatus = this.editingNotesHandlers.handleUpdateEditingNoteStatus.bind(this.editingNotesHandlers);
         this.handleGetEditingNotes = this.editingNotesHandlers.handleGetEditingNotes.bind(this.editingNotesHandlers);
         this.handleGetLessons = this.editingNotesHandlers.handleGetLessons.bind(this.editingNotesHandlers);
+
+        // Bind planning document handler methods
+        this.handleUpsertWorksheetSection = this.planningDocumentHandlers.handleUpsertWorksheetSection.bind(this.planningDocumentHandlers);
+        this.handleGetWorksheetSection = this.planningDocumentHandlers.handleGetWorksheetSection.bind(this.planningDocumentHandlers);
+        this.handleListWorksheetSections = this.planningDocumentHandlers.handleListWorksheetSections.bind(this.planningDocumentHandlers);
+        this.handleGetBookParameters = this.planningDocumentHandlers.handleGetBookParameters.bind(this.planningDocumentHandlers);
+        this.handleUpsertBookParameters = this.planningDocumentHandlers.handleUpsertBookParameters.bind(this.planningDocumentHandlers);
+        this.handleExportBookWorksheetMd = this.planningDocumentHandlers.handleExportBookWorksheetMd.bind(this.planningDocumentHandlers);
     }
 
     async testDatabaseConnection() {
@@ -121,7 +131,10 @@ class BookMCPServer extends BaseMCPServer {
              ...this.sceneHandlers.getSceneTools(),
 
             // Editing Notes & Cross-chapter Lessons Tools
-            ...this.editingNotesHandlers.getEditingNotesTools()
+            ...this.editingNotesHandlers.getEditingNotesTools(),
+
+            // Planning Document Tools (worksheet sections + book parameters)
+            ...this.planningDocumentHandlers.getPlanningDocumentTools()
         ];
     }
 
@@ -159,6 +172,14 @@ class BookMCPServer extends BaseMCPServer {
             'update_editing_note_status': this.handleUpdateEditingNoteStatus,
             'get_editing_notes': this.handleGetEditingNotes,
             'get_lessons': this.handleGetLessons,
+
+            // Planning Document Handlers (worksheet sections + book parameters)
+            'upsert_worksheet_section': this.handleUpsertWorksheetSection,
+            'get_worksheet_section': this.handleGetWorksheetSection,
+            'list_worksheet_sections': this.handleListWorksheetSections,
+            'get_book_parameters': this.handleGetBookParameters,
+            'upsert_book_parameters': this.handleUpsertBookParameters,
+            'export_book_worksheet_md': this.handleExportBookWorksheetMd,
 
             // Cross-component Analysis Tools
             'get_book_structure': this.handleGetBookStructure,

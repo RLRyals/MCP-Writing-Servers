@@ -24,6 +24,7 @@ import { PlotThreadHandlers } from '../../mcps/plot-server/handlers/plot-thread-
 import { LookupManagementHandlers } from '../../mcps/metadata-server/handlers/lookup-management-handlers.js';
 import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
 import { StoryformHandlers } from '../../mcps/story-analysis-server/handlers/storyform-handlers.js';
+import { PlanningDocumentHandlers } from '../../mcps/book-server/handlers/planning-document-handlers.js';
 
 // Import phase-specific schemas directly to reduce token usage
 import { bookPlanningSchemas } from '../../mcps/book-server/schemas/book-planning-schemas.js';
@@ -51,6 +52,7 @@ class BookPlanningMCPServer extends BaseMCPServer {
         this.lookupHandlers = new LookupManagementHandlers(this.db);
         this.tropeHandlers = new TropeHandlers(this.db);
         this.storyformHandlers = new StoryformHandlers(this.db);
+        this.planningDocumentHandlers = new PlanningDocumentHandlers(this.db);
 
         console.error('[BOOK-PLANNING-SERVER] Phase-specific handlers initialized');
     }
@@ -183,6 +185,13 @@ class BookPlanningMCPServer extends BaseMCPServer {
         this.storyformHandlers.getStoryformTools()
             .forEach(tool => tools.push({ ...tool }));
 
+        // =============================================
+        // 8. PLANNING DOCUMENT TOOLS (Phase-specific) -- worksheet sections +
+        //    book parameters, DB-first with .md export projection (mws-0zk)
+        // =============================================
+        this.planningDocumentHandlers.getPlanningDocumentTools()
+            .forEach(tool => tools.push({ ...tool }));
+
         return tools;
     }
 
@@ -216,7 +225,15 @@ class BookPlanningMCPServer extends BaseMCPServer {
             // Storyform handlers (per-book storyform)
             'create_storyform': (args) => this.storyformHandlers.handleCreateStoryform(args),
             'update_storyform': (args) => this.storyformHandlers.handleUpdateStoryform(args),
-            'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args)
+            'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args),
+
+            // Planning document handlers (worksheet sections + book parameters)
+            'upsert_worksheet_section': (args) => this.planningDocumentHandlers.handleUpsertWorksheetSection(args),
+            'get_worksheet_section': (args) => this.planningDocumentHandlers.handleGetWorksheetSection(args),
+            'list_worksheet_sections': (args) => this.planningDocumentHandlers.handleListWorksheetSections(args),
+            'get_book_parameters': (args) => this.planningDocumentHandlers.handleGetBookParameters(args),
+            'upsert_book_parameters': (args) => this.planningDocumentHandlers.handleUpsertBookParameters(args),
+            'export_book_worksheet_md': (args) => this.planningDocumentHandlers.handleExportBookWorksheetMd(args)
         };
 
         return handlerMap[toolName] || null;
