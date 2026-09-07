@@ -155,7 +155,9 @@ describe('PlanningDocumentHandlers.handleExportBookWorksheetMd', () => {
         const firstBytes = fs.readFileSync(exportPath, 'utf8');
 
         assert.strictEqual(first.section_count, 2);
+        assert.strictEqual(first.has_parameters, false);
         assert.match(firstBytes, /# Arcane Protocol — Story Dossier Worksheet/);
+        assert.doesNotMatch(firstBytes, /## Project Info/);
         assert.match(firstBytes, /## Premise/);
         assert.match(firstBytes, /A quiet town hides a loud secret\./);
         assert.match(firstBytes, /## Protagonist/);
@@ -166,6 +168,31 @@ describe('PlanningDocumentHandlers.handleExportBookWorksheetMd', () => {
 
         assert.strictEqual(secondBytes, firstBytes, 're-export of unchanged data must be byte-identical');
         assert.strictEqual(second.bytes_written, first.bytes_written);
+    });
+
+    it('projects book_parameters into a Project Info section, even with no worksheet sections', async () => {
+        const mockDb = new MockDatabase();
+        const paramsOnlyExportPath = path.join(tmpDir, 'params-only.md');
+        mockDb.setQueryResult('FROM books', [{ id: 8, title: 'Parameters Only' }]);
+        mockDb.setQueryResult('FROM book_parameters', [{
+            book_id: 8, genre: 'Mystery', target_chapters: 24, act_structure: '9 Act Structure',
+            pov: 'First Person', narrative_tense: 'Past', target_words_per_chapter: 2500
+        }]);
+        const handlers = new PlanningDocumentHandlers(mockDb);
+
+        const result = await handlers.handleExportBookWorksheetMd({ book_id: 8, export_path: paramsOnlyExportPath });
+        const bytes = fs.readFileSync(paramsOnlyExportPath, 'utf8');
+
+        assert.strictEqual(result.has_parameters, true);
+        assert.strictEqual(result.section_count, 0);
+        assert.match(bytes, /## Project Info/);
+        assert.match(bytes, /\*\*Genre:\*\* Mystery/);
+        assert.match(bytes, /\*\*Target Chapters:\*\* 24/);
+        assert.match(bytes, /\*\*Act Structure:\*\* 9 Act Structure/);
+        assert.match(bytes, /\*\*POV:\*\* First Person/);
+        assert.match(bytes, /\*\*Narrative Tense:\*\* Past/);
+        assert.match(bytes, /\*\*Target Words Per Chapter:\*\* 2500/);
+        assert.match(bytes, /_No worksheet sections yet\._/);
     });
 
     it('returns not_found for a missing book', async () => {
