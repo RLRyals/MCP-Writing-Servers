@@ -251,6 +251,30 @@ jobs:
       - name: Run book-server editing-notes tests
         run: node --test tests/book-server/editing-notes-handlers.test.js
 
+  book-server-planning-document-tests:
+    name: Book Server Planning Document Tests
+    runs-on: ubuntu-latest
+    # bead mws-0zk: DB-first per-book planning documents (worksheet sections +
+    # book parameters) with a .md export projection. CRUD paths use a mocked
+    # DB; the export tool does real filesystem I/O against a temp dir (see
+    # tests/book-server/), so no postgres service is needed here.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run book-server planning-document tests
+        run: node --test tests/book-server/planning-document-handlers.test.js
+
   book-server-scene-handlers-tests:
     name: Book Server Scene Handlers Tests
     runs-on: ubuntu-latest
