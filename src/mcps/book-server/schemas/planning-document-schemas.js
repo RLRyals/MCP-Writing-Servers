@@ -131,7 +131,7 @@ export const planningDocumentSchemas = {
 
     export_book_worksheet_md: {
         name: 'export_book_worksheet_md',
-        description: 'Render the book\'s worksheet sections (DB truth) into a readable Markdown file at the given path, overwriting it. Deterministic: re-exporting unchanged data produces byte-identical output.',
+        description: 'Render the book\'s planning documents (book_parameters and worksheet sections, both DB truth) into a readable Markdown file at the given path, overwriting it. Deterministic: re-exporting unchanged data produces byte-identical output.',
         inputSchema: {
             type: 'object',
             properties: {
