@@ -274,6 +274,31 @@ jobs:
       - name: Run book-server scene-handlers tests
         run: node --test tests/book-server/scene-handlers.test.js
 
+  book-server-worksheet-export-tests:
+    name: Book Server Worksheet Export Tests
+    runs-on: ubuntu-latest
+    # bead mws-0zk (rework, no-new-tables ruling): .md export projection over
+    # EXISTING storage (books.target_word_count, book_genres/genres, and the
+    # universal metadata table) -- no new migration. DB is fully mocked; the
+    # export tool does real filesystem I/O against a temp dir (see
+    # tests/book-server/), so no postgres service is needed here.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run book-server worksheet-export tests
+        run: node --test tests/book-server/worksheet-export-handlers.test.js
+
   lint:
     name: Lint Code
     runs-on: ubuntu-latest

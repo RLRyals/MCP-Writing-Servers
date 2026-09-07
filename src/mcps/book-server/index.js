@@ -15,6 +15,7 @@ import { BookHandlers } from './handlers/book-handlers.js';
 import { ChapterHandlers } from './handlers/chapter-handlers.js';
 import { SceneHandlers } from './handlers/scene-handlers.js';
 import { EditingNotesHandlers } from './handlers/editing-notes-handlers.js';
+import { WorksheetExportHandlers } from './handlers/worksheet-export-handlers.js';
 
 class BookMCPServer extends BaseMCPServer {
     constructor() {
@@ -32,6 +33,7 @@ class BookMCPServer extends BaseMCPServer {
         this.chapterHandlers = new ChapterHandlers(this.db);
         this.sceneHandlers = new SceneHandlers(this.db);
         this.editingNotesHandlers = new EditingNotesHandlers(this.db);
+        this.worksheetExportHandlers = new WorksheetExportHandlers(this.db);
 
         // FIXED: Properly bind handler methods to maintain context
         this.bindHandlerMethods();
@@ -84,6 +86,9 @@ class BookMCPServer extends BaseMCPServer {
         this.handleUpdateEditingNoteStatus = this.editingNotesHandlers.handleUpdateEditingNoteStatus.bind(this.editingNotesHandlers);
         this.handleGetEditingNotes = this.editingNotesHandlers.handleGetEditingNotes.bind(this.editingNotesHandlers);
         this.handleGetLessons = this.editingNotesHandlers.handleGetLessons.bind(this.editingNotesHandlers);
+
+        // Bind worksheet export handler methods
+        this.handleExportBookWorksheetMd = this.worksheetExportHandlers.handleExportBookWorksheetMd.bind(this.worksheetExportHandlers);
     }
 
     async testDatabaseConnection() {
@@ -121,7 +126,10 @@ class BookMCPServer extends BaseMCPServer {
              ...this.sceneHandlers.getSceneTools(),
 
             // Editing Notes & Cross-chapter Lessons Tools
-            ...this.editingNotesHandlers.getEditingNotesTools()
+            ...this.editingNotesHandlers.getEditingNotesTools(),
+
+            // Worksheet .md Export Tools
+            ...this.worksheetExportHandlers.getWorksheetExportTools()
         ];
     }
 
@@ -159,6 +167,9 @@ class BookMCPServer extends BaseMCPServer {
             'update_editing_note_status': this.handleUpdateEditingNoteStatus,
             'get_editing_notes': this.handleGetEditingNotes,
             'get_lessons': this.handleGetLessons,
+
+            // Worksheet .md Export Handlers
+            'export_book_worksheet_md': this.handleExportBookWorksheetMd,
 
             // Cross-component Analysis Tools
             'get_book_structure': this.handleGetBookStructure,

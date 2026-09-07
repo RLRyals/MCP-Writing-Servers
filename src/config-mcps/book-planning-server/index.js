@@ -17,6 +17,7 @@ import { BaseMCPServer } from '../../shared/base-server.js';
 // Location, Relationship, TimelineEvent, WorldElement, GenreExtensions, Chapter get/list)
 // are in core-content-server (always-on)
 import { BookHandlers } from '../../mcps/book-server/handlers/book-handlers.js';
+import { WorksheetExportHandlers } from '../../mcps/book-server/handlers/worksheet-export-handlers.js';
 import { TimelineEventHandlers } from '../../mcps/timeline-server/handlers/timeline-event-handlers.js';
 import { LocationHandlers } from '../../mcps/world-server/handlers/location-handlers.js';
 import { OrganizationHandlers } from '../../mcps/world-server/handlers/organization-handlers.js';
@@ -51,6 +52,7 @@ class BookPlanningMCPServer extends BaseMCPServer {
         this.lookupHandlers = new LookupManagementHandlers(this.db);
         this.tropeHandlers = new TropeHandlers(this.db);
         this.storyformHandlers = new StoryformHandlers(this.db);
+        this.worksheetExportHandlers = new WorksheetExportHandlers(this.db);
 
         console.error('[BOOK-PLANNING-SERVER] Phase-specific handlers initialized');
     }
@@ -183,6 +185,14 @@ class BookPlanningMCPServer extends BaseMCPServer {
         this.storyformHandlers.getStoryformTools()
             .forEach(tool => tools.push({ ...tool }));
 
+        // =============================================
+        // 8. WORKSHEET EXPORT TOOLS (Phase-specific) -- mws-0zk rework:
+        // DB-first planning docs projected onto existing storage (metadata +
+        // book_genres/books), read-only .md export
+        // =============================================
+        this.worksheetExportHandlers.getWorksheetExportTools()
+            .forEach(tool => tools.push({ ...tool }));
+
         return tools;
     }
 
@@ -216,7 +226,10 @@ class BookPlanningMCPServer extends BaseMCPServer {
             // Storyform handlers (per-book storyform)
             'create_storyform': (args) => this.storyformHandlers.handleCreateStoryform(args),
             'update_storyform': (args) => this.storyformHandlers.handleUpdateStoryform(args),
-            'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args)
+            'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args),
+
+            // Worksheet export handlers (mws-0zk rework)
+            'export_book_worksheet_md': (args) => this.worksheetExportHandlers.handleExportBookWorksheetMd(args)
         };
 
         return handlerMap[toolName] || null;
