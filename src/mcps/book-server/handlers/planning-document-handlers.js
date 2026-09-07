@@ -181,11 +181,6 @@ export class PlanningDocumentHandlers {
 
             const book = bookResult.rows[0];
 
-            const parametersResult = await this.db.query(
-                'SELECT * FROM book_parameters WHERE book_id = $1',
-                [book_id]
-            );
-
             const sectionsResult = await this.db.query(
                 `SELECT section_key, section_title, content, status
                  FROM book_worksheet_sections
@@ -197,19 +192,6 @@ export class PlanningDocumentHandlers {
             const lines = [];
             lines.push(`# ${book.title} — Story Dossier Worksheet`);
             lines.push('');
-
-            const parameters = parametersResult.rows[0];
-            if (parameters) {
-                lines.push('## Project Info');
-                lines.push('');
-                lines.push(`- **Genre:** ${parameters.genre || '_(not set)_'}`);
-                lines.push(`- **Target Chapters:** ${parameters.target_chapters ?? '_(not set)_'}`);
-                lines.push(`- **Act Structure:** ${parameters.act_structure || '_(not set)_'}`);
-                lines.push(`- **POV:** ${parameters.pov || '_(not set)_'}`);
-                lines.push(`- **Narrative Tense:** ${parameters.narrative_tense || '_(not set)_'}`);
-                lines.push(`- **Target Words Per Chapter:** ${parameters.target_words_per_chapter ?? '_(not set)_'}`);
-                lines.push('');
-            }
 
             if (sectionsResult.rows.length === 0) {
                 lines.push('_No worksheet sections yet._');
@@ -233,7 +215,6 @@ export class PlanningDocumentHandlers {
             return {
                 book_id,
                 export_path,
-                has_parameters: Boolean(parameters),
                 section_count: sectionsResult.rows.length,
                 bytes_written: Buffer.byteLength(markdown, 'utf8')
             };
