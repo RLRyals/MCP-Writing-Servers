@@ -22,6 +22,7 @@ import { LocationHandlers } from '../../mcps/world-server/handlers/location-hand
 import { OrganizationHandlers } from '../../mcps/world-server/handlers/organization-handlers.js';
 import { PlotThreadHandlers } from '../../mcps/plot-server/handlers/plot-thread-handlers.js';
 import { LookupManagementHandlers } from '../../mcps/metadata-server/handlers/lookup-management-handlers.js';
+import { MetadataCrudHandlers } from '../../mcps/metadata-server/handlers/metadata-crud-handlers.js';
 import { TropeHandlers } from '../../mcps/trope-server/handlers/trope-handlers.js';
 import { StoryformHandlers } from '../../mcps/story-analysis-server/handlers/storyform-handlers.js';
 
@@ -49,6 +50,7 @@ class BookPlanningMCPServer extends BaseMCPServer {
         this.organizationHandlers = new OrganizationHandlers(this.db);
         this.plotThreadHandlers = new PlotThreadHandlers(this.db);
         this.lookupHandlers = new LookupManagementHandlers(this.db);
+        this.metadataCrudHandlers = new MetadataCrudHandlers(this.db);
         this.tropeHandlers = new TropeHandlers(this.db);
         this.storyformHandlers = new StoryformHandlers(this.db);
 
@@ -162,6 +164,15 @@ class BookPlanningMCPServer extends BaseMCPServer {
         }
 
         // =============================================
+        // 5b. GENERIC METADATA CRUD TOOLS (Phase-specific)
+        // Exposes list/get/create/update/delete_metadata over HTTP; same
+        // handlers as the stdio-only metadata-server, response shape is
+        // byte-identical (book_parameters: metadata-table convention).
+        // =============================================
+        this.metadataCrudHandlers.getMetadataCrudTools()
+            .forEach(tool => tools.push({ ...tool }));
+
+        // =============================================
         // 6. TROPE INSTANCE TOOLS (Phase-specific)
         // =============================================
         const tropeTools = this.tropeHandlers.getTropeTools();
@@ -207,6 +218,13 @@ class BookPlanningMCPServer extends BaseMCPServer {
 
             // Metadata handlers
             'assign_book_genres': (args) => this.lookupHandlers.handleAssignBookGenres(args),
+
+            // Generic metadata CRUD handlers
+            'list_metadata': (args) => this.metadataCrudHandlers.handleListMetadata(args),
+            'get_metadata': (args) => this.metadataCrudHandlers.handleGetMetadata(args),
+            'create_metadata': (args) => this.metadataCrudHandlers.handleCreateMetadata(args),
+            'update_metadata': (args) => this.metadataCrudHandlers.handleUpdateMetadata(args),
+            'delete_metadata': (args) => this.metadataCrudHandlers.handleDeleteMetadata(args),
 
             // Trope instance handlers
             'create_trope_instance': (args) => this.tropeHandlers.handleCreateTropeInstance(args),
