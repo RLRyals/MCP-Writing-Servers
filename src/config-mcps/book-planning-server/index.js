@@ -186,9 +186,10 @@ class BookPlanningMCPServer extends BaseMCPServer {
             .forEach(tool => tools.push({ ...tool }));
 
         // =============================================
-        // 8. WORKSHEET EXPORT TOOLS (Phase-specific) -- mws-0zk rework:
-        // DB-first planning docs projected onto existing storage (metadata +
-        // book_genres/books), read-only .md export
+        // 8. BOOK PLANNING EXPORT TOOLS (Phase-specific) -- mws-0zk rework:
+        // DB-first planning docs (book_parameters:<field> + planning_doc:<name>)
+        // projected onto existing storage (metadata + book_genres/books),
+        // read-only .md export. No worksheet/dossier taxonomy (Amendment 4).
         // =============================================
         this.worksheetExportHandlers.getWorksheetExportTools()
             .forEach(tool => tools.push({ ...tool }));
@@ -228,7 +229,7 @@ class BookPlanningMCPServer extends BaseMCPServer {
             'update_storyform': (args) => this.storyformHandlers.handleUpdateStoryform(args),
             'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args),
 
-            // Worksheet export handlers (mws-0zk rework)
+            // Book planning export handlers (mws-0zk rework)
             'export_book_worksheet_md': (args) => this.worksheetExportHandlers.handleExportBookWorksheetMd(args)
         };
 

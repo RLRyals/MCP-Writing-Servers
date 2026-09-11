@@ -1,9 +1,11 @@
 // tests/book-server/worksheet-export-handlers.test.js
 // Tests for WorksheetExportHandlers (bead mws-0zk rework): the .md export
 // projection over EXISTING storage (books.target_word_count, book_genres/
-// genres, and the universal metadata table) -- no new tables. DB is mocked
-// for the query paths; the export itself does real filesystem I/O against a
-// temp dir, matching the pattern used for other export-shaped handlers.
+// genres, and the universal metadata table) -- no new tables, no worksheet/
+// dossier taxonomy (Amendment 4, 2026-09-08 killed the 17-section EAW
+// registry). DB is mocked for the query paths; the export itself does real
+// filesystem I/O against a temp dir, matching the pattern used for other
+// export-shaped handlers.
 
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
@@ -70,7 +72,7 @@ describe('WorksheetExportHandlers.handleExportBookWorksheetMd', () => {
         );
     });
 
-    it('renders "not set" placeholders and no-sections message when nothing is stored', async () => {
+    it('renders "not set" placeholders and no-documents message when nothing is stored', async () => {
         const db = new MockDatabase({
             book: { id: 1, title: 'Empty Book', target_word_count: null },
             genres: [],
@@ -81,16 +83,18 @@ describe('WorksheetExportHandlers.handleExportBookWorksheetMd', () => {
 
         const result = await handlers.handleExportBookWorksheetMd({ book_id: 1, export_path: exportPath });
 
-        assert.strictEqual(result.section_count, 0);
+        assert.strictEqual(result.planning_doc_count, 0);
         const markdown = fs.readFileSync(exportPath, 'utf8');
-        assert.match(markdown, /# Empty Book — Story Dossier Worksheet/);
+        assert.match(markdown, /# Empty Book — Book Planning/);
         assert.match(markdown, /\*\*Genre:\*\* _\(not set\)_/);
         assert.match(markdown, /\*\*Target Word Count:\*\* _\(not set\)_/);
         assert.match(markdown, /\*\*POV:\*\* _\(not set\)_/);
-        assert.match(markdown, /_No worksheet sections yet\._/);
+        assert.match(markdown, /_No planning documents yet\._/);
+        assert.doesNotMatch(markdown, /Worksheet/);
+        assert.doesNotMatch(markdown, /Dossier/i);
     });
 
-    it('projects book_genres, books.target_word_count, and metadata rows into Project Info + Worksheet Sections', async () => {
+    it('projects book_genres, books.target_word_count, and metadata rows into Project Info + Planning Documents', async () => {
         const db = new MockDatabase({
             book: { id: 2, title: 'Full Book', target_word_count: 90000 },
             genres: ['Fantasy', 'Romance'],
@@ -98,10 +102,10 @@ describe('WorksheetExportHandlers.handleExportBookWorksheetMd', () => {
                 { metadata_key: 'book_parameters:pov', metadata_value: 'First Person' },
                 { metadata_key: 'book_parameters:act_structure', metadata_value: '9 Act Structure' },
                 { metadata_key: 'book_parameters:target_chapters', metadata_value: '25' },
-                { metadata_key: 'worksheet:story_concept', metadata_value: 'A thief steals fate itself.' },
-                { metadata_key: 'worksheet:protagonist_operating_systems', metadata_value: 'Kira: driven, guarded.' },
-                // Unknown/forward-compat keys should still render, sorted after known ones.
-                { metadata_key: 'worksheet:zzz_future_section', metadata_value: 'placeholder content' },
+                { metadata_key: 'planning_doc:premise', metadata_value: 'A thief steals fate itself.' },
+                { metadata_key: 'planning_doc:voice_notes', metadata_value: 'Kira: driven, guarded.' },
+                // Unknown/forward-compat keys should still render, sorted alphabetically.
+                { metadata_key: 'planning_doc:zzz_future_doc', metadata_value: 'placeholder content' },
                 { metadata_key: 'book_parameters:zzz_future_param', metadata_value: 'placeholder value' },
                 // Unrelated metadata rows outside the two prefixes must be ignored.
                 { metadata_key: 'unrelated_key', metadata_value: 'should not appear' }
@@ -112,7 +116,7 @@ describe('WorksheetExportHandlers.handleExportBookWorksheetMd', () => {
 
         const result = await handlers.handleExportBookWorksheetMd({ book_id: 2, export_path: exportPath });
 
-        assert.strictEqual(result.section_count, 3);
+        assert.strictEqual(result.planning_doc_count, 3);
         const markdown = fs.readFileSync(exportPath, 'utf8');
         assert.match(markdown, /\*\*Genre:\*\* Fantasy, Romance/);
         assert.match(markdown, /\*\*Target Word Count:\*\* 90000/);
@@ -121,17 +125,16 @@ describe('WorksheetExportHandlers.handleExportBookWorksheetMd', () => {
         assert.match(markdown, /\*\*Target Chapters:\*\* 25/);
         assert.match(markdown, /\*\*Narrative Tense:\*\* _\(not set\)_/);
         assert.match(markdown, /zzz_future_param.*placeholder value/);
-        assert.match(markdown, /### Story Concept\n\nA thief steals fate itself\./);
-        assert.match(markdown, /### Protagonist Operating Systems\n\nKira: driven, guarded\./);
-        assert.match(markdown, /### zzz_future_section\n\nplaceholder content/);
+        assert.match(markdown, /### Premise\n\nA thief steals fate itself\./);
+        assert.match(markdown, /### Voice Notes\n\nKira: driven, guarded\./);
+        assert.match(markdown, /### Zzz Future Doc\n\nplaceholder content/);
         assert.doesNotMatch(markdown, /should not appear/);
 
-        // Canonical sections must render in worksheet-order, not metadata-key order:
-        // protagonist_operating_systems (#3) precedes story_concept (#2) alphabetically
-        // by key text ("p" < "s") but must appear AFTER it in the export.
-        const conceptIndex = markdown.indexOf('### Story Concept');
-        const protagonistIndex = markdown.indexOf('### Protagonist Operating Systems');
-        assert.ok(conceptIndex >= 0 && protagonistIndex >= 0 && conceptIndex < protagonistIndex);
+        // Planning documents render in alphabetical key order -- there is no
+        // canonical registry/section-order (that was the retired worksheet shape).
+        const premiseIndex = markdown.indexOf('### Premise');
+        const voiceIndex = markdown.indexOf('### Voice Notes');
+        assert.ok(premiseIndex >= 0 && voiceIndex >= 0 && premiseIndex < voiceIndex);
     });
 
     it('re-exporting unchanged data is idempotent (byte-identical)', async () => {
@@ -140,7 +143,7 @@ describe('WorksheetExportHandlers.handleExportBookWorksheetMd', () => {
             genres: ['Mystery'],
             metadata: [
                 { metadata_key: 'book_parameters:pov', metadata_value: 'Third Person Limited' },
-                { metadata_key: 'worksheet:story_world', metadata_value: 'A drowned city.' }
+                { metadata_key: 'planning_doc:setting', metadata_value: 'A drowned city.' }
             ]
         });
         const handlers1 = new WorksheetExportHandlers(buildDb());

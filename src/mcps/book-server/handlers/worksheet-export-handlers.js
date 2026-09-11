@@ -1,5 +1,5 @@
 // src/mcps/book-server/handlers/worksheet-export-handlers.js
-// Worksheet .md export projection (mws-0zk rework).
+// Book planning .md export projection (mws-0zk rework).
 //
 // Rebecca's ruling (2026-09-05, mid-review of PR #107; re-confirmed 2026-09-07
 // after the accidental merge + revert of PRs #107/#109): "I don't think we
@@ -12,6 +12,15 @@
 //     using the key conventions below. No new tables, no new write tools --
 //     this file adds only the one genuinely new piece: a read-only .md
 //     projection of that storage. DB = truth, .md = projection.
+//
+// Amendment 4 (Rebecca, 2026-09-08) killed the 17-section EAW worksheet
+// taxonomy entirely -- most planning content is canon DB rows in existing
+// entity tables, not worksheet prose. Amendment/rework note (Casey, 2026-09-11)
+// confirmed: the export projects book parameters plus whatever genuinely
+// prose-shaped planning docs exist, NOT a fixed dossier shape. There is no
+// registry of section names or canonical ordering here -- planning docs are
+// rendered generically, one per `planning_doc:<name>` metadata row, sorted by
+// key, with the key humanized into a heading.
 //
 // Deterministic: re-exporting unchanged data must produce byte-identical
 // output, so nothing here embeds a wall-clock "generated at" timestamp.
@@ -32,29 +41,21 @@ export const PARAMETER_FIELDS = [
     { key: 'target_words_per_chapter', label: 'Target Words Per Chapter' }
 ];
 
-// metadata_key convention for the 17-section EAW story-dossier worksheet.
-// One row per section per book, e.g. metadata_key = 'worksheet:story_concept'.
-export const WORKSHEET_KEY_PREFIX = 'worksheet:';
+// metadata_key convention for freeform, prose-shaped planning documents the
+// per-book workflow emits (e.g. a premise writeup, a voice note). One row per
+// document per book, e.g. metadata_key = 'planning_doc:premise'. There is no
+// fixed registry or canonical order -- unlike the retired worksheet taxonomy,
+// any key under this prefix is projected, sorted alphabetically, with the
+// key humanized into a heading.
+export const PLANNING_DOC_KEY_PREFIX = 'planning_doc:';
 
-export const WORKSHEET_SECTIONS = [
-    { key: 'required_data_layer', title: 'Required Data Layer' },
-    { key: 'story_concept', title: 'Story Concept' },
-    { key: 'protagonist_operating_systems', title: 'Protagonist Operating Systems' },
-    { key: 'supporting_cast', title: 'Supporting Cast' },
-    { key: 'story_world', title: 'Story World' },
-    { key: 'npe_axes_and_vectors', title: 'NPE Axes and Vectors' },
-    { key: 'npe_thresholds_and_entropy', title: 'NPE Thresholds and Entropy' },
-    { key: 'writing_style_rules', title: 'Writing Style Rules' },
-    { key: 'genre_lens', title: 'Genre Lens' },
-    { key: 'story_summary', title: 'Story Summary' },
-    { key: 'structure_breakdown', title: 'Structure Breakdown' },
-    { key: 'chapter_outlines_setup', title: 'Chapter Outlines: Setup' },
-    { key: 'chapter_outlines_rising_action', title: 'Chapter Outlines: Rising Action' },
-    { key: 'chapter_outlines_complications', title: 'Chapter Outlines: Complications' },
-    { key: 'chapter_outlines_climax', title: 'Chapter Outlines: Climax' },
-    { key: 'chapter_outlines_resolution', title: 'Chapter Outlines: Resolution' },
-    { key: 'continuity_check', title: 'Continuity Check' }
-];
+function humanizeKey(key) {
+    return key
+        .split('_')
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
 
 export class WorksheetExportHandlers {
     constructor(db) {
@@ -106,17 +107,17 @@ export class WorksheetExportHandlers {
             );
 
             const parameters = new Map();
-            const worksheetSections = new Map();
+            const planningDocs = new Map();
             for (const row of metadataResult.rows) {
                 if (row.metadata_key.startsWith(PARAMETER_KEY_PREFIX)) {
                     parameters.set(row.metadata_key.slice(PARAMETER_KEY_PREFIX.length), row.metadata_value);
-                } else if (row.metadata_key.startsWith(WORKSHEET_KEY_PREFIX)) {
-                    worksheetSections.set(row.metadata_key.slice(WORKSHEET_KEY_PREFIX.length), row.metadata_value);
+                } else if (row.metadata_key.startsWith(PLANNING_DOC_KEY_PREFIX)) {
+                    planningDocs.set(row.metadata_key.slice(PLANNING_DOC_KEY_PREFIX.length), row.metadata_value);
                 }
             }
 
             const lines = [];
-            lines.push(`# ${book.title} — Story Dossier Worksheet`);
+            lines.push(`# ${book.title} — Book Planning`);
             lines.push('');
 
             lines.push('## Project Info');
@@ -136,29 +137,15 @@ export class WorksheetExportHandlers {
             }
             lines.push('');
 
-            lines.push('## Worksheet Sections');
+            lines.push('## Planning Documents');
             lines.push('');
-            if (worksheetSections.size === 0) {
-                lines.push('_No worksheet sections yet._');
+            if (planningDocs.size === 0) {
+                lines.push('_No planning documents yet._');
             } else {
-                const renderedKeys = new Set();
-                for (const section of WORKSHEET_SECTIONS) {
-                    if (!worksheetSections.has(section.key)) continue;
-                    lines.push(`### ${section.title}`);
+                for (const key of Array.from(planningDocs.keys()).sort()) {
+                    lines.push(`### ${humanizeKey(key)}`);
                     lines.push('');
-                    lines.push(worksheetSections.get(section.key) || '_(empty)_');
-                    lines.push('');
-                    renderedKeys.add(section.key);
-                }
-                // Forward-compat: any worksheet:* metadata rows outside the
-                // known 17-section registry still get projected, sorted after.
-                const unknownKeys = Array.from(worksheetSections.keys())
-                    .filter(key => !renderedKeys.has(key))
-                    .sort();
-                for (const key of unknownKeys) {
-                    lines.push(`### ${key}`);
-                    lines.push('');
-                    lines.push(worksheetSections.get(key) || '_(empty)_');
+                    lines.push(planningDocs.get(key) || '_(empty)_');
                     lines.push('');
                 }
             }
@@ -171,7 +158,7 @@ export class WorksheetExportHandlers {
             return {
                 book_id,
                 export_path,
-                section_count: worksheetSections.size,
+                planning_doc_count: planningDocs.size,
                 bytes_written: Buffer.byteLength(markdown, 'utf8')
             };
         } catch (error) {
