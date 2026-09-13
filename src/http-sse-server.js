@@ -230,6 +230,20 @@ async function loadServers() {
     }
 
     try {
+        // Biz Server (S15 broadquill business tracker, bead mws-s0l)
+        const { BizMCPServer } = await import('./mcps/biz-server/index.js');
+        servers.push({
+            name: 'biz',
+            path: '/biz',
+            serverClass: BizMCPServer,
+            port: 3014
+        });
+        console.error('✓ Biz Server loaded');
+    } catch (error) {
+        console.error('✗ Failed to load Biz Server:', error.message);
+    }
+
+    try {
         // Story Analysis Server (phase-based wrapper, bead mws-1783883496278-4-e2749385)
         const { StoryAnalysisMCPServer } = await import('./config-mcps/story-analysis-server/index.js');
         servers.push({
@@ -243,7 +257,7 @@ async function loadServers() {
         console.error('✗ Failed to load Story Analysis Server:', error.message);
     }
 
-    console.error(`\n✅ Successfully loaded ${servers.length}/15 servers\n`);
+    console.error(`\n✅ Successfully loaded ${servers.length}/16 servers\n`);
     return servers;
 }
 

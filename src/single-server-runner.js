@@ -36,7 +36,8 @@ const serverConfigs = {
     'author': { path: './mcps/author-server/index.js', className: 'AuthorMCPServer' },
     'database-admin': { path: './mcps/database-admin-server/index.js', className: 'DatabaseAdminMCPServer' },
     'workflow-manager': { path: './mcps/workflow-manager-server/index.js', className: 'WorkflowManagerMCPServer' },
-    'kanban': { path: './mcps/kanban-server/index.js', className: 'KanbanMCPServer' }
+    'kanban': { path: './mcps/kanban-server/index.js', className: 'KanbanMCPServer' },
+    'biz': { path: './mcps/biz-server/index.js', className: 'BizMCPServer' }
 };
 
 // Active SSE transports Map
