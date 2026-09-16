@@ -32,6 +32,9 @@
     },
     "kanban": {
       "url": "http://mcp-writing-servers:3015/"
+    },
+    "biz": {
+      "url": "http://mcp-writing-servers:3014/"
     }
   }
 }
