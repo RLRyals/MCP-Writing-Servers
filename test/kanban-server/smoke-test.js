@@ -107,10 +107,59 @@ async function main() {
     await client.connect(transport);
     console.log('Connected to kanban-server over stdio.\n');
 
+    let createdBoardId;
+
     try {
         // 1. list_boards
         const boardsRes = await callTool(client, 'list_boards', {});
         check('list_boards returns our test board', boardsRes.boards.some((b) => b.id === testBoardId));
+
+        // 1b. create_board (mws-xoi -- there was previously no way to add a board)
+        const newBoardKey = `kanban-smoke-test-created-${Date.now()}`;
+        const createBoardRes = await callTool(client, 'create_board', {
+            board_key: newBoardKey,
+            name: 'Smoke Test Created Board',
+            created_by: 'rebecca'
+        });
+        createdBoardId = createBoardRes.board.id;
+        check('create_board returns a board id', !!createdBoardId);
+        check('create_board created=true on first call', createBoardRes.created === true);
+        check('create_board defaults to the 8 dev-backlog columns', createBoardRes.columns.length === 8, `got ${createBoardRes.columns.length}`);
+        check(
+            'create_board default ready column is_agent_pickup=true',
+            createBoardRes.columns.find((c) => c.status_key === 'ready')?.is_agent_pickup === true
+        );
+
+        // 1c. create_board is idempotent on board_key -- repeat call returns
+        // the SAME board, not a duplicate/error.
+        const createBoardAgainRes = await callTool(client, 'create_board', {
+            board_key: newBoardKey,
+            name: 'Smoke Test Created Board (retry)',
+            created_by: 'rebecca'
+        });
+        check('create_board repeat call returns the existing board id', createBoardAgainRes.board.id === createdBoardId);
+        check('create_board repeat call reports created=false', createBoardAgainRes.created === false);
+
+        // 1d. an MCP client can immediately create_card into the new board --
+        // no migration required (the acceptance criterion for mws-xoi).
+        const cardOnNewBoardRes = await callTool(client, 'create_card', {
+            board_id: createdBoardId,
+            title: 'Card on freshly created board'
+        });
+        check('create_card succeeds immediately on a create_board-made board', !!cardOnNewBoardRes.card.id);
+
+        // 1e. create_board rejects an unregistered created_by (validated like assignee).
+        let createBoardRejectedUnknown = false;
+        try {
+            await callTool(client, 'create_board', {
+                board_key: `kanban-smoke-test-bad-${Date.now()}`,
+                name: 'Should not be created',
+                created_by: 'smoke-test-unknown-nobody'
+            });
+        } catch (e) {
+            createBoardRejectedUnknown = /unknown assignee/i.test(e.message);
+        }
+        check('create_board rejects an unknown created_by id', createBoardRejectedUnknown);
 
         // 2. get_board
         const getBoardRes = await callTool(client, 'get_board', { board_id: testBoardId });
@@ -565,6 +614,10 @@ async function main() {
         await client.close();
         // Cascade-delete the ephemeral test board (columns/cards/comments/links/activity all go with it).
         await pool.query('DELETE FROM fictionlab.kanban_boards WHERE id = $1', [testBoardId]);
+        // Cascade-delete the board made via create_board above, if it got that far.
+        if (createdBoardId) {
+            await pool.query('DELETE FROM fictionlab.kanban_boards WHERE id = $1', [createdBoardId]);
+        }
         // Clean up the test-only identities registered above (GH issue #62),
         // plus the two claiming-agent ids auto-registered as kind='agent' by
         // claim_card -- this smoke test leaves nothing behind, same as the board.

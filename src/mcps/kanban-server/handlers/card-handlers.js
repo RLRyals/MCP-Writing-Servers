@@ -4,9 +4,7 @@
 // claim_card lives in claim-handlers.js — the atomic compare-and-swap is
 // kept in exactly one place.
 
-import { resolveBoardId, logActivity, notifyKanbanChanged, inferReviewPolicy, validateAssignee } from './kanban-helpers.js';
-
-const CARD_STATUSES = ['backlog', 'ready', 'claimed', 'in_progress', 'review', 'blocked', 'done', 'archived'];
+import { resolveBoardId, logActivity, notifyKanbanChanged, inferReviewPolicy, validateAssignee, CARD_STATUSES } from './kanban-helpers.js';
 
 export class CardHandlers {
     constructor(db) {

@@ -193,13 +193,46 @@ export const kanbanToolsSchema = [
         }
     },
 
-    // ---- 4 supporting tools ----
+    // ---- 5 supporting tools ----
     {
         name: 'list_boards',
         description: 'Lists all boards with their total card counts.',
         inputSchema: {
             type: 'object',
             properties: {}
+        }
+    },
+    {
+        name: 'create_board',
+        description: "Creates a new board + its columns -- no migration required. Idempotent on board_key (ON CONFLICT DO NOTHING semantics): a repeat call with the same board_key returns the existing board and its columns instead of erroring or duplicating.",
+        inputSchema: {
+            type: 'object',
+            properties: {
+                board_key: { type: 'string', description: 'Unique board slug, e.g. my-new-board' },
+                name: { type: 'string' },
+                description: { type: 'string' },
+                created_by: {
+                    type: 'string',
+                    description: 'Must be a registered active identity id (see list_identities / upsert_identity) -- no default (unlike create_card), so a real identity must be supplied.'
+                },
+                columns: {
+                    type: 'array',
+                    description: "Ordered lanes for the board. Defaults to the dev-backlog column set (backlog, ready, in_progress, review, blocked, done, archived, claimed) when omitted.",
+                    items: {
+                        type: 'object',
+                        properties: {
+                            status_key: { type: 'string', enum: CARD_STATUS_ENUM },
+                            name: { type: 'string' },
+                            position: { type: 'integer' },
+                            color: { type: 'string' },
+                            wip_limit: { type: 'integer' },
+                            is_agent_pickup: { type: 'boolean', default: false }
+                        },
+                        required: ['status_key', 'name']
+                    }
+                }
+            },
+            required: ['board_key', 'name', 'created_by']
         }
     },
     {

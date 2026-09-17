@@ -3,6 +3,12 @@
 // (board/card/claim/comment-handlers). Kept together so the activity-log +
 // NOTIFY side effects can never drift out of sync between mutation tools.
 
+// The single source of truth for kanban_cards.status / kanban_columns.status_key
+// values (matches the CHECK constraint in migrations/042_kanban_tables.sql).
+// Shared by card-handlers.js (card status validation) and board-handlers.js
+// (create_board column status_key validation) so the two never drift apart.
+export const CARD_STATUSES = ['backlog', 'ready', 'claimed', 'in_progress', 'review', 'blocked', 'done', 'archived'];
+
 /**
  * Resolve a board_id from either an explicit board_id, a board_key, or (for
  * the create_card quick-add fast path) a default board_key. Throws if the
