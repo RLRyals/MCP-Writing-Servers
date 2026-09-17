@@ -75,9 +75,10 @@ class KanbanMCPServer extends BaseMCPServer {
 
     getToolHandler(toolName) {
         const handlers = {
-            // Board handlers (2 tools)
+            // Board handlers (3 tools)
             'get_board': this.boardHandlers.handleGetBoard.bind(this.boardHandlers),
             'list_boards': this.boardHandlers.handleListBoards.bind(this.boardHandlers),
+            'create_board': this.boardHandlers.handleCreateBoard.bind(this.boardHandlers),
             // Card handlers (7 tools)
             'list_cards': this.cardHandlers.handleListCards.bind(this.cardHandlers),
             'create_card': this.cardHandlers.handleCreateCard.bind(this.cardHandlers),
