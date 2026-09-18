@@ -20,17 +20,19 @@ BEGIN
 
     SELECT id INTO v_company_id FROM fictionlab.biz_companies WHERE name = 'Broad Quill';
 
+    -- mws-9ht: 048 no longer seeds a company, so a fresh install has none.
+    -- Skip the account seed then instead of failing the migration run.
     IF v_company_id IS NULL THEN
-        RAISE EXCEPTION 'fictionlab.biz_companies has no "Broad Quill" row -- migration 048 must run first';
+        RAISE NOTICE 'No Broad Quill company (fresh install) -- skipping default account seed';
+    ELSE
+        INSERT INTO fictionlab.biz_accounts (company_id, name, account_type)
+        SELECT v_company_id, 'Primary Checking', 'checking'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM fictionlab.biz_accounts WHERE company_id = v_company_id AND name = 'Primary Checking'
+        );
+
+        RAISE NOTICE 'Seeded fictionlab.biz_accounts default row (Primary Checking)';
     END IF;
-
-    INSERT INTO fictionlab.biz_accounts (company_id, name, account_type)
-    SELECT v_company_id, 'Primary Checking', 'checking'
-    WHERE NOT EXISTS (
-        SELECT 1 FROM fictionlab.biz_accounts WHERE company_id = v_company_id AND name = 'Primary Checking'
-    );
-
-    RAISE NOTICE 'Seeded fictionlab.biz_accounts default row (Primary Checking)';
 
     INSERT INTO migrations (filename) VALUES ('055_biz_accounts_default_seed.sql')
     ON CONFLICT DO NOTHING;

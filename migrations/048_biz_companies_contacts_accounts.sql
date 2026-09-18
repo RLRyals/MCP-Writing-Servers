@@ -42,12 +42,12 @@ BEGIN
 
     COMMENT ON TABLE fictionlab.biz_companies IS 'Root company-identity table (S15 §0b). Closing a company is a status change (status=closed + closed_on), never a delete -- history survives alongside successor companies.';
 
-    -- Seed default company (idempotent) -- v1 UX carries no per-entry company
-    -- picker; every surface operates on this default (§0b).
-    INSERT INTO fictionlab.biz_companies (name) VALUES ('Broad Quill')
-    ON CONFLICT (name) DO NOTHING;
+    -- No company is seeded (mws-9ht): users create theirs via the biz-server
+    -- create_biz_company tool. Existing installs keep the row an earlier
+    -- version of this migration seeded (048 is filename-guarded, so this
+    -- edit only affects fresh databases).
 
-    RAISE NOTICE 'Created fictionlab.biz_companies (+ Broad Quill seed)';
+    RAISE NOTICE 'Created fictionlab.biz_companies';
 
     -- =========================================================
     -- 2. biz_contacts -- per-company (§0b: company's books export/hand off cleanly)

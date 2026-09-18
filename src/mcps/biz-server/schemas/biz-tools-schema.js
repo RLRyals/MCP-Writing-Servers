@@ -11,6 +11,40 @@ const ASSET_TYPE_ENUM = ['image', 'video', 'audio', 'doc', 'receipt'];
 
 export const bizToolsSchema = [
     {
+        name: 'list_biz_companies',
+        description: 'Lists companies (id, name, legal_name, status, closed_on, notes). Empty on a fresh install -- create one with create_biz_company.',
+        inputSchema: { type: 'object', properties: {} }
+    },
+    {
+        name: 'create_biz_company',
+        description: 'Creates a company. name is required and unique; a duplicate name returns a clean error.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                name: { type: 'string' },
+                legal_name: { type: 'string' },
+                notes: { type: 'string' }
+            },
+            required: ['name']
+        }
+    },
+    {
+        name: 'update_biz_company',
+        description: 'Partial update of a company: rename, legal_name, notes, status (active|closed) and closed_on. Closing is a status change, never a delete. status=closed defaults closed_on to today; status=active clears it.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                id: { type: 'integer' },
+                name: { type: 'string' },
+                legal_name: { type: 'string' },
+                notes: { type: 'string' },
+                status: { type: 'string', enum: ['active', 'closed'] },
+                closed_on: { type: 'string', description: 'ISO date' }
+            },
+            required: ['id']
+        }
+    },
+    {
         name: 'list_biz_transactions',
         description: "Lists an account's full transaction history, most recent first. Used by the importer for dedupe lookups and vendor-memory category matching.",
         inputSchema: {
