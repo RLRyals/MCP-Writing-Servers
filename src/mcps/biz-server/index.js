@@ -16,6 +16,7 @@ if (process.env.MCP_STDIO_MODE === 'true') {
 import { BaseMCPServer } from '../../shared/base-server.js';
 import { TransactionHandlers } from './handlers/transaction-handlers.js';
 import { DeadlineHandlers } from './handlers/deadline-handlers.js';
+import { CompanyHandlers } from './handlers/company-handlers.js';
 import { ListingHandlers } from './handlers/listing-handlers.js';
 import { bizToolsSchema } from './schemas/biz-tools-schema.js';
 
@@ -23,7 +24,7 @@ class BizMCPServer extends BaseMCPServer {
     constructor() {
         console.error('[BIZ] Constructor starting...');
         try {
-            super('biz', '1.0.0');
+            super('biz', '1.1.0');
             console.error('[BIZ] Constructor completed successfully');
         } catch (error) {
             console.error('[BIZ] Constructor failed:', error.message);
@@ -36,6 +37,7 @@ class BizMCPServer extends BaseMCPServer {
         this.transactionHandlers = new TransactionHandlers(this.db);
         this.deadlineHandlers = new DeadlineHandlers(this.db);
         this.listingHandlers = new ListingHandlers(this.db);
+        this.companyHandlers = new CompanyHandlers(this.db);
 
         this.tools = this.getTools();
 
@@ -72,6 +74,9 @@ class BizMCPServer extends BaseMCPServer {
 
     getToolHandler(toolName) {
         const handlers = {
+            'list_biz_companies': this.companyHandlers.handleListBizCompanies.bind(this.companyHandlers),
+            'create_biz_company': this.companyHandlers.handleCreateBizCompany.bind(this.companyHandlers),
+            'update_biz_company': this.companyHandlers.handleUpdateBizCompany.bind(this.companyHandlers),
             'list_biz_transactions': this.transactionHandlers.handleListBizTransactions.bind(this.transactionHandlers),
             'create_biz_transaction': this.transactionHandlers.handleCreateBizTransaction.bind(this.transactionHandlers),
             'update_biz_transaction': this.transactionHandlers.handleUpdateBizTransaction.bind(this.transactionHandlers),
