@@ -231,6 +231,7 @@ export const promisesToolsSchema = [
                 description: { type: 'string' },
                 planted_work_id: { type: 'integer', description: 'Where it is planted (often a scene work_id)' },
                 carries_to_series: { type: 'boolean', description: 'Pays off in a future series?' },
+                weight: { type: 'string', enum: ['low','medium','high','critical'], description: 'How much the promise weighs on the reader (optional)' },
                 notes: { type: 'string' }
             },
             required: ['label']
@@ -249,6 +250,7 @@ export const promisesToolsSchema = [
                 payoff_work_id: { type: 'integer' },
                 status: { type: 'string', enum: ['open','progressing','paid','carried','abandoned'] },
                 carries_to_series: { type: 'boolean' },
+                weight: { type: 'string', enum: ['low','medium','high','critical'], description: 'How much the promise weighs on the reader (optional)' },
                 notes: { type: 'string' }
             },
             required: ['promise_id']
@@ -256,13 +258,14 @@ export const promisesToolsSchema = [
     },
     {
         name: 'list_open_promises',
-        description: 'List promises that are open or progressing (i.e., have no payoff_work_id and have not been abandoned). Optionally scoped to a subtree.',
+        description: 'List promises that are open or progressing (i.e., have no payoff_work_id and have not been abandoned). Ordered by weight (critical first, unweighted last). Optionally scoped to a subtree.',
         inputSchema: {
             type: 'object',
             properties: {
                 series_root_id: { type: 'integer', description: 'Filter to a series' },
                 scope_work_id: { type: 'integer', description: 'Limit to promises planted within this subtree (e.g., act 2 only)' },
-                promise_type: { type: 'string' }
+                promise_type: { type: 'string' },
+                min_weight: { type: 'string', enum: ['low','medium','high','critical'], description: 'Only promises at or above this weight (unweighted promises are excluded)' }
             },
             required: []
         }
@@ -308,7 +311,7 @@ export const evidenceToolsSchema = [
     },
     {
         name: 'list_unconverted_evidence',
-        description: 'List evidence that has not been converted into plot action. Optionally scoped to a subtree.',
+        description: 'List evidence that has not been converted into plot action. Ordered by weight (critical first, unweighted last). Optionally scoped to a subtree.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -372,7 +375,7 @@ export const sceneEventsToolsSchema = [
 export const briefToolsSchema = [
     {
         name: 'get_scene_brief',
-        description: 'One-call drafting brief: scene\'s outline + ancestry summaries (chapter/act/book/series) + scene_events + open promises connected to this work (planted on this work or an ancestor, or already referenced in this scene\'s events) + unconverted evidence connected to this work + each present character\'s knowledge state. Use at the start of a drafting session to load context. For series-wide open-promise lookups, call list_open_promises separately.',
+        description: 'One-call drafting brief: scene\'s outline + ancestry summaries (chapter/act/book/series) + scene_events + open promises connected to this work, ordered by weight (planted on this work or an ancestor, or already referenced in this scene\'s events) + unconverted evidence connected to this work + each present character\'s knowledge state. Use at the start of a drafting session to load context. For series-wide open-promise lookups, call list_open_promises separately.',
         inputSchema: {
             type: 'object',
             properties: {

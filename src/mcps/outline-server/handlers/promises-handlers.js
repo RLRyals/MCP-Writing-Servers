@@ -3,6 +3,18 @@
 
 import { promisesToolsSchema } from '../schemas/outline-tools-schema.js';
 
+export const PROMISE_WEIGHTS = ['low', 'medium', 'high', 'critical'];
+
+// SQL expression ranking weight: critical first, NULL last.
+export const WEIGHT_ORDER_SQL = (col) =>
+    `CASE ${col} WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END`;
+
+function checkWeight(weight) {
+    if (weight !== undefined && weight !== null && !PROMISE_WEIGHTS.includes(weight)) {
+        throw new Error(`weight must be one of ${PROMISE_WEIGHTS.join(', ')}`);
+    }
+}
+
 export class PromisesHandlers {
     constructor(db) {
         this.db = db;
@@ -15,21 +27,23 @@ export class PromisesHandlers {
     async handleCreatePromise(args) {
         try {
             const { series_root_id, promise_type, label, description,
-                    planted_work_id, carries_to_series, notes } = args;
+                    planted_work_id, carries_to_series, notes, weight } = args;
+            checkWeight(weight);
             const result = await this.db.query(
                 `INSERT INTO outline_promises
                     (series_root_id, promise_type, label, description, planted_work_id,
-                     carries_to_series, notes)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+                     carries_to_series, notes, weight)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
                 [series_root_id || null, promise_type || null, label,
                  description || null, planted_work_id || null,
-                 !!carries_to_series, notes || null]
+                 !!carries_to_series, notes || null, weight || null]
             );
             const pr = result.rows[0];
             return { content: [{ type: 'text', text:
                 `Created promise #${pr.id}.\n` +
                 `Label: ${pr.label}\n` +
                 `Type: ${pr.promise_type ?? '(untyped)'}\n` +
+                `Weight: ${pr.weight ?? '(unweighted)'}\n` +
                 `Planted at work: ${pr.planted_work_id ?? '(unplanted)'}\n` +
                 `Status: ${pr.status}\n` +
                 `Carries to series: ${pr.carries_to_series}`
@@ -42,7 +56,8 @@ export class PromisesHandlers {
     async handleUpdatePromise(args) {
         try {
             const { promise_id, label, description, planted_work_id, payoff_work_id,
-                    status, carries_to_series, notes } = args;
+                    status, carries_to_series, notes, weight } = args;
+            checkWeight(weight);
 
             const updates = [];
             const values = [];
@@ -54,6 +69,7 @@ export class PromisesHandlers {
             if (status !== undefined)            { updates.push(`status = $${p++}`);             values.push(status); }
             if (carries_to_series !== undefined) { updates.push(`carries_to_series = $${p++}`);  values.push(!!carries_to_series); }
             if (notes !== undefined)             { updates.push(`notes = $${p++}`);              values.push(notes); }
+            if (weight !== undefined)            { updates.push(`weight = $${p++}`);             values.push(weight); }
 
             if (updates.length === 0) {
                 return { content: [{ type: 'text', text: 'No fields to update.' }] };
@@ -79,13 +95,19 @@ export class PromisesHandlers {
 
     async handleListOpenPromises(args) {
         try {
-            const { series_root_id, scope_work_id, promise_type } = args;
+            const { series_root_id, scope_work_id, promise_type, min_weight } = args;
+            checkWeight(min_weight);
 
             const where = [`p.status IN ('open','progressing')`, `p.payoff_work_id IS NULL`];
             const values = [];
             let i = 1;
             if (series_root_id) { where.push(`p.series_root_id = $${i++}`); values.push(series_root_id); }
             if (promise_type)   { where.push(`p.promise_type = $${i++}`);   values.push(promise_type); }
+
+            if (min_weight) {
+                const allowed = PROMISE_WEIGHTS.slice(PROMISE_WEIGHTS.indexOf(min_weight));
+                where.push(`p.weight = ANY($${i++}::text[])`); values.push(allowed);
+            }
 
             let sql;
             if (scope_work_id) {
@@ -101,7 +123,7 @@ export class PromisesHandlers {
                       LEFT JOIN outline_works w ON p.planted_work_id = w.id
                      WHERE p.planted_work_id IN (SELECT id FROM subtree)
                        AND ${where.join(' AND ')}
-                     ORDER BY p.id`;
+                     ORDER BY ${WEIGHT_ORDER_SQL('p.weight')}, p.id`;
                 values.push(scope_work_id);
             } else {
                 sql = `
@@ -109,7 +131,7 @@ export class PromisesHandlers {
                       FROM outline_promises p
                       LEFT JOIN outline_works w ON p.planted_work_id = w.id
                      WHERE ${where.join(' AND ')}
-                     ORDER BY p.id`;
+                     ORDER BY ${WEIGHT_ORDER_SQL('p.weight')}, p.id`;
             }
 
             const result = await this.db.query(sql, values);
