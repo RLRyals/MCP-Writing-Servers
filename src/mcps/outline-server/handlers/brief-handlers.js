@@ -8,6 +8,7 @@
 // should use list_open_promises / list_unconverted_evidence directly.
 
 import { briefToolsSchema } from '../schemas/outline-tools-schema.js';
+import { WEIGHT_ORDER_SQL } from './promises-handlers.js';
 
 export class BriefHandlers {
     constructor(db) {
@@ -94,7 +95,7 @@ export class BriefHandlers {
                   WHERE p.status IN ('open','progressing')
                     AND p.payoff_work_id IS NULL
                     AND (p.planted_work_id = ANY($1::int[]) OR p.id = ANY($2::int[]))
-                  ORDER BY p.id`,
+                  ORDER BY ${WEIGHT_ORDER_SQL('p.weight')}, p.id`,
                 [ancestorAndSelfIds, referencedPromiseIds]
             );
 
@@ -200,7 +201,7 @@ export class BriefHandlers {
                 lines.push('_(none)_');
             } else {
                 for (const p of openPromises.rows) {
-                    lines.push(`- #${p.id} [${p.promise_type ?? 'untyped'}] ${p.label}` +
+                    lines.push(`- #${p.id} [${p.promise_type ?? 'untyped'}]${p.weight ? ` (${p.weight})` : ''} ${p.label}` +
                         (p.planted_title ? ` (planted: ${p.planted_type}#${p.planted_work_id})` : ''));
                 }
             }
