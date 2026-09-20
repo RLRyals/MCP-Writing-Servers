@@ -82,6 +82,7 @@ class OutlinePhaseMCPServer extends BaseMCPServer {
             'create_promise':             this.promisesHandlers.handleCreatePromise.bind(this.promisesHandlers),
             'update_promise':             this.promisesHandlers.handleUpdatePromise.bind(this.promisesHandlers),
             'list_open_promises':         this.promisesHandlers.handleListOpenPromises.bind(this.promisesHandlers),
+            'list_promises':         this.promisesHandlers.handleListPromises.bind(this.promisesHandlers),
             'create_evidence':            this.evidenceHandlers.handleCreateEvidence.bind(this.evidenceHandlers),
             'update_evidence':            this.evidenceHandlers.handleUpdateEvidence.bind(this.evidenceHandlers),
             'list_unconverted_evidence':  this.evidenceHandlers.handleListUnconvertedEvidence.bind(this.evidenceHandlers),
