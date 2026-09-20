@@ -72,6 +72,7 @@ class OutlineMCPServer extends BaseMCPServer {
             'create_promise':             this.promisesHandlers.handleCreatePromise.bind(this.promisesHandlers),
             'update_promise':             this.promisesHandlers.handleUpdatePromise.bind(this.promisesHandlers),
             'list_open_promises':         this.promisesHandlers.handleListOpenPromises.bind(this.promisesHandlers),
+            'list_promises':         this.promisesHandlers.handleListPromises.bind(this.promisesHandlers),
             // evidence
             'create_evidence':            this.evidenceHandlers.handleCreateEvidence.bind(this.evidenceHandlers),
             'update_evidence':            this.evidenceHandlers.handleUpdateEvidence.bind(this.evidenceHandlers),

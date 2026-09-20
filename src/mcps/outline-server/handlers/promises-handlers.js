@@ -9,6 +9,8 @@ export const PROMISE_WEIGHTS = ['low', 'medium', 'high', 'critical'];
 export const WEIGHT_ORDER_SQL = (col) =>
     `CASE ${col} WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END`;
 
+export const PROMISE_STATUSES = ['open', 'progressing', 'paid', 'carried', 'abandoned'];
+
 function checkWeight(weight) {
     if (weight !== undefined && weight !== null && !PROMISE_WEIGHTS.includes(weight)) {
         throw new Error(`weight must be one of ${PROMISE_WEIGHTS.join(', ')}`);
@@ -150,6 +152,69 @@ export class PromisesHandlers {
             }] };
         } catch (err) {
             throw new Error(`list_open_promises failed: ${err.message}`);
+        }
+    }
+
+    async handleListPromises(args) {
+        try {
+            const { series_root_id, status, scope_work_id, promise_type } = args;
+            if (status !== undefined && status !== null && !PROMISE_STATUSES.includes(status)) {
+                throw new Error(`status must be one of ${PROMISE_STATUSES.join(', ')}`);
+            }
+
+            const where = ['TRUE'];
+            const values = [];
+            let i = 1;
+            if (status)         { where.push(`p.status = $${i++}`);           values.push(status); }
+            if (series_root_id) { where.push(`p.series_root_id = $${i++}`);   values.push(series_root_id); }
+            if (promise_type)   { where.push(`p.promise_type = $${i++}`);     values.push(promise_type); }
+
+            const cols = `p.*, w.title AS planted_title, w.work_type AS planted_type,
+                                 pw.title AS payoff_title, pw.work_type AS payoff_type`;
+            const joins = `LEFT JOIN outline_works w ON p.planted_work_id = w.id
+                           LEFT JOIN outline_works pw ON p.payoff_work_id = pw.id`;
+            let sql;
+            if (scope_work_id) {
+                sql = `
+                    WITH RECURSIVE subtree AS (
+                        SELECT id FROM outline_works WHERE id = $${i}
+                        UNION ALL
+                        SELECT w.id FROM outline_works w JOIN subtree s ON w.parent_id = s.id
+                    )
+                    SELECT ${cols}
+                      FROM outline_promises p
+                      ${joins}
+                     WHERE p.planted_work_id IN (SELECT id FROM subtree)
+                       AND ${where.join(' AND ')}
+                     ORDER BY ${WEIGHT_ORDER_SQL('p.weight')}, p.id`;
+                values.push(scope_work_id);
+            } else {
+                sql = `
+                    SELECT ${cols}
+                      FROM outline_promises p
+                      ${joins}
+                     WHERE ${where.join(' AND ')}
+                     ORDER BY ${WEIGHT_ORDER_SQL('p.weight')}, p.id`;
+            }
+
+            const result = await this.db.query(sql, values);
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: 'No promises.' }] };
+            }
+            const lines = result.rows.map(p =>
+                `#${p.id} [${p.promise_type ?? 'untyped'}] ${p.label}\n` +
+                `    planted: ${p.planted_title ? `${p.planted_type}#${p.planted_work_id} ${p.planted_title}` : '(unplanted)'}\n` +
+                `    payoff: ${p.payoff_work_id ? `${p.payoff_type}#${p.payoff_work_id} ${p.payoff_title}` : '(none)'}\n` +
+                `    status: ${p.status}\n` +
+                `    weight: ${p.weight ?? '(unweighted)'}` +
+                (p.description ? `\n    desc: ${p.description}` : '') +
+                (p.carries_to_series ? `\n    carries to next series` : '')
+            );
+            return { content: [{ type: 'text', text:
+                `${result.rows.length} promise(s):\n\n${lines.join('\n\n')}`
+            }] };
+        } catch (err) {
+            throw new Error(`list_promises failed: ${err.message}`);
         }
     }
 }

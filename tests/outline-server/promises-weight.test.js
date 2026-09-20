@@ -62,3 +62,29 @@ describe('promise weight', () => {
         assert.match(sql, /weight IS NULL OR weight IN \('low','medium','high','critical'\)/);
     });
 });
+
+describe('list_promises (mws-c90)', () => {
+    it('returns paid promises with payoff, no status filter by default, weight-ordered', async () => {
+        const db = mockDb(() => ({ rows: [{ id: 7, promise_type: 'clue', label: 'gun', status: 'paid', weight: 'high',
+            planted_work_id: 1, planted_title: 'Ch1', planted_type: 'chapter',
+            payoff_work_id: 9, payoff_title: 'Ch9', payoff_type: 'chapter' }] }));
+        const res = await new PromisesHandlers(db).handleListPromises({ series_root_id: 3 });
+        const q = db.queries[0];
+        assert.doesNotMatch(q.text, /status IN/);
+        assert.doesNotMatch(q.text, /payoff_work_id IS NULL/);
+        assert.match(q.text, /ORDER BY CASE p\.weight WHEN 'critical' THEN 0/);
+        assert.deepEqual(q.params, [3]);
+        assert.match(res.content[0].text, /payoff: chapter#9 Ch9/);
+        assert.match(res.content[0].text, /status: paid/);
+        assert.match(res.content[0].text, /weight: high/);
+    });
+
+    it('filters by status and rejects invalid status', async () => {
+        const db = mockDb();
+        const h = new PromisesHandlers(db);
+        await h.handleListPromises({ status: 'paid' });
+        assert.match(db.queries[0].text, /p\.status = \$1/);
+        assert.deepEqual(db.queries[0].params, ['paid']);
+        await assert.rejects(h.handleListPromises({ status: 'bogus' }), /status must be one of/);
+    });
+});

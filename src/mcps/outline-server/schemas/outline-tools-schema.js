@@ -269,6 +269,20 @@ export const promisesToolsSchema = [
             },
             required: []
         }
+    },
+    {
+        name: 'list_promises',
+        description: 'List promises regardless of status (open, progressing, paid, carried, abandoned) unless filtered. Includes payoff location, weight and status per row. Ordered by weight (critical first, unweighted last). Use for idempotent lookups of paid/abandoned promises that list_open_promises cannot see.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                series_root_id: { type: 'integer', description: 'Filter to a series' },
+                status: { type: 'string', enum: ['open','progressing','paid','carried','abandoned'], description: 'Filter to one status (default: all)' },
+                scope_work_id: { type: 'integer', description: 'Limit to promises planted within this subtree' },
+                promise_type: { type: 'string' }
+            },
+            required: []
+        }
     }
 ];
 
