@@ -13,8 +13,11 @@ This server implements the Narrative Physics Engine compliance framework, helpin
 #### 1. `analyze_chapter_pacing`
 Analyzes pacing metrics for a specific chapter.
 
-**Input:**
-- `chapter_id` (integer, required): Chapter ID to analyze
+**Input (one of the following):**
+- `chapter_id` (integer): Global chapter ID to analyze (`chapters.id`). This is a GLOBAL primary key shared across every book, NOT a per-book chapter number -- passing "4" meaning "chapter 4 of this book" as `chapter_id` can silently return a different book's chapter.
+- `book_id` + `chapter_number` (integers, preferred): Per-book chapter number (e.g. `chapter_number: 4` for "chapter 4"), scoped to `book_id`. Use this instead of guessing a raw `chapter_id`.
+
+If both `book_id` and `chapter_id` are supplied, the chapter is verified to belong to `book_id` and the call fails loudly if it doesn't.
 
 **Returns:**
 - Scene count and average scene length
@@ -26,7 +29,8 @@ Analyzes pacing metrics for a specific chapter.
 **Example:**
 ```json
 {
-  "chapter_id": 5
+  "book_id": 1,
+  "chapter_number": 4
 }
 ```
 
@@ -222,7 +226,8 @@ Calculates overall NPE compliance score for a book or chapter.
 
 **Input:**
 - `book_id` (integer, required): Book ID
-- `chapter_id` (integer, optional): Chapter ID for chapter-specific analysis
+- `chapter_id` (integer, optional): Global chapter ID for chapter-specific analysis (`chapters.id`). Not a per-book chapter number -- prefer `chapter_number` instead.
+- `chapter_number` (integer, optional): Per-book chapter number to scope to (e.g. `4` for "chapter 4" of `book_id`). Preferred over `chapter_id`.
 
 **Returns:**
 - Overall NPE score (0.0-1.0)
