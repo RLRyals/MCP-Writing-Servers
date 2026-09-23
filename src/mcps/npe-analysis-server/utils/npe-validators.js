@@ -4,9 +4,24 @@
 export class NPEValidators {
     static validatePacingAnalysis(args) {
         const errors = [];
+        const hasChapterId = args.chapter_id !== undefined && args.chapter_id !== null;
+        const hasChapterNumber = args.chapter_number !== undefined && args.chapter_number !== null;
 
-        if (!args.chapter_id || typeof args.chapter_id !== 'number' || args.chapter_id < 1) {
+        if (!hasChapterId && !hasChapterNumber) {
+            errors.push('Either chapter_id, or book_id + chapter_number, must be provided');
+        }
+
+        if (hasChapterId && (typeof args.chapter_id !== 'number' || args.chapter_id < 1)) {
             errors.push('chapter_id must be a positive integer');
+        }
+
+        if (hasChapterNumber) {
+            if (typeof args.chapter_number !== 'number' || args.chapter_number < 1) {
+                errors.push('chapter_number must be a positive integer');
+            }
+            if (!args.book_id || typeof args.book_id !== 'number' || args.book_id < 1) {
+                errors.push('book_id is required (and must be a positive integer) when chapter_number is provided');
+            }
         }
 
         return {
@@ -123,6 +138,11 @@ export class NPEValidators {
 
         if (args.chapter_id && (typeof args.chapter_id !== 'number' || args.chapter_id < 1)) {
             errors.push('chapter_id must be a positive integer if provided');
+        }
+
+        if (args.chapter_number !== undefined && args.chapter_number !== null &&
+            (typeof args.chapter_number !== 'number' || args.chapter_number < 1)) {
+            errors.push('chapter_number must be a positive integer if provided');
         }
 
         return {

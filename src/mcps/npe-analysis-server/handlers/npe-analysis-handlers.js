@@ -9,6 +9,52 @@ export class NPEAnalysisHandlers {
         this.db = db;
     }
 
+    // Resolves a global chapters.id from either a raw chapter_id or a
+    // book_id + chapter_number pair. chapter_id is a GLOBAL primary key
+    // (not a per-book chapter number) -- passing a bare chapter NUMBER as
+    // chapter_id silently returns the wrong book's chapter, so callers that
+    // know book_id + chapter_number should pass those instead, and any
+    // chapter_id passed alongside a book_id is verified to belong to it.
+    async resolveChapterId({ chapter_id, book_id, chapter_number }) {
+        if (chapter_number !== undefined && chapter_number !== null) {
+            if (!book_id) {
+                throw new Error('book_id is required when chapter_number is provided');
+            }
+
+            const result = await this.db.query(
+                'SELECT id FROM chapters WHERE book_id = $1 AND chapter_number = $2',
+                [book_id, chapter_number]
+            );
+
+            if (result.rows.length === 0) {
+                throw new Error(`No chapter_number ${chapter_number} found for book_id ${book_id}`);
+            }
+
+            return result.rows[0].id;
+        }
+
+        if (chapter_id !== undefined && chapter_id !== null) {
+            if (book_id) {
+                const result = await this.db.query('SELECT book_id FROM chapters WHERE id = $1', [chapter_id]);
+
+                if (result.rows.length === 0) {
+                    throw new Error(`Chapter with ID ${chapter_id} not found`);
+                }
+
+                if (result.rows[0].book_id !== book_id) {
+                    throw new Error(
+                        `chapter_id ${chapter_id} belongs to book_id ${result.rows[0].book_id}, not book_id ${book_id}. ` +
+                        `chapter_id is a GLOBAL id, not a per-book chapter number -- pass chapter_number instead.`
+                    );
+                }
+            }
+
+            return chapter_id;
+        }
+
+        throw new Error('Either chapter_id, or book_id + chapter_number, must be provided');
+    }
+
     // =====================================
     // PACING ANALYSIS
     // =====================================
@@ -20,16 +66,18 @@ export class NPEAnalysisHandlers {
                 throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
             }
 
+            const chapterId = await this.resolveChapterId(args);
+
             // Get chapter info
             const chapterQuery = await this.db.query(`
                 SELECT c.id, c.title, c.book_id, b.title as book_title
                 FROM chapters c
                 JOIN books b ON c.book_id = b.id
                 WHERE c.id = $1
-            `, [args.chapter_id]);
+            `, [chapterId]);
 
             if (chapterQuery.rows.length === 0) {
-                throw new Error(`Chapter with ID ${args.chapter_id} not found`);
+                throw new Error(`Chapter with ID ${chapterId} not found`);
             }
 
             const chapter = chapterQuery.rows[0];
@@ -43,13 +91,13 @@ export class NPEAnalysisHandlers {
                 LEFT JOIN npe_scene_validation sv ON cs.id = sv.scene_id
                 WHERE cs.chapter_id = $1
                 ORDER BY cs.scene_number
-            `, [args.chapter_id]);
+            `, [chapterId]);
 
             const scenes = scenesQuery.rows;
             const sceneCount = scenes.length;
 
             if (sceneCount === 0) {
-                throw new Error(`No scenes found for chapter ${args.chapter_id}`);
+                throw new Error(`No scenes found for chapter ${chapterId}`);
             }
 
             // Calculate pacing metrics
@@ -123,7 +171,7 @@ export class NPEAnalysisHandlers {
                     monotonous_pacing, energy_modulation_present, pacing_notes
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             `, [
-                analysisId, chapter.book_id, args.chapter_id, sceneCount, avgSceneLength, variance,
+                analysisId, chapter.book_id, chapterId, sceneCount, avgSceneLength, variance,
                 energyDistribution.tension_count, energyDistribution.release_count,
                 energyDistribution.quiet_count, energyDistribution.loud_count,
                 energyDistribution.interior_count, energyDistribution.exterior_count,
@@ -925,13 +973,19 @@ export class NPEAnalysisHandlers {
 
             const book = bookQuery.rows[0];
 
+            // Resolve the chapter scope (if any) via chapter_id or book_id + chapter_number.
+            const chapterId = (args.chapter_id !== undefined && args.chapter_id !== null) ||
+                (args.chapter_number !== undefined && args.chapter_number !== null)
+                ? await this.resolveChapterId(args)
+                : null;
+
             // Build query based on scope
             let scopeCondition = 'WHERE sv.book_id = $1';
             let queryParams = [args.book_id];
 
-            if (args.chapter_id) {
+            if (chapterId) {
                 scopeCondition += ' AND sv.chapter_id = $2';
-                queryParams.push(args.chapter_id);
+                queryParams.push(chapterId);
             }
 
             // Get scene validation data
@@ -1018,7 +1072,7 @@ export class NPEAnalysisHandlers {
                     violations_detail, compliant, recommendations
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             `, [
-                summaryId, args.book_id, args.chapter_id || null,
+                summaryId, args.book_id, chapterId,
                 sceneArchitectureScore, dialoguePhysicsScore, povPhysicsScore,
                 informationEconomyScore, overallScore,
                 criticalCount, warningCount, minorCount,
@@ -1028,8 +1082,8 @@ export class NPEAnalysisHandlers {
             // Format output
             let output = `# NPE Compliance Report\n\n`;
             output += `**Book:** ${book.title} (${book.series_title})\n`;
-            if (args.chapter_id) {
-                output += `**Scope:** Chapter ${args.chapter_id}\n`;
+            if (chapterId) {
+                output += `**Scope:** Chapter ${chapterId}\n`;
             } else {
                 output += `**Scope:** Entire Book\n`;
             }

@@ -10,16 +10,23 @@ export const npeAnalysisToolsSchema = [
     // =====================================
     {
         name: 'analyze_chapter_pacing',
-        description: 'Analyze pacing metrics for a chapter including scene distribution, energy modulation, and variance',
+        description: 'Analyze pacing metrics for a chapter including scene distribution, energy modulation, and variance. Prefer book_id + chapter_number over chapter_id: chapter_id is a GLOBAL primary key shared across every book, not a per-book chapter number -- passing "4" meaning "chapter 4 of this book" as chapter_id can silently return a different book\'s chapter.',
         inputSchema: {
             type: 'object',
             properties: {
                 chapter_id: {
                     type: 'integer',
-                    description: 'Chapter ID to analyze'
+                    description: 'Global chapter ID to analyze (chapters.id). Not a per-book chapter number -- prefer book_id + chapter_number instead.'
+                },
+                book_id: {
+                    type: 'integer',
+                    description: 'Book ID (required when chapter_number is provided; also used to verify a supplied chapter_id belongs to this book)'
+                },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Per-book chapter number (e.g. 4 for "chapter 4"). Requires book_id. Preferred over chapter_id.'
                 }
-            },
-            required: ['chapter_id']
+            }
         }
     },
     {
@@ -266,7 +273,7 @@ export const npeAnalysisToolsSchema = [
     // =====================================
     {
         name: 'calculate_npe_compliance',
-        description: 'Calculate overall NPE compliance score for a book or chapter',
+        description: 'Calculate overall NPE compliance score for a book or chapter. To scope to a single chapter, prefer chapter_number over chapter_id: chapter_id is a GLOBAL primary key, not a per-book chapter number.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -276,7 +283,11 @@ export const npeAnalysisToolsSchema = [
                 },
                 chapter_id: {
                     type: 'integer',
-                    description: 'Chapter ID (optional - if not provided, calculates for entire book)'
+                    description: 'Global chapter ID to scope to (chapters.id, optional - if not provided, calculates for entire book). Not a per-book chapter number -- prefer chapter_number instead.'
+                },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Per-book chapter number to scope to (e.g. 4 for "chapter 4" of this book). Preferred over chapter_id.'
                 }
             },
             required: ['book_id']
