@@ -4,6 +4,7 @@
 
 import { npeSceneToolsSchema } from '../schemas/npe-scene-tools-schema.js';
 import { randomUUID } from 'crypto';
+import { resolveScene } from '../../../shared/scene-resolver.js';
 
 export class NPESceneHandlers {
     constructor(db) {
@@ -29,7 +30,6 @@ export class NPESceneHandlers {
     async handleValidateSceneArchitecture(args) {
         try {
             const {
-                scene_id,
                 has_intention,
                 intention_description,
                 has_obstacle,
@@ -40,24 +40,9 @@ export class NPESceneHandlers {
                 consequence_description
             } = args;
 
-            // Validate scene exists
-            const sceneCheck = await this.db.query(
-                'SELECT id, chapter_id, book_id FROM chapter_scenes WHERE id = $1',
-                [scene_id]
-            );
-
-            if (sceneCheck.rows.length === 0) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `Scene with ID ${scene_id} not found`
-                        }
-                    ]
-                };
-            }
-
-            const scene = sceneCheck.rows[0];
+            // Resolve the scene within the caller's book (never a bare global id)
+            const scene = await resolveScene(this.db, args);
+            const scene_id = scene.id;
 
             // Calculate compliance
             const missing_elements = [];
@@ -212,26 +197,11 @@ export class NPESceneHandlers {
      */
     async handleValidateDialoguePhysics(args) {
         try {
-            const { scene_id, dialogue_lines } = args;
+            const { dialogue_lines } = args;
 
-            // Validate scene exists
-            const sceneCheck = await this.db.query(
-                'SELECT id, chapter_id, book_id FROM chapter_scenes WHERE id = $1',
-                [scene_id]
-            );
-
-            if (sceneCheck.rows.length === 0) {
-                return {
-                    content: [
-                        {
-                            type: 'text',
-                            text: `Scene with ID ${scene_id} not found`
-                        }
-                    ]
-                };
-            }
-
-            const scene = sceneCheck.rows[0];
+            // Resolve the scene within the caller's book (never a bare global id)
+            const scene = await resolveScene(this.db, args);
+            const scene_id = scene.id;
 
             // Check for echolalia (line mirroring/repetition)
             const echolalia_violations = [];
@@ -385,7 +355,7 @@ export class NPESceneHandlers {
      */
     async handleGetSceneNPECompliance(args) {
         try {
-            const { scene_id } = args;
+            const { id: scene_id } = await resolveScene(this.db, args);
 
             // Get validation record
             const query = `

@@ -3,6 +3,7 @@
 // Designed for AI Writing Teams to ensure characters make decisions consistent with NPE principles
 
 import { randomUUID } from 'crypto';
+import { resolveScene } from '../../../shared/scene-resolver.js';
 import { npeDecisionToolsSchema } from '../schemas/npe-decision-tools-schema.js';
 
 export class NPEDecisionHandlers {
@@ -26,7 +27,6 @@ export class NPEDecisionHandlers {
             const {
                 character_id,
                 book_id,
-                scene_id,
                 decision_description,
                 character_version,
                 alternatives,
@@ -49,17 +49,10 @@ export class NPEDecisionHandlers {
             // Generate UUID for TEXT primary key
             const decision_id = randomUUID();
 
-            // Get chapter_id from scene_id
-            let chapter_id = null;
-            if (scene_id) {
-                const sceneResult = await this.db.query(
-                    'SELECT chapter_id FROM chapter_scenes WHERE id = $1',
-                    [scene_id]
-                );
-                if (sceneResult.rows.length > 0) {
-                    chapter_id = sceneResult.rows[0].chapter_id;
-                }
-            }
+            // Resolve the scene within book_id (never a bare global scene_id)
+            const scene = await resolveScene(this.db, args);
+            const scene_id = scene.id;
+            const chapter_id = scene.chapter_id;
 
             // Verify character exists
             const characterCheck = await this.db.query(
@@ -260,7 +253,8 @@ export class NPEDecisionHandlers {
 
     async handleGetCharacterDecisionsInScene(args) {
         try {
-            const { scene_id } = args;
+            const scene = await resolveScene(this.db, args);
+            const scene_id = scene.id;
 
             // Get all decisions in the scene with character details
             const result = await this.db.query(
@@ -274,9 +268,9 @@ export class NPEDecisionHandlers {
                 JOIN characters c ON d.character_id = c.id
                 JOIN books b ON d.book_id = b.id
                 LEFT JOIN chapters ch ON d.chapter_id = ch.id
-                WHERE d.scene_id = $1
+                WHERE d.scene_id = $1 AND d.book_id = $2
                 ORDER BY d.created_at`,
-                [scene_id]
+                [scene_id, scene.book_id]
             );
 
             if (result.rows.length === 0) {

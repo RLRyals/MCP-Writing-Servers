@@ -1,5 +1,9 @@
 # NPE Scene Validation MCP Server
 
+> **Scene addressing (mws-8uw):** `scene_id` is a GLOBAL id and is never accepted on its own.
+> Every scene-addressed tool requires `book_id` and a scene given as `chapter_number` + `scene_number`
+> (preferred) or a `scene_id` that is verified to belong to `book_id`. A mismatch fails without writing.
+
 ## Overview
 
 The NPE Scene Validation MCP Server provides tools for validating narrative scenes against NPE (Narrative Physics Engine) rules. It helps writers ensure their scenes follow proper narrative structure and dialogue principles.
