@@ -20,9 +20,17 @@ export const npeDecisionToolsSchema = [
                     type: 'integer',
                     description: 'Book ID'
                 },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Chapter number within the book (use with scene_number)'
+                },
+                scene_number: {
+                    type: 'integer',
+                    description: 'Scene number within the chapter (use with chapter_number)'
+                },
                 scene_id: {
                     type: 'integer',
-                    description: 'Scene ID where decision occurs'
+                    description: 'Optional GLOBAL scene id; verified to belong to book_id. Prefer chapter_number + scene_number.'
                 },
                 decision_description: {
                     type: 'string',
@@ -74,7 +82,6 @@ export const npeDecisionToolsSchema = [
             required: [
                 'character_id',
                 'book_id',
-                'scene_id',
                 'decision_description',
                 'character_version',
                 'alternatives',
@@ -105,12 +112,24 @@ export const npeDecisionToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
+                book_id: {
+                    type: 'integer',
+                    description: 'Book the scene belongs to (required)'
+                },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Chapter number within the book (use with scene_number)'
+                },
+                scene_number: {
+                    type: 'integer',
+                    description: 'Scene number within the chapter (use with chapter_number)'
+                },
                 scene_id: {
                     type: 'integer',
-                    description: 'Scene ID'
+                    description: 'Optional GLOBAL scene id; verified to belong to book_id. Prefer chapter_number + scene_number.'
                 }
             },
-            required: ['scene_id']
+            required: ['book_id']
         }
     }
 ];

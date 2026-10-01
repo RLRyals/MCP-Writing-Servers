@@ -1,5 +1,9 @@
 # NPE Character Decision Tracking MCP Server
 
+> **Scene addressing (mws-8uw):** `scene_id` is a GLOBAL id and is never accepted on its own.
+> Every scene-addressed tool requires `book_id` and a scene given as `chapter_number` + `scene_number`
+> (preferred) or a `scene_id` that is verified to belong to `book_id`. A mismatch fails without writing.
+
 This MCP server provides tools for tracking and validating character decisions according to Narrative Physics Engine (NPE) principles. It ensures that character decisions are consistent with their established traits, goals, fears, and wounds.
 
 ## Overview

@@ -12,9 +12,21 @@ export const npeSceneToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
+                book_id: {
+                    type: 'integer',
+                    description: 'Book the scene belongs to (required)'
+                },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Chapter number within the book (use with scene_number)'
+                },
+                scene_number: {
+                    type: 'integer',
+                    description: 'Scene number within the chapter (use with chapter_number)'
+                },
                 scene_id: {
                     type: 'integer',
-                    description: 'Scene ID to validate'
+                    description: 'Optional GLOBAL scene id; verified to belong to book_id. Prefer chapter_number + scene_number.'
                 },
                 has_intention: {
                     type: 'boolean',
@@ -49,7 +61,7 @@ export const npeSceneToolsSchema = [
                     description: 'Description of consequence (optional)'
                 }
             },
-            required: ['scene_id', 'has_intention', 'has_obstacle', 'has_pivot', 'has_consequence']
+            required: ['book_id', 'has_intention', 'has_obstacle', 'has_pivot', 'has_consequence']
         }
     },
     {
@@ -58,9 +70,21 @@ export const npeSceneToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
+                book_id: {
+                    type: 'integer',
+                    description: 'Book the scene belongs to (required)'
+                },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Chapter number within the book (use with scene_number)'
+                },
+                scene_number: {
+                    type: 'integer',
+                    description: 'Scene number within the chapter (use with chapter_number)'
+                },
                 scene_id: {
                     type: 'integer',
-                    description: 'Scene ID to validate'
+                    description: 'Optional GLOBAL scene id; verified to belong to book_id. Prefer chapter_number + scene_number.'
                 },
                 dialogue_lines: {
                     type: 'array',
@@ -75,7 +99,7 @@ export const npeSceneToolsSchema = [
                     }
                 }
             },
-            required: ['scene_id', 'dialogue_lines']
+            required: ['book_id', 'dialogue_lines']
         }
     },
     {
@@ -89,7 +113,7 @@ export const npeSceneToolsSchema = [
                     description: 'Scene ID to get compliance report for'
                 }
             },
-            required: ['scene_id']
+            required: ['book_id']
         }
     }
 ];
