@@ -53,9 +53,21 @@ export const npeAnalysisToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
+                book_id: {
+                    type: 'integer',
+                    description: 'Book the scene belongs to (required; the scene is verified to be in this book)'
+                },
                 scene_id: {
                     type: 'integer',
-                    description: 'Scene ID'
+                    description: 'Scene ID -- GLOBAL id, verified against book_id. Prefer chapter_number + scene_number.'
+                },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Per-book chapter number (use with scene_number instead of scene_id)'
+                },
+                scene_number: {
+                    type: 'integer',
+                    description: 'Scene number within the chapter (use with chapter_number)'
                 },
                 pressure_level: {
                     type: 'integer',
@@ -108,7 +120,7 @@ export const npeAnalysisToolsSchema = [
                     description: 'Description of the truth being approached'
                 }
             },
-            required: ['scene_id', 'pressure_level']
+            required: ['book_id', 'pressure_level']
         }
     },
     {
@@ -135,9 +147,21 @@ export const npeAnalysisToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
+                book_id: {
+                    type: 'integer',
+                    description: 'Book the scene belongs to (required; the scene is verified to be in this book)'
+                },
                 scene_id: {
                     type: 'integer',
-                    description: 'Scene ID where information is revealed'
+                    description: 'Scene ID where information is revealed -- GLOBAL id, verified against book_id. Prefer chapter_number + scene_number.'
+                },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Per-book chapter number (use with scene_number instead of scene_id)'
+                },
+                scene_number: {
+                    type: 'integer',
+                    description: 'Scene number within the chapter (use with chapter_number)'
                 },
                 information_content: {
                     type: 'string',
@@ -170,7 +194,7 @@ export const npeAnalysisToolsSchema = [
                     description: 'Is this the optimal time to reveal this information?'
                 }
             },
-            required: ['scene_id', 'information_content', 'alters_character_choice', 'reveal_method']
+            required: ['book_id', 'information_content', 'alters_character_choice', 'reveal_method']
         }
     },
     {
@@ -205,9 +229,21 @@ export const npeAnalysisToolsSchema = [
                     type: 'integer',
                     description: 'Second character ID'
                 },
+                book_id: {
+                    type: 'integer',
+                    description: 'Book the scene belongs to (required; the scene is verified to be in this book)'
+                },
                 scene_id: {
                     type: 'integer',
-                    description: 'Scene ID'
+                    description: 'Scene ID -- GLOBAL id, verified against book_id. Prefer chapter_number + scene_number.'
+                },
+                chapter_number: {
+                    type: 'integer',
+                    description: 'Per-book chapter number (use with scene_number instead of scene_id)'
+                },
+                scene_number: {
+                    type: 'integer',
+                    description: 'Scene number within the chapter (use with chapter_number)'
                 },
                 a_to_b_tension: {
                     type: 'integer',
@@ -242,7 +278,7 @@ export const npeAnalysisToolsSchema = [
                     description: 'Was this caused by a character action (vs external event)?'
                 }
             },
-            required: ['character_a_id', 'character_b_id', 'scene_id', 'a_to_b_tension', 'b_to_a_tension']
+            required: ['character_a_id', 'character_b_id', 'book_id', 'a_to_b_tension', 'b_to_a_tension']
         }
     },
     {

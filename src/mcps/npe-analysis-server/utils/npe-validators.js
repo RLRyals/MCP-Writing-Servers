@@ -43,12 +43,34 @@ export class NPEValidators {
         };
     }
 
+    // Scene-writing tools: book_id is mandatory; the scene is scene_id (verified
+    // against book_id) and/or chapter_number + scene_number.
+    static validateSceneRef(args) {
+        const errors = [];
+        const isPos = (v) => typeof v === 'number' && Number.isInteger(v) && v >= 1;
+
+        if (!isPos(args.book_id)) {
+            errors.push('book_id must be a positive integer');
+        }
+
+        const hasNumbers = args.chapter_number !== undefined || args.scene_number !== undefined;
+        if (hasNumbers && (!isPos(args.chapter_number) || !isPos(args.scene_number))) {
+            errors.push('chapter_number and scene_number must both be positive integers');
+        }
+        if (args.scene_id !== undefined && !isPos(args.scene_id)) {
+            errors.push('scene_id must be a positive integer');
+        }
+        if (args.scene_id === undefined && !hasNumbers) {
+            errors.push('provide scene_id, or chapter_number + scene_number');
+        }
+
+        return errors;
+    }
+
     static validateStakesTracking(args) {
         const errors = [];
 
-        if (!args.scene_id || typeof args.scene_id !== 'number' || args.scene_id < 1) {
-            errors.push('scene_id must be a positive integer');
-        }
+        errors.push(...NPEValidators.validateSceneRef(args));
 
         if (args.pressure_level === undefined || args.pressure_level === null) {
             errors.push('pressure_level is required');
@@ -65,9 +87,7 @@ export class NPEValidators {
     static validateInformationReveal(args) {
         const errors = [];
 
-        if (!args.scene_id || typeof args.scene_id !== 'number' || args.scene_id < 1) {
-            errors.push('scene_id must be a positive integer');
-        }
+        errors.push(...NPEValidators.validateSceneRef(args));
 
         if (!args.information_content || typeof args.information_content !== 'string') {
             errors.push('information_content must be a non-empty string');
@@ -107,9 +127,7 @@ export class NPEValidators {
             errors.push('character_a_id and character_b_id must be different');
         }
 
-        if (!args.scene_id || typeof args.scene_id !== 'number' || args.scene_id < 1) {
-            errors.push('scene_id must be a positive integer');
-        }
+        errors.push(...NPEValidators.validateSceneRef(args));
 
         if (args.a_to_b_tension === undefined || args.a_to_b_tension === null) {
             errors.push('a_to_b_tension is required');

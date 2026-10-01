@@ -55,6 +55,67 @@ export class NPEAnalysisHandlers {
         throw new Error('Either chapter_id, or book_id + chapter_number, must be provided');
     }
 
+    // Resolves a scene row for the NPE write tools. chapter_scenes.id is a
+    // GLOBAL primary key, so a guessed scene_id silently lands in whichever
+    // book owns that row. book_id is therefore mandatory: callers identify the
+    // scene by book_id + chapter_number + scene_number, or by scene_id which is
+    // verified to belong to book_id. Returns the scene row (id, scene_number,
+    // chapter_id, chapter_title, book_id, book_title).
+    async resolveScene({ book_id, scene_id, chapter_number, scene_number }) {
+        if (!book_id) {
+            throw new Error('book_id is required (scene_id is a global id and is never accepted on its own)');
+        }
+
+        const hasNumbers = chapter_number !== undefined && chapter_number !== null &&
+            scene_number !== undefined && scene_number !== null;
+        const hasId = scene_id !== undefined && scene_id !== null;
+
+        if (!hasNumbers && !hasId) {
+            throw new Error('Either scene_id, or chapter_number + scene_number, must be provided with book_id');
+        }
+
+        const selectScene = `
+            SELECT
+                cs.id, cs.scene_number, cs.chapter_id,
+                c.title as chapter_title, c.book_id,
+                b.title as book_title
+            FROM chapter_scenes cs
+            JOIN chapters c ON cs.chapter_id = c.id
+            JOIN books b ON c.book_id = b.id
+        `;
+
+        let scene;
+        if (hasNumbers) {
+            const result = await this.db.query(
+                `${selectScene} WHERE c.book_id = $1 AND c.chapter_number = $2 AND cs.scene_number = $3`,
+                [book_id, chapter_number, scene_number]
+            );
+            if (result.rows.length === 0) {
+                throw new Error(`No scene ${scene_number} in chapter_number ${chapter_number} found for book_id ${book_id}`);
+            }
+            scene = result.rows[0];
+            if (hasId && scene.id !== scene_id) {
+                throw new Error(
+                    `scene_id ${scene_id} does not match chapter_number ${chapter_number} / scene_number ${scene_number} in book_id ${book_id} (that scene is id ${scene.id})`
+                );
+            }
+        } else {
+            const result = await this.db.query(`${selectScene} WHERE cs.id = $1`, [scene_id]);
+            if (result.rows.length === 0) {
+                throw new Error(`Scene with ID ${scene_id} not found`);
+            }
+            scene = result.rows[0];
+            if (scene.book_id !== book_id) {
+                throw new Error(
+                    `scene_id ${scene_id} belongs to book_id ${scene.book_id}, not book_id ${book_id}. ` +
+                    `scene_id is a GLOBAL id -- pass chapter_number + scene_number instead.`
+                );
+            }
+        }
+
+        return scene;
+    }
+
     // =====================================
     // PACING ANALYSIS
     // =====================================
@@ -350,23 +411,8 @@ export class NPEAnalysisHandlers {
                 throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
             }
 
-            // Get scene info
-            const sceneQuery = await this.db.query(`
-                SELECT
-                    cs.id, cs.scene_number, cs.chapter_id,
-                    c.title as chapter_title, c.book_id,
-                    b.title as book_title
-                FROM chapter_scenes cs
-                JOIN chapters c ON cs.chapter_id = c.id
-                JOIN books b ON c.book_id = b.id
-                WHERE cs.id = $1
-            `, [args.scene_id]);
-
-            if (sceneQuery.rows.length === 0) {
-                throw new Error(`Scene with ID ${args.scene_id} not found`);
-            }
-
-            const scene = sceneQuery.rows[0];
+            // Resolve the scene within the caller's book (never a bare global id)
+            const scene = await this.resolveScene(args);
 
             // Check NPE compliance
             const npeCompliant =
@@ -391,7 +437,7 @@ export class NPEAnalysisHandlers {
                     escalation_justified, npe_compliant
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
             `, [
-                stakesId, scene.book_id, scene.chapter_id, args.scene_id, args.pressure_level,
+                stakesId, scene.book_id, scene.chapter_id, scene.id, args.pressure_level,
                 args.reduces_options || false, args.options_before || null, args.options_after || null,
                 args.adds_cost || false, args.cost_description || null,
                 args.exposes_flaw || false, args.flaw_exposed || null,
@@ -548,23 +594,8 @@ export class NPEAnalysisHandlers {
                 throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
             }
 
-            // Get scene info
-            const sceneQuery = await this.db.query(`
-                SELECT
-                    cs.id, cs.scene_number, cs.chapter_id,
-                    c.title as chapter_title, c.book_id,
-                    b.title as book_title
-                FROM chapter_scenes cs
-                JOIN chapters c ON cs.chapter_id = c.id
-                JOIN books b ON c.book_id = b.id
-                WHERE cs.id = $1
-            `, [args.scene_id]);
-
-            if (sceneQuery.rows.length === 0) {
-                throw new Error(`Scene with ID ${args.scene_id} not found`);
-            }
-
-            const scene = sceneQuery.rows[0];
+            // Resolve the scene within the caller's book (never a bare global id)
+            const scene = await this.resolveScene(args);
 
             // NPE Rule #8 check
             const npeCompliant = args.alters_character_choice;
@@ -582,7 +613,7 @@ export class NPEAnalysisHandlers {
                     npe_compliant, violation_notes
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             `, [
-                infoId, scene.book_id, args.scene_id, args.information_content, args.information_type || null,
+                infoId, scene.book_id, scene.id, args.information_content, args.information_type || null,
                 args.alters_character_choice, args.character_affected_id || null, args.choice_altered || null,
                 args.reveal_method, args.optimal_timing || true, false, false,
                 npeCompliant, violationNotes
@@ -754,23 +785,8 @@ export class NPEAnalysisHandlers {
                 throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
             }
 
-            // Get scene and character info
-            const sceneQuery = await this.db.query(`
-                SELECT
-                    cs.id, cs.scene_number, cs.chapter_id,
-                    c.title as chapter_title, c.book_id,
-                    b.title as book_title
-                FROM chapter_scenes cs
-                JOIN chapters c ON cs.chapter_id = c.id
-                JOIN books b ON c.book_id = b.id
-                WHERE cs.id = $1
-            `, [args.scene_id]);
-
-            if (sceneQuery.rows.length === 0) {
-                throw new Error(`Scene with ID ${args.scene_id} not found`);
-            }
-
-            const scene = sceneQuery.rows[0];
+            // Resolve the scene within the caller's book (never a bare global id)
+            const scene = await this.resolveScene(args);
 
             // Get character names
             const charQuery = await this.db.query(`
@@ -801,7 +817,7 @@ export class NPEAnalysisHandlers {
                     tension_change_a_to_b, tension_change_b_to_a
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             `, [
-                tensionId, scene.chapter_id, args.scene_id,
+                tensionId, scene.chapter_id, scene.id,
                 args.character_a_id, args.character_b_id,
                 args.a_to_b_tension, args.b_to_a_tension,
                 args.connection_strength || null, args.friction_strength || null,
