@@ -59,7 +59,9 @@ Analyzes pacing across an entire book with aggregated metrics.
 Tracks stakes escalation in a scene according to NPE Rule #9.
 
 **Input:**
-- `scene_id` (integer, required): Scene ID
+- `book_id` (integer, required): Book the scene belongs to
+- `chapter_number` + `scene_number` (integers): Per-book scene address (preferred)
+- `scene_id` (integer): GLOBAL scene id; accepted only with `book_id` and rejected if the scene is in another book. One of `scene_id` or `chapter_number`+`scene_number` is required.
 - `pressure_level` (integer, required): Pressure level 0-100
 - `reduces_options` (boolean): Does this reduce character options?
 - `options_before` (integer): Number of options before
@@ -81,7 +83,9 @@ Tracks stakes escalation in a scene according to NPE Rule #9.
 **Example:**
 ```json
 {
-  "scene_id": 42,
+  "book_id": 1,
+  "chapter_number": 3,
+  "scene_number": 2,
   "pressure_level": 75,
   "reduces_options": true,
   "options_before": 3,
@@ -115,7 +119,9 @@ Gets pressure levels over time for a book to visualize escalation.
 Logs an information reveal according to NPE Rule #8 (only reveal when it alters a choice).
 
 **Input:**
-- `scene_id` (integer, required): Scene ID
+- `book_id` (integer, required): Book the scene belongs to
+- `chapter_number` + `scene_number` (integers): Per-book scene address (preferred)
+- `scene_id` (integer): GLOBAL scene id; accepted only with `book_id` and rejected if the scene is in another book. One of `scene_id` or `chapter_number`+`scene_number` is required.
 - `information_content` (string, required): The information revealed
 - `information_type` (enum): plot_crucial, character_backstory, world_building, relationship_dynamic
 - `alters_character_choice` (boolean, required): Does this alter a choice?
@@ -132,7 +138,9 @@ Logs an information reveal according to NPE Rule #8 (only reveal when it alters 
 **Example:**
 ```json
 {
-  "scene_id": 15,
+  "book_id": 1,
+  "chapter_number": 3,
+  "scene_number": 2,
   "information_content": "The mentor was actually working for the antagonist all along",
   "information_type": "plot_crucial",
   "alters_character_choice": true,
@@ -169,7 +177,9 @@ Tracks bidirectional tension between two characters in a scene.
 **Input:**
 - `character_a_id` (integer, required): First character ID
 - `character_b_id` (integer, required): Second character ID
-- `scene_id` (integer, required): Scene ID
+- `book_id` (integer, required): Book the scene belongs to
+- `chapter_number` + `scene_number` (integers): Per-book scene address (preferred)
+- `scene_id` (integer): GLOBAL scene id; accepted only with `book_id` and rejected if the scene is in another book. One of `scene_id` or `chapter_number`+`scene_number` is required.
 - `a_to_b_tension` (integer, required): Tension from A to B (-100 to 100)
 - `b_to_a_tension` (integer, required): Tension from B to A (-100 to 100)
 - `connection_strength` (integer): Connection strength (0-100)
@@ -187,7 +197,9 @@ Tracks bidirectional tension between two characters in a scene.
 {
   "character_a_id": 7,
   "character_b_id": 12,
-  "scene_id": 28,
+  "book_id": 1,
+  "chapter_number": 3,
+  "scene_number": 2,
   "a_to_b_tension": 65,
   "b_to_a_tension": -20,
   "connection_strength": 45,

@@ -129,3 +129,73 @@ describe('NPEAnalysisHandlers.handleAnalyzeChapterPacing with book_id + chapter_
         assert.match(result.content[0].text, /Chapter Pacing Analysis/);
     });
 });
+
+describe('NPEAnalysisHandlers.resolveScene (mws-0md: scene writes must be book-scoped)', () => {
+    const row = { id: 99, scene_number: 2, chapter_id: 4, chapter_title: 'Ch', book_id: 7, book_title: 'The Mist' };
+
+    it('rejects a missing book_id', async () => {
+        const handlers = new NPEAnalysisHandlers(new MockDatabase());
+        await assert.rejects(() => handlers.resolveScene({ scene_id: 99 }), /book_id is required/);
+    });
+
+    it('rejects a scene_id that belongs to another book', async () => {
+        const mockDb = new MockDatabase();
+        mockDb.setQueryResult('WHERE cs.id = $1', [row]);
+        const handlers = new NPEAnalysisHandlers(mockDb);
+        await assert.rejects(
+            () => handlers.resolveScene({ book_id: 1, scene_id: 99 }),
+            /belongs to book_id 7, not book_id 1/
+        );
+    });
+
+    it('accepts a scene_id that belongs to the book', async () => {
+        const mockDb = new MockDatabase();
+        mockDb.setQueryResult('WHERE cs.id = $1', [row]);
+        const handlers = new NPEAnalysisHandlers(mockDb);
+        const scene = await handlers.resolveScene({ book_id: 7, scene_id: 99 });
+        assert.strictEqual(scene.id, 99);
+    });
+
+    it('resolves book_id + chapter_number + scene_number', async () => {
+        const mockDb = new MockDatabase();
+        mockDb.setQueryResult('c.chapter_number = $2', [row]);
+        const handlers = new NPEAnalysisHandlers(mockDb);
+        const scene = await handlers.resolveScene({ book_id: 7, chapter_number: 4, scene_number: 2 });
+        assert.strictEqual(scene.id, 99);
+        assert.deepStrictEqual(mockDb.queries[0].params, [7, 4, 2]);
+    });
+
+    it('rejects when scene_id disagrees with the chapter/scene numbers', async () => {
+        const mockDb = new MockDatabase();
+        mockDb.setQueryResult('c.chapter_number = $2', [row]);
+        const handlers = new NPEAnalysisHandlers(mockDb);
+        await assert.rejects(
+            () => handlers.resolveScene({ book_id: 7, scene_id: 5, chapter_number: 4, scene_number: 2 }),
+            /does not match/
+        );
+    });
+
+    it('track_stakes_escalation refuses a call with no book_id and writes nothing', async () => {
+        const mockDb = new MockDatabase();
+        const handlers = new NPEAnalysisHandlers(mockDb);
+        await assert.rejects(
+            () => handlers.handleTrackStakesEscalation({ scene_id: 99, pressure_level: 50 }),
+            /book_id must be a positive integer/
+        );
+        assert.strictEqual(mockDb.queries.length, 0);
+    });
+
+    it('log_information_reveal refuses a cross-book scene_id before inserting', async () => {
+        const mockDb = new MockDatabase();
+        mockDb.setQueryResult('WHERE cs.id = $1', [row]);
+        const handlers = new NPEAnalysisHandlers(mockDb);
+        await assert.rejects(
+            () => handlers.handleLogInformationReveal({
+                book_id: 1, scene_id: 99, information_content: 'x',
+                alters_character_choice: false, reveal_method: 'dialogue'
+            }),
+            /belongs to book_id 7/
+        );
+        assert.ok(!mockDb.queries.some(q => q.text.includes('INSERT')));
+    });
+});
