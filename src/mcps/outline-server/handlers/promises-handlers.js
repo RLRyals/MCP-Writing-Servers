@@ -11,6 +11,11 @@ export const WEIGHT_ORDER_SQL = (col) =>
 
 export const PROMISE_STATUSES = ['open', 'progressing', 'paid', 'carried', 'abandoned'];
 
+// Notes may be multi-line; indent continuation lines under the "notes:" label.
+function formatNotes(notes) {
+    return notes ? `\n    notes: ${String(notes).replace(/\n/g, '\n           ')}` : '';
+}
+
 function checkWeight(weight) {
     if (weight !== undefined && weight !== null && !PROMISE_WEIGHTS.includes(weight)) {
         throw new Error(`weight must be one of ${PROMISE_WEIGHTS.join(', ')}`);
@@ -48,7 +53,8 @@ export class PromisesHandlers {
                 `Weight: ${pr.weight ?? '(unweighted)'}\n` +
                 `Planted at work: ${pr.planted_work_id ?? '(unplanted)'}\n` +
                 `Status: ${pr.status}\n` +
-                `Carries to series: ${pr.carries_to_series}`
+                `Carries to series: ${pr.carries_to_series}` +
+                formatNotes(pr.notes)
             }] };
         } catch (err) {
             throw new Error(`create_promise failed: ${err.message}`);
@@ -88,7 +94,8 @@ export class PromisesHandlers {
             }
             const pr = result.rows[0];
             return { content: [{ type: 'text', text:
-                `Updated promise #${pr.id}.\nStatus: ${pr.status}\nPayoff at work: ${pr.payoff_work_id ?? '(none)'}`
+                `Updated promise #${pr.id}.\nStatus: ${pr.status}\nPayoff at work: ${pr.payoff_work_id ?? '(none)'}` +
+                formatNotes(pr.notes)
             }] };
         } catch (err) {
             throw new Error(`update_promise failed: ${err.message}`);
@@ -145,6 +152,7 @@ export class PromisesHandlers {
                 `    planted: ${p.planted_title ? `${p.planted_type}#${p.planted_work_id} ${p.planted_title}` : '(unplanted)'}\n` +
                 `    status: ${p.status}` +
                 (p.description ? `\n    desc: ${p.description}` : '') +
+                formatNotes(p.notes) +
                 (p.carries_to_series ? `\n    carries to next series` : '')
             );
             return { content: [{ type: 'text', text:
@@ -208,6 +216,7 @@ export class PromisesHandlers {
                 `    status: ${p.status}\n` +
                 `    weight: ${p.weight ?? '(unweighted)'}` +
                 (p.description ? `\n    desc: ${p.description}` : '') +
+                formatNotes(p.notes) +
                 (p.carries_to_series ? `\n    carries to next series` : '')
             );
             return { content: [{ type: 'text', text:
