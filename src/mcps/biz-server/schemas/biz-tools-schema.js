@@ -45,6 +45,37 @@ export const bizToolsSchema = [
         }
     },
     {
+        name: 'list_biz_accounts',
+        description: 'Lists finance accounts (id, company_id, name, account_type, institution, currency, ...). Optional company_id filter; archived accounts are hidden unless include_archived. The returned id is the account_id other tools require.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                company_id: { type: 'integer' },
+                include_archived: { type: 'boolean' }
+            }
+        }
+    },
+    {
+        name: 'create_biz_account',
+        description: 'Creates a finance account under a company and returns it (use its id as account_id). Credit-card fields (credit_limit, apr, statement_day) apply to account_type=credit_card.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                company_id: { type: 'integer' },
+                name: { type: 'string' },
+                account_type: { type: 'string', enum: ['checking', 'savings', 'credit_card', 'payment_processor', 'other'] },
+                institution: { type: 'string' },
+                currency: { type: 'string' },
+                opening_balance: { type: 'number' },
+                credit_limit: { type: 'number' },
+                apr: { type: 'number' },
+                statement_day: { type: 'integer' },
+                notes: { type: 'string' }
+            },
+            required: ['company_id', 'name']
+        }
+    },
+    {
         name: 'list_biz_transactions',
         description: "Lists an account's full transaction history, most recent first. Used by the importer for dedupe lookups and vendor-memory category matching.",
         inputSchema: {
