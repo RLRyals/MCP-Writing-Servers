@@ -216,6 +216,43 @@ export const sceneWritingSchemas = {
         }
     },
 
+    list_scene_versions: {
+        name: 'list_scene_versions',
+        description: 'List prior scene_content versions (newest first, metadata only). History is recorded automatically by a DB trigger on every text change.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                scene_id: { type: 'integer', description: 'Scene ID' },
+                limit: { type: 'integer', default: 50, description: 'Max versions to return' }
+            },
+            required: ['scene_id']
+        }
+    },
+
+    get_scene_version: {
+        name: 'get_scene_version',
+        description: 'Get the full text of one prior scene version (version_id from list_scene_versions)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                version_id: { type: 'integer', description: 'Version ID' }
+            },
+            required: ['version_id']
+        }
+    },
+
+    restore_scene_version: {
+        name: 'restore_scene_version',
+        description: "Restore a scene's scene_content to a prior version. Ordinary update: the text it replaces is itself saved as a new version.",
+        inputSchema: {
+            type: 'object',
+            properties: {
+                version_id: { type: 'integer', description: 'Version ID' }
+            },
+            required: ['version_id']
+        }
+    },
+
     list_scenes: {
         name: 'list_scenes',
         description: 'List scenes',

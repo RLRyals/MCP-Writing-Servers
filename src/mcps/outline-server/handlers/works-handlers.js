@@ -332,6 +332,75 @@ export class WorksHandlers {
         }
     }
 
+    // Text history is written by a DB trigger (migration 058); these only read/restore it.
+    async handleListWorkVersions(args) {
+        try {
+            const { work_id, limit = 50 } = args;
+            const result = await this.db.query(
+                `SELECT id AS version_id, change_kind, changed_at, changed_by, application_name,
+                        COALESCE(length(old_content), 0) AS content_length
+                   FROM outline_works_history
+                  WHERE work_id = $1
+                  ORDER BY id DESC
+                  LIMIT $2`,
+                [work_id, limit]
+            );
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: `No prior versions for work ${work_id}.` }] };
+            }
+            const lines = result.rows.map(r =>
+                `v${r.version_id}  ${new Date(r.changed_at).toISOString()}  ${r.change_kind}  ${r.content_length} chars  by ${r.changed_by}${r.application_name ? ` (${r.application_name})` : ''}`);
+            return { content: [{ type: 'text', text: lines.join('\n') }] };
+        } catch (err) {
+            throw new Error(`list_work_versions failed: ${err.message}`);
+        }
+    }
+
+    async handleGetWorkVersion(args) {
+        try {
+            const { version_id } = args;
+            const result = await this.db.query(
+                `SELECT id, work_id, old_content, change_kind, changed_at
+                   FROM outline_works_history WHERE id = $1`,
+                [version_id]
+            );
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: `Version ${version_id} not found.` }] };
+            }
+            const v = result.rows[0];
+            return { content: [{ type: 'text', text:
+                `Work ${v.work_id} as of before ${v.change_kind} at ${new Date(v.changed_at).toISOString()}:\n\n${v.old_content ?? ''}`
+            }] };
+        } catch (err) {
+            throw new Error(`get_work_version failed: ${err.message}`);
+        }
+    }
+
+    // Restore is an ordinary UPDATE, so the text it replaces is itself versioned.
+    async handleRestoreWorkVersion(args) {
+        try {
+            const { version_id } = args;
+            const ver = await this.db.query(
+                'SELECT work_id, old_content FROM outline_works_history WHERE id = $1',
+                [version_id]
+            );
+            if (ver.rows.length === 0) {
+                return { content: [{ type: 'text', text: `Version ${version_id} not found.` }] };
+            }
+            const { work_id, old_content } = ver.rows[0];
+            const result = await this.db.query(
+                'UPDATE outline_works SET content = $2 WHERE id = $1 RETURNING id',
+                [work_id, old_content]
+            );
+            if (result.rows.length === 0) {
+                return { content: [{ type: 'text', text: `Work ${work_id} no longer exists; cannot restore.` }] };
+            }
+            return { content: [{ type: 'text', text: `Restored work ${work_id} to version ${version_id}.` }] };
+        } catch (err) {
+            throw new Error(`restore_work_version failed: ${err.message}`);
+        }
+    }
+
     async handleListSeriesRoots(args) {
         try {
             const { include_abandoned = false } = args;

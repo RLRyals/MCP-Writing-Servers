@@ -62,6 +62,36 @@ export const worksToolsSchema = [
         }
     },
     {
+        name: 'list_work_versions',
+        description: 'List prior content versions of an outline node (newest first, metadata only). History is recorded automatically by a DB trigger on every content change.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                work_id: { type: 'integer' },
+                limit: { type: 'integer', default: 50 }
+            },
+            required: ['work_id']
+        }
+    },
+    {
+        name: 'get_work_version',
+        description: 'Get the full text of one prior outline node version (version_id from list_work_versions)',
+        inputSchema: {
+            type: 'object',
+            properties: { version_id: { type: 'integer' } },
+            required: ['version_id']
+        }
+    },
+    {
+        name: 'restore_work_version',
+        description: "Restore an outline node's content to a prior version. Ordinary update: the text it replaces is itself saved as a new version.",
+        inputSchema: {
+            type: 'object',
+            properties: { version_id: { type: 'integer' } },
+            required: ['version_id']
+        }
+    },
+    {
         name: 'list_series_roots',
         description: 'List all series-root outline nodes (work_type=\'series\'). Use this when you don\'t know any work IDs yet.',
         inputSchema: {

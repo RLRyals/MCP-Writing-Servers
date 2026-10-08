@@ -27,7 +27,10 @@ export class SceneHandlers {
             sceneWritingSchemas.list_scenes,
             sceneWritingSchemas.delete_scene,
             sceneWritingSchemas.reorder_scenes,
-            sceneWritingSchemas.analyze_scene_flow
+            sceneWritingSchemas.analyze_scene_flow,
+            sceneWritingSchemas.list_scene_versions,
+            sceneWritingSchemas.get_scene_version,
+            sceneWritingSchemas.restore_scene_version
         ];
     }
 
@@ -350,6 +353,72 @@ export class SceneHandlers {
         }
     }
     
+    // =============================================
+    // SCENE TEXT HISTORY (trigger-backed, see migration 058)
+    // =============================================
+
+    async handleListSceneVersions(args) {
+        try {
+            const { scene_id, limit = 50 } = args;
+            const result = await this.db.query(
+                `SELECT id AS version_id, change_kind, changed_at, changed_by, application_name,
+                        COALESCE(length(old_content), 0) AS content_length
+                 FROM chapter_scenes_history
+                 WHERE scene_id = $1
+                 ORDER BY id DESC
+                 LIMIT $2`,
+                [scene_id, limit]
+            );
+            return { scene_id, versions: result.rows, count: result.rows.length };
+        } catch (error) {
+            throw new Error(`Failed to list scene versions: ${error.message}`);
+        }
+    }
+
+    async handleGetSceneVersion(args) {
+        try {
+            const { version_id } = args;
+            const result = await this.db.query(
+                `SELECT id AS version_id, scene_id, old_content AS scene_content, change_kind,
+                        changed_at, changed_by, application_name
+                 FROM chapter_scenes_history WHERE id = $1`,
+                [version_id]
+            );
+            if (result.rows.length === 0) {
+                return { error: 'not_found', version_id, message: `No scene version with ID: ${version_id}` };
+            }
+            return { version: result.rows[0] };
+        } catch (error) {
+            throw new Error(`Failed to get scene version: ${error.message}`);
+        }
+    }
+
+    // Restore is an ordinary UPDATE, so the text it replaces is itself versioned.
+    async handleRestoreSceneVersion(args) {
+        try {
+            const { version_id } = args;
+            const ver = await this.db.query(
+                'SELECT scene_id, old_content FROM chapter_scenes_history WHERE id = $1',
+                [version_id]
+            );
+            if (ver.rows.length === 0) {
+                return { error: 'not_found', version_id, message: `No scene version with ID: ${version_id}` };
+            }
+            const { scene_id, old_content } = ver.rows[0];
+            const result = await this.db.query(
+                `UPDATE chapter_scenes SET scene_content = $2, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $1 RETURNING id, updated_at`,
+                [scene_id, old_content]
+            );
+            if (result.rows.length === 0) {
+                return { error: 'not_found', scene_id, message: `Scene ${scene_id} no longer exists; cannot restore.` };
+            }
+            return { restored: true, scene_id, version_id, updated_at: result.rows[0].updated_at };
+        } catch (error) {
+            throw new Error(`Failed to restore scene version: ${error.message}`);
+        }
+    }
+
     async handleListScenes(args) {
         try {
             const { chapter_id, scene_type, writing_status, include_stats = false, 
