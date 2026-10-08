@@ -78,6 +78,9 @@ class BookMCPServer extends BaseMCPServer {
         this.handleDeleteScene = this.sceneHandlers.handleDeleteScene.bind(this.sceneHandlers);
         this.handleReorderScenes = this.sceneHandlers.handleReorderScenes.bind(this.sceneHandlers);
         this.handleAnalyzeSceneFlow = this.sceneHandlers.handleAnalyzeSceneFlow.bind(this.sceneHandlers);
+        this.handleListSceneVersions = this.sceneHandlers.handleListSceneVersions.bind(this.sceneHandlers);
+        this.handleGetSceneVersion = this.sceneHandlers.handleGetSceneVersion.bind(this.sceneHandlers);
+        this.handleRestoreSceneVersion = this.sceneHandlers.handleRestoreSceneVersion.bind(this.sceneHandlers);
 
         // Bind editing notes handler methods
         this.handleAddEditingNote = this.editingNotesHandlers.handleAddEditingNote.bind(this.editingNotesHandlers);
@@ -153,6 +156,9 @@ class BookMCPServer extends BaseMCPServer {
             'delete_scene': this.handleDeleteScene,
             'reorder_scenes': this.handleReorderScenes,
             'analyze_scene_flow': this.handleAnalyzeSceneFlow,
+            'list_scene_versions': this.handleListSceneVersions,
+            'get_scene_version': this.handleGetSceneVersion,
+            'restore_scene_version': this.handleRestoreSceneVersion,
 
             // Editing Notes & Cross-chapter Lessons Handlers
             'add_editing_note': this.handleAddEditingNote,

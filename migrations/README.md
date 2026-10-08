@@ -36,6 +36,7 @@ psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f migrations/023_npe_tables.sql
   - **Information economy** (npe_information_economy) - Track reveals and their impact on choices
   - **Relationship tension** (npe_relationship_tension) - Bidirectional tension tracking between characters
   - **Compliance summary** (npe_compliance_summary) - Overall NPE compliance scores and violations
+- **058_text_history_triggers.sql** - Automatic text history. BEFORE UPDATE/DELETE triggers copy the old `chapter_scenes.scene_content` / `outline_works.content` into `chapter_scenes_history` / `outline_works_history` whenever the text changes (all write paths, incl. direct SQL). Read/restore via `list_scene_versions`/`get_scene_version`/`restore_scene_version` (book-server) and `list_work_versions`/`get_work_version`/`restore_work_version` (outline-server); restore is an ordinary update, so it is itself versioned. `chapter_scenes.scene_revisions` is deprecated and unused (not backfilled).
 
 ## Notes
 
