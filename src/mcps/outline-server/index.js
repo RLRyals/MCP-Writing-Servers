@@ -15,6 +15,7 @@ import { PromisesHandlers } from './handlers/promises-handlers.js';
 import { EvidenceHandlers } from './handlers/evidence-handlers.js';
 import { SceneEventsHandlers } from './handlers/scene-events-handlers.js';
 import { BriefHandlers } from './handlers/brief-handlers.js';
+import { StagingHandlers } from './handlers/staging-handlers.js';
 
 class OutlineMCPServer extends BaseMCPServer {
     constructor() {
@@ -26,6 +27,7 @@ class OutlineMCPServer extends BaseMCPServer {
         this.evidenceHandlers = new EvidenceHandlers(this.db);
         this.sceneEventsHandlers = new SceneEventsHandlers(this.db);
         this.briefHandlers = new BriefHandlers(this.db);
+        this.stagingHandlers = new StagingHandlers(this.db);
 
         this.tools = this.getTools();
 
@@ -46,7 +48,8 @@ class OutlineMCPServer extends BaseMCPServer {
             ...this.promisesHandlers.getPromisesTools(),
             ...this.evidenceHandlers.getEvidenceTools(),
             ...this.sceneEventsHandlers.getSceneEventsTools(),
-            ...this.briefHandlers.getBriefTools()
+            ...this.briefHandlers.getBriefTools(),
+            ...this.stagingHandlers.getStagingTools()
         ];
     }
 
@@ -84,7 +87,16 @@ class OutlineMCPServer extends BaseMCPServer {
             'record_scene_events':        this.sceneEventsHandlers.handleRecordSceneEvents.bind(this.sceneEventsHandlers),
             'what_does_character_know_at':this.sceneEventsHandlers.handleWhatDoesCharacterKnowAt.bind(this.sceneEventsHandlers),
             // brief
-            'get_scene_brief':            this.briefHandlers.handleGetSceneBrief.bind(this.briefHandlers)
+            'get_scene_brief':            this.briefHandlers.handleGetSceneBrief.bind(this.briefHandlers),
+            // staging
+            'set_scene_staging': this.stagingHandlers.handleSetSceneStaging.bind(this.stagingHandlers),
+            'get_scene_staging': this.stagingHandlers.handleGetSceneStaging.bind(this.stagingHandlers),
+            'set_scene_presence': this.stagingHandlers.handleSetScenePresence.bind(this.stagingHandlers),
+            'define_tracker': this.stagingHandlers.handleDefineTracker.bind(this.stagingHandlers),
+            'list_trackers': this.stagingHandlers.handleListTrackers.bind(this.stagingHandlers),
+            'record_tracker_change': this.stagingHandlers.handleRecordTrackerChange.bind(this.stagingHandlers),
+            'get_tracker_values_at': this.stagingHandlers.handleGetTrackerValuesAt.bind(this.stagingHandlers),
+            'get_staged_scene': this.stagingHandlers.handleGetStagedScene.bind(this.stagingHandlers)
         };
         return handlers[toolName];
     }

@@ -7,8 +7,10 @@ import { sceneEventsToolsSchema } from '../schemas/outline-tools-schema.js';
 
 const VALID_EVENT_TYPES = new Set([
     'reveals_fact','plants_promise','pays_promise',
-    'character_choice','consequence','evidence_produced','evidence_converted'
+    'character_choice','consequence','evidence_produced','evidence_converted',
+    'action','position','line','display','sound','prop_state','dressing'
 ]);
+const VALID_CHANNELS = new Set(['in_room','comm','ai','off_screen']);
 
 export class SceneEventsHandlers {
     constructor(db) {
@@ -27,6 +29,9 @@ export class SceneEventsHandlers {
         for (const ev of events) {
             if (!VALID_EVENT_TYPES.has(ev.event_type)) {
                 throw new Error(`Invalid event_type: ${ev.event_type}`);
+            }
+            if (ev.channel != null && !VALID_CHANNELS.has(ev.channel)) {
+                throw new Error(`Invalid channel: ${ev.channel}`);
             }
         }
 
@@ -50,12 +55,13 @@ export class SceneEventsHandlers {
                     const result = await client.query(
                         `INSERT INTO outline_scene_events
                             (work_id, event_type, fact_id, promise_id, evidence_id,
-                             character_id, ordering, note)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+                             character_id, ordering, note, location_id, element_id, channel)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
                         [work_id, ev.event_type,
                          ev.fact_id || null, ev.promise_id || null,
                          ev.evidence_id || null, ev.character_id || null,
-                         ev.ordering ?? idx, ev.note || null]
+                         ev.ordering ?? idx, ev.note || null,
+                         ev.location_id || null, ev.element_id || null, ev.channel || null]
                     );
                     ids.push(result.rows[0].id);
                 }
