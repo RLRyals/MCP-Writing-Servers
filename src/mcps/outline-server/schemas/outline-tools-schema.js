@@ -383,11 +383,14 @@ export const sceneEventsToolsSchema = [
                     items: {
                         type: 'object',
                         properties: {
-                            event_type: { type: 'string', enum: ['reveals_fact','plants_promise','pays_promise','character_choice','consequence','evidence_produced','evidence_converted'] },
+                            event_type: { type: 'string', enum: ['reveals_fact','plants_promise','pays_promise','character_choice','consequence','evidence_produced','evidence_converted','action','position','line','display','sound','prop_state','dressing'], description: 'Story-fact types plus staging types: action (what visibly happens), position (where someone/something ends up), line (fixed dialogue: speaker in character_id, exact words in note, channel), display (what is on a screen/overlay), sound, prop_state (an object changes state), dressing (an item in the place as found: element_id + location_id, evidence_id when the position is a clue)' },
                             fact_id: { type: 'integer' },
                             promise_id: { type: 'integer' },
                             evidence_id: { type: 'integer' },
-                            character_id: { type: 'integer' },
+                            character_id: { type: 'integer', description: 'Who the event is about (for a line, the speaker)' },
+                            location_id: { type: 'integer', description: 'locations.id the event happens at or refers to' },
+                            element_id: { type: 'integer', description: 'world_elements.id of the prop/equipment/vehicle involved' },
+                            channel: { type: 'string', enum: ['in_room','comm','ai','off_screen'], description: 'How a line or sound reaches the scene' },
                             ordering: { type: 'integer' },
                             note: { type: 'string' }
                         },
@@ -431,6 +434,8 @@ export const briefToolsSchema = [
     }
 ];
 
+import { stagingToolsSchema } from './staging-tools-schema.js';
+
 // Convenience: full schema list for the standalone outline-server.
 export const outlineToolsSchema = [
     ...worksToolsSchema,
@@ -438,5 +443,6 @@ export const outlineToolsSchema = [
     ...promisesToolsSchema,
     ...evidenceToolsSchema,
     ...sceneEventsToolsSchema,
-    ...briefToolsSchema
+    ...briefToolsSchema,
+    ...stagingToolsSchema
 ];

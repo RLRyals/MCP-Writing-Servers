@@ -30,6 +30,8 @@ import { PromisesHandlers } from '../../mcps/outline-server/handlers/promises-ha
 import { EvidenceHandlers } from '../../mcps/outline-server/handlers/evidence-handlers.js';
 import { SceneEventsHandlers } from '../../mcps/outline-server/handlers/scene-events-handlers.js';
 import { BriefHandlers } from '../../mcps/outline-server/handlers/brief-handlers.js';
+import { StagingHandlers } from '../../mcps/outline-server/handlers/staging-handlers.js';
+import { stagingToolsSchema } from '../../mcps/outline-server/schemas/staging-tools-schema.js';
 
 class OutlinePhaseMCPServer extends BaseMCPServer {
     constructor() {
@@ -48,6 +50,7 @@ class OutlinePhaseMCPServer extends BaseMCPServer {
         this.evidenceHandlers = new EvidenceHandlers(this.db);
         this.sceneEventsHandlers = new SceneEventsHandlers(this.db);
         this.briefHandlers = new BriefHandlers(this.db);
+        this.stagingHandlers = new StagingHandlers(this.db);
 
         console.error('[OUTLINE-PHASE] Handlers initialized with shared DB');
     }
@@ -59,7 +62,8 @@ class OutlinePhaseMCPServer extends BaseMCPServer {
             ...promisesToolsSchema,
             ...evidenceToolsSchema,
             ...sceneEventsToolsSchema,
-            ...briefToolsSchema
+            ...briefToolsSchema,
+            ...stagingToolsSchema
         ];
     }
 
@@ -88,7 +92,15 @@ class OutlinePhaseMCPServer extends BaseMCPServer {
             'list_unconverted_evidence':  this.evidenceHandlers.handleListUnconvertedEvidence.bind(this.evidenceHandlers),
             'record_scene_events':        this.sceneEventsHandlers.handleRecordSceneEvents.bind(this.sceneEventsHandlers),
             'what_does_character_know_at':this.sceneEventsHandlers.handleWhatDoesCharacterKnowAt.bind(this.sceneEventsHandlers),
-            'get_scene_brief':            this.briefHandlers.handleGetSceneBrief.bind(this.briefHandlers)
+            'get_scene_brief':            this.briefHandlers.handleGetSceneBrief.bind(this.briefHandlers),
+            'set_scene_staging': this.stagingHandlers.handleSetSceneStaging.bind(this.stagingHandlers),
+            'get_scene_staging': this.stagingHandlers.handleGetSceneStaging.bind(this.stagingHandlers),
+            'set_scene_presence': this.stagingHandlers.handleSetScenePresence.bind(this.stagingHandlers),
+            'define_tracker': this.stagingHandlers.handleDefineTracker.bind(this.stagingHandlers),
+            'list_trackers': this.stagingHandlers.handleListTrackers.bind(this.stagingHandlers),
+            'record_tracker_change': this.stagingHandlers.handleRecordTrackerChange.bind(this.stagingHandlers),
+            'get_tracker_values_at': this.stagingHandlers.handleGetTrackerValuesAt.bind(this.stagingHandlers),
+            'get_staged_scene': this.stagingHandlers.handleGetStagedScene.bind(this.stagingHandlers)
         };
         return handlerMap[toolName] || null;
     }
