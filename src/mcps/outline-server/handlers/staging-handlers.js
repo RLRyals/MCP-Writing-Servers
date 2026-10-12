@@ -495,6 +495,9 @@ export class StagingHandlers {
             }
             if (isBlank(bs.beat_kind)) empty.push(`${label}: beat_kind is missing`);
             if (bs.beat_kind === 'picture') {
+                if (isBlank(bs.location_id)) {
+                    empty.push(`${label}: picture beat has no location_id${isBlank(s?.location_id) ? '' : ' (only inherits the scene location)'}`);
+                }
                 const hasPicture = eventsFor(b.id).some(e => e.event_type === 'position' || e.event_type === 'action');
                 if (!hasPicture) empty.push(`${label}: picture beat has no position or action event`);
             }
