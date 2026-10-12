@@ -270,6 +270,7 @@ describe('get_staged_scene', () => {
         assert.match(e, /scene 10: weather is missing/);
         assert.doesNotMatch(e, /scene 10: light is missing|scene 10: location_id|scene 10: time_of_day/);
         assert.match(e, /beat 11 \(Ada climbs\): picture beat has no position or action event/);
+        assert.match(e, /beat 11 \(Ada climbs\): picture beat has no location_id \(only inherits the scene location\)/);
         assert.match(e, /beat 12 \(The plan\): no staging row/);
         assert.match(e, /beat 13 \(The lamp\): beat_kind is missing/);
         assert.match(e, /Ada \(character 1\): present in scene 10 with no clothing_description/);
@@ -328,7 +329,7 @@ describe('get_staged_scene', () => {
             ["parent_id = $1 AND work_type = 'beat'", [{ id: 11, title: 'Ada climbs', summary: 's', sequence: 1 }]],
             ['FROM scene_staging ss', [
                 { work_id: 10, location_id: 3, time_of_day: 'night', weather: 'fog', light: 'lantern' },
-                { work_id: 11, beat_kind: 'picture' }]],
+                { work_id: 11, beat_kind: 'picture', location_id: 3 }]],
             ['FROM outline_scene_events se', [{ id: 1, work_id: 11, event_type: 'position', note: 'at the top stair' }]],
             ['FROM character_chapter_presence p', [{ character_id: 1, character_name: 'Ada', presence_type: 'present', clothing_description: 'oilskin coat' }]],
             ['FROM locations WHERE id = ANY', [{ id: 3, name: 'The Lighthouse', location_type: 'building' }]],
