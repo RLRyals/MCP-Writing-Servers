@@ -14,11 +14,12 @@ if (process.env.MCP_STDIO_MODE === 'true') {
 import { BaseMCPServer } from '../../shared/base-server.js';
 import { StoryAnalysisHandlers } from './handlers/story-analysis-handlers.js';
 import { StoryformHandlers } from './handlers/storyform-handlers.js';
+import { StoryweaveHandlers } from './handlers/storyweave-handlers.js';
 import {
     lookupSystemToolsSchema,
     storyAnalysisToolsSchema
 } from './schemas/story-analysis-tools-schema.js';
-import { storyformToolsSchema } from './schemas/storyform-tools-schema.js';
+import { storyformToolsSchema, storyweaveToolsSchema } from './schemas/storyform-tools-schema.js';
 
 class StoryAnalysisMCPServer extends BaseMCPServer {
     constructor() {
@@ -35,6 +36,7 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
         try {
             this.storyAnalysisHandlers = new StoryAnalysisHandlers(this.db);
             this.storyformHandlers = new StoryformHandlers(this.db);
+            this.storyweaveHandlers = new StoryweaveHandlers(this.db);
             console.error('[STORY-ANALYSIS-SERVER] Story analysis handlers initialized');
         } catch (error) {
             console.error('[STORY-ANALYSIS-SERVER] Handler initialization failed:', error.message);
@@ -71,6 +73,12 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
             this.handleCreateStoryform = this.storyformHandlers.handleCreateStoryform.bind(this.storyformHandlers);
             this.handleUpdateStoryform = this.storyformHandlers.handleUpdateStoryform.bind(this.storyformHandlers);
             this.handleGetStoryform = this.storyformHandlers.handleGetStoryform.bind(this.storyformHandlers);
+
+            // Bind storyweave handler methods
+            this.handleSetStoryweaveTracks = this.storyweaveHandlers.handleSetStoryweaveTracks.bind(this.storyweaveHandlers);
+            this.handleGetStoryweaveTracks = this.storyweaveHandlers.handleGetStoryweaveTracks.bind(this.storyweaveHandlers);
+            this.handleSetStoryweaveInterleave = this.storyweaveHandlers.handleSetStoryweaveInterleave.bind(this.storyweaveHandlers);
+            this.handleGetStoryweaveInterleave = this.storyweaveHandlers.handleGetStoryweaveInterleave.bind(this.storyweaveHandlers);
 
             console.error('[STORY-ANALYSIS-SERVER] All handler methods bound successfully');
         } catch (error) {
@@ -109,7 +117,10 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
                 ...storyAnalysisToolsSchema,
 
                 // Storyform read/CRUD tools
-                ...storyformToolsSchema
+                ...storyformToolsSchema,
+
+                // Storyweave encode-track / interleave tools
+                ...storyweaveToolsSchema
             ];
 
             console.error(`[STORY-ANALYSIS-SERVER] Tools registered: ${tools.length} total`);
@@ -131,7 +142,13 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
             // Storyform Handlers
             'create_storyform': this.handleCreateStoryform,
             'update_storyform': this.handleUpdateStoryform,
-            'get_storyform': this.handleGetStoryform
+            'get_storyform': this.handleGetStoryform,
+
+            // Storyweave Handlers
+            'set_storyweave_tracks': this.handleSetStoryweaveTracks,
+            'get_storyweave_tracks': this.handleGetStoryweaveTracks,
+            'set_storyweave_interleave': this.handleSetStoryweaveInterleave,
+            'get_storyweave_interleave': this.handleGetStoryweaveInterleave
         };
 
         const handler = handlers[toolName];
