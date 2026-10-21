@@ -16,6 +16,7 @@ import { BaseMCPServer } from '../../shared/base-server.js';
 // Import ONLY the handler class - NOT the full server
 import { StoryAnalysisHandlers } from '../../mcps/story-analysis-server/handlers/story-analysis-handlers.js';
 import { StoryformHandlers } from '../../mcps/story-analysis-server/handlers/storyform-handlers.js';
+import { StoryweaveHandlers } from '../../mcps/story-analysis-server/handlers/storyweave-handlers.js';
 
 class StoryAnalysisMCPServer extends BaseMCPServer {
     constructor() {
@@ -34,6 +35,7 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
         // Create handler instance passing our shared database
         this.storyAnalysisHandlers = new StoryAnalysisHandlers(this.db);
         this.storyformHandlers = new StoryformHandlers(this.db);
+        this.storyweaveHandlers = new StoryweaveHandlers(this.db);
 
         console.error('[STORY-ANALYSIS-SERVER] Handlers initialized with shared DB');
     }
@@ -83,6 +85,7 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
         // STORYFORM READ/CRUD TOOLS
         const storyformTools = this.storyformHandlers.getStoryformTools();
         storyformTools.forEach(tool => tools.push({ ...tool }));
+        this.storyweaveHandlers.getStoryweaveTools().forEach(tool => tools.push({ ...tool }));
 
         return tools;
     }
@@ -99,7 +102,13 @@ class StoryAnalysisMCPServer extends BaseMCPServer {
             // Storyform handlers
             'create_storyform': (args) => this.storyformHandlers.handleCreateStoryform(args),
             'update_storyform': (args) => this.storyformHandlers.handleUpdateStoryform(args),
-            'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args)
+            'get_storyform': (args) => this.storyformHandlers.handleGetStoryform(args),
+
+            // Storyweave handlers
+            'set_storyweave_tracks': (args) => this.storyweaveHandlers.handleSetStoryweaveTracks(args),
+            'get_storyweave_tracks': (args) => this.storyweaveHandlers.handleGetStoryweaveTracks(args),
+            'set_storyweave_interleave': (args) => this.storyweaveHandlers.handleSetStoryweaveInterleave(args),
+            'get_storyweave_interleave': (args) => this.storyweaveHandlers.handleGetStoryweaveInterleave(args)
         };
 
         return handlerMap[toolName] || null;

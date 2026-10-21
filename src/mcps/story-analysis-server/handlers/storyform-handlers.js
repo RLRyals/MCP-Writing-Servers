@@ -89,6 +89,26 @@ export class StoryformHandlers {
         output += `- **MC Approach:** ${row.mc_approach || 'not set'}\n`;
         output += `- **MC Problem-Solving Style:** ${row.mc_ps_style || 'not set'}\n\n`;
 
+        output += `## Catalyst / Inhibitor
+`;
+        output += `- **Catalyst:** ${row.catalyst || 'not set'}
+`;
+        output += `- **Inhibitor:** ${row.inhibitor || 'not set'}
+
+`;
+
+        for (const [label, value] of [['Storypoints', row.storypoints], ['Signposts', row.signposts]]) {
+            if (value) {
+                const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+                output += `## ${label}
+\`\`\`json
+${JSON.stringify(parsed, null, 2)}
+\`\`\`
+
+`;
+            }
+        }
+
         if (row.rationale) {
             output += `## Rationale\n${row.rationale}\n\n`;
         }
@@ -119,8 +139,9 @@ export class StoryformHandlers {
                 INSERT INTO storyforms (
                     series_id, book_id, os_domain, mc_domain, ic_domain, rs_domain,
                     story_driver, story_limit, story_outcome_id, story_judgment_id, story_concern_id,
-                    mc_resolve, mc_growth, mc_approach, mc_ps_style, rationale, appreciations
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                    mc_resolve, mc_growth, mc_approach, mc_ps_style, rationale, appreciations,
+                    catalyst, inhibitor, storypoints, signposts
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
                 RETURNING *
             `;
 
@@ -141,7 +162,11 @@ export class StoryformHandlers {
                 args.mc_approach || null,
                 args.mc_ps_style || null,
                 args.rationale || null,
-                args.appreciations ? JSON.stringify(args.appreciations) : null
+                args.appreciations ? JSON.stringify(args.appreciations) : null,
+                args.catalyst || null,
+                args.inhibitor || null,
+                args.storypoints ? JSON.stringify(args.storypoints) : null,
+                args.signposts ? JSON.stringify(args.signposts) : null
             ]);
 
             return {
@@ -184,8 +209,12 @@ export class StoryformHandlers {
                     mc_ps_style = COALESCE($13, mc_ps_style),
                     rationale = COALESCE($14, rationale),
                     appreciations = COALESCE($15, appreciations),
+                    catalyst = COALESCE($16, catalyst),
+                    inhibitor = COALESCE($17, inhibitor),
+                    storypoints = COALESCE($18, storypoints),
+                    signposts = COALESCE($19, signposts),
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = $16
+                WHERE id = $20
                 RETURNING *
             `;
 
@@ -205,6 +234,10 @@ export class StoryformHandlers {
                 args.mc_ps_style || null,
                 args.rationale || null,
                 args.appreciations ? JSON.stringify(args.appreciations) : null,
+                args.catalyst || null,
+                args.inhibitor || null,
+                args.storypoints ? JSON.stringify(args.storypoints) : null,
+                args.signposts ? JSON.stringify(args.signposts) : null,
                 existing.rows[0].id
             ]);
 
