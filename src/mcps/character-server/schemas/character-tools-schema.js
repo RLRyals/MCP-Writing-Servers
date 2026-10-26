@@ -114,6 +114,8 @@ export const characterDetailToolsSchema = [
                 },
                 value: { type: 'string', description: 'Value' },
                 source_book_id: { type: 'integer', description: 'Source book ID?' },
+                start_scene_id: { type: 'integer', description: 'Outline scene (outline_works id) where this becomes true; omit = true from the start' },
+                end_scene_id: { type: 'integer', description: 'Outline scene where this stops being true; omit = never ends' },
                 confidence_level: {
                     type: 'string',
                     enum: ['established', 'mentioned', 'implied'],
@@ -155,6 +157,9 @@ export const characterDetailToolsSchema = [
                 },
                 value: { type: 'string', description: 'New value' },
                 source_book_id: { type: 'integer', description: 'Source book ID?' },
+                start_scene_id: { type: 'integer', description: 'Which span row to update: its current start scene (omit = the open-start row)' },
+                new_start_scene_id: { type: 'integer', description: 'Move the start scene to this scene' },
+                end_scene_id: { type: 'integer', description: 'Outline scene where this stops being true' },
                 confidence_level: {
                     type: 'string',
                     enum: ['established', 'mentioned', 'implied'],
@@ -178,7 +183,8 @@ export const characterDetailToolsSchema = [
                 attribute: {
                     type: 'string',
                     description: 'Attribute to delete'
-                }
+                },
+                start_scene_id: { type: 'integer', description: 'Which span row to delete: its start scene (omit = the open-start row)' }
             },
             required: ['character_id', 'category', 'attribute']
         }
