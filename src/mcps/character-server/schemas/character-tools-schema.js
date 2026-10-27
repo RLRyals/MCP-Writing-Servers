@@ -359,16 +359,6 @@ export const characterTimelineToolsSchema = [
                 emotional_state: { type: 'string', description: 'Emotional state?' },
                 enters_at_scene: { type: 'integer', description: 'Entry scene #?' },
                 exits_at_scene: { type: 'integer', description: 'Exit scene #?' },
-                learns_this_chapter: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Info learned?'
-                },
-                reveals_this_chapter: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Secrets revealed?'
-                },
                 character_growth: { type: 'string', description: 'Character changes?' }
             },
             required: ['character_id', 'chapter_id', 'presence_type']

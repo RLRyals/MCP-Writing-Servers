@@ -214,8 +214,8 @@ describe('record_scene_events (extended)', () => {
         const ins = db.queries.filter(x => x.text.includes('INSERT INTO outline_scene_events'));
         assert.equal(ins.length, 2);
         assert.match(ins[0].text, /location_id, element_id, channel/);
-        assert.deepEqual(ins[0].params.slice(8), [null, null, 'comm']);
-        assert.deepEqual(ins[1].params.slice(8), [6, 4, null]);
+        assert.deepEqual(ins[0].params.slice(8, 11), [null, null, 'comm']);
+        assert.deepEqual(ins[1].params.slice(8, 11), [6, 4, null]);
     });
 
     it('stays backward compatible and rejects a bad channel or type', async () => {
