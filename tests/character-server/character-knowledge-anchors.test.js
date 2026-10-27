@@ -11,7 +11,7 @@ const recordingDb = (rows) => {
     const calls = [];
     return { calls, async query(sql, params) { calls.push({ sql, params }); return { rows }; } };
 };
-const base = { character_id: 1, knowledge_category: 'secret', knowledge_item: 'sword is in the well' };
+const base = { character_id: 1, knowledge_category: 'secret', knowledge_item: 'item A is hidden in place B' };
 
 describe('character_knowledge anchors (mws-2gk)', () => {
     it('schema exposes anchors and the locked level', () => {

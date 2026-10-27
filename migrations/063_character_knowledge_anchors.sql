@@ -2,7 +2,7 @@
 -- Description: Canon Over Time (mws-2gk). character_knowledge gains "known
 -- from" anchors: a scene | before the series | off-page (known by scene X);
 -- links to the fact / reveal the knowledge is about; and a 'locked' level
--- (e.g. the sword's location locked in Mal's mind). Additive. Book/chapter
+-- (e.g. a location locked in a character's mind). Additive. Book/chapter
 -- are derived from the scene, never stored.
 
 DO $$
