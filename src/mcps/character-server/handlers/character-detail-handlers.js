@@ -16,25 +16,34 @@ export class CharacterDetailHandlers {
         return characterDetailToolsSchema;
     }
 
+    formatSpan(startId, endId, startTitle, endTitle) {
+        if (!startId && !endId) return 'always';
+        const from = startId ? `from scene ${startId}${startTitle ? ` (${startTitle})` : ''}` : 'from the start';
+        const until = endId ? `until scene ${endId}${endTitle ? ` (${endTitle})` : ''}` : 'onward';
+        return `${from} ${until}`;
+    }
+
     // =============================================
     // CHARACTER DETAIL MANAGEMENT HANDLERS
     // =============================================
 
     async handleAddCharacterDetail(args) {
         try {
-            const { character_id, category, attribute, value, source_book_id, confidence_level = 'established' } = args;
+            const { character_id, category, attribute, value, source_book_id, confidence_level = 'established',
+                    start_scene_id = null, end_scene_id = null } = args;
 
             const result = await this.db.query(
-                `INSERT INTO character_details (character_id, category, attribute, value, source_book_id, confidence_level)
-                 VALUES ($1, $2, $3, $4, $5, $6)
-                 ON CONFLICT (character_id, category, attribute)
+                `INSERT INTO character_details (character_id, category, attribute, value, source_book_id, confidence_level, start_scene_id, end_scene_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 ON CONFLICT (character_id, category, attribute, (COALESCE(start_scene_id, 0)))
                  DO UPDATE SET
                    value = EXCLUDED.value,
                    source_book_id = EXCLUDED.source_book_id,
                    confidence_level = EXCLUDED.confidence_level,
+                   end_scene_id = EXCLUDED.end_scene_id,
                    updated_at = CURRENT_TIMESTAMP
                  RETURNING *`,
-                [character_id, category, attribute, value, source_book_id || null, confidence_level]
+                [character_id, category, attribute, value, source_book_id || null, confidence_level, start_scene_id, end_scene_id]
             );
 
             return {
@@ -45,7 +54,8 @@ export class CharacterDetailHandlers {
                               `Character ID: ${character_id}\n` +
                               `${category}/${attribute}: ${value}\n` +
                               `Confidence: ${confidence_level}\n` +
-                              `Source Book ID: ${source_book_id || 'Not specified'}`
+                              `Source Book ID: ${source_book_id || 'Not specified'}\n` +
+                              `True: ${this.formatSpan(start_scene_id, end_scene_id)}`
                     }
                 ]
             };
@@ -59,10 +69,13 @@ export class CharacterDetailHandlers {
             const { character_id, category } = args;
 
             let query = `
-                SELECT cd.*, c.name as character_name, b.title as source_book_title
+                SELECT cd.*, c.name as character_name, b.title as source_book_title,
+                       ss.title as start_scene_title, es.title as end_scene_title
                 FROM character_details cd
                 JOIN characters c ON cd.character_id = c.id
                 LEFT JOIN books b ON cd.source_book_id = b.id
+                LEFT JOIN outline_works ss ON cd.start_scene_id = ss.id
+                LEFT JOIN outline_works es ON cd.end_scene_id = es.id
                 WHERE cd.character_id = $1
             `;
             const params = [character_id];
@@ -72,7 +85,7 @@ export class CharacterDetailHandlers {
                 params.push(category);
             }
 
-            query += ` ORDER BY cd.category, cd.attribute`;
+            query += ` ORDER BY cd.category, cd.attribute, cd.start_scene_id NULLS FIRST`;
 
             const result = await this.db.query(query, params);
 
@@ -95,7 +108,8 @@ export class CharacterDetailHandlers {
                               result.rows.map(detail =>
                                   `${detail.category}/${detail.attribute}: ${detail.value}\n` +
                                   `  Confidence: ${detail.confidence_level}\n` +
-                                  `  Source: ${detail.source_book_title || 'Not specified'}\n`
+                                  `  Source: ${detail.source_book_title || 'Not specified'}\n` +
+                                  `  True: ${this.formatSpan(detail.start_scene_id, detail.end_scene_id, detail.start_scene_title, detail.end_scene_title)}\n`
                               ).join('\n')
                     }
                 ]
@@ -107,13 +121,16 @@ export class CharacterDetailHandlers {
 
     async handleUpdateCharacterDetail(args) {
         try {
-            const { character_id, category, attribute, value, source_book_id, confidence_level } = args;
+            const { character_id, category, attribute, value, source_book_id, confidence_level,
+                    start_scene_id, new_start_scene_id, end_scene_id } = args;
 
+            // start_scene_id picks which span row of the attribute to update (omit = the open-start row)
             // Check if the detail exists first
             const checkResult = await this.db.query(
                 `SELECT * FROM character_details
-                 WHERE character_id = $1 AND category = $2 AND attribute = $3`,
-                [character_id, category, attribute]
+                 WHERE character_id = $1 AND category = $2 AND attribute = $3
+                   AND COALESCE(start_scene_id, 0) = COALESCE($4::int, 0)`,
+                [character_id, category, attribute, start_scene_id ?? null]
             );
 
             if (checkResult.rows.length === 0) {
@@ -133,8 +150,8 @@ export class CharacterDetailHandlers {
 
             // Build dynamic update query
             const updateFields = [];
-            const params = [character_id, category, attribute];
-            let paramCount = 3;
+            const params = [character_id, category, attribute, start_scene_id ?? null];
+            let paramCount = 4;
 
             updateFields.push(`value = $${++paramCount}`);
             params.push(value);
@@ -149,12 +166,23 @@ export class CharacterDetailHandlers {
                 params.push(confidence_level);
             }
 
+            if (new_start_scene_id !== undefined) {
+                updateFields.push(`start_scene_id = $${++paramCount}`);
+                params.push(new_start_scene_id);
+            }
+
+            if (end_scene_id !== undefined) {
+                updateFields.push(`end_scene_id = $${++paramCount}`);
+                params.push(end_scene_id);
+            }
+
             updateFields.push('updated_at = CURRENT_TIMESTAMP');
 
             const query = `
                 UPDATE character_details
                 SET ${updateFields.join(', ')}
                 WHERE character_id = $1 AND category = $2 AND attribute = $3
+                  AND COALESCE(start_scene_id, 0) = COALESCE($4::int, 0)
                 RETURNING *
             `;
 
@@ -169,7 +197,8 @@ export class CharacterDetailHandlers {
                               `Character ID: ${character_id}\n` +
                               `${category}/${attribute}: ${detail.value}\n` +
                               `Confidence: ${detail.confidence_level}\n` +
-                              `Source Book ID: ${detail.source_book_id || 'Not specified'}\n`
+                              `Source Book ID: ${detail.source_book_id || 'Not specified'}\n` +
+                              `True: ${this.formatSpan(detail.start_scene_id, detail.end_scene_id)}\n`
                     }
                 ]
             };
@@ -180,15 +209,16 @@ export class CharacterDetailHandlers {
 
     async handleDeleteCharacterDetail(args) {
         try {
-            const { character_id, category, attribute } = args;
+            const { character_id, category, attribute, start_scene_id } = args;
 
             // Check if the detail exists and get info before deleting
             const checkResult = await this.db.query(
                 `SELECT cd.*, c.name as character_name
                  FROM character_details cd
                  JOIN characters c ON cd.character_id = c.id
-                 WHERE cd.character_id = $1 AND cd.category = $2 AND cd.attribute = $3`,
-                [character_id, category, attribute]
+                 WHERE cd.character_id = $1 AND cd.category = $2 AND cd.attribute = $3
+                   AND COALESCE(cd.start_scene_id, 0) = COALESCE($4::int, 0)`,
+                [character_id, category, attribute, start_scene_id ?? null]
             );
 
             if (checkResult.rows.length === 0) {
@@ -210,8 +240,9 @@ export class CharacterDetailHandlers {
             // Delete the detail
             await this.db.query(
                 `DELETE FROM character_details
-                 WHERE character_id = $1 AND category = $2 AND attribute = $3`,
-                [character_id, category, attribute]
+                 WHERE character_id = $1 AND category = $2 AND attribute = $3
+                   AND COALESCE(start_scene_id, 0) = COALESCE($4::int, 0)`,
+                [character_id, category, attribute, start_scene_id ?? null]
             );
 
             return {
