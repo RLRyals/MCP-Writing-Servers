@@ -1,7 +1,7 @@
 -- Migration: 061_character_details_scene_span
 -- Description: Canon Over Time (mws-4g8). character_details gain start/end
--- outline scene refs so rank/status/habits can expire (e.g. Mal rookie ->
--- detective). NULL start/end = always true. Additive; the old
+-- outline scene refs so rank/status/habits can expire (e.g. apprentice ->
+-- journeyman). NULL start/end = always true. Additive; the old
 -- (character_id, category, attribute) unique constraint is replaced by a
 -- unique index that also keys on start scene, so a promotion can be a second
 -- row for the same attribute that starts where the first one ends.

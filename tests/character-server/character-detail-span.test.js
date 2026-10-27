@@ -25,7 +25,7 @@ describe('character_details scene span (mws-4g8)', () => {
     it('add with no points stores NULLs (always true)', async () => {
         const db = recordingDb([{}]);
         const res = await new CharacterDetailHandlers(db).handleAddCharacterDetail({
-            character_id: 1, category: 'background', attribute: 'rank', value: 'rookie' });
+            character_id: 1, category: 'background', attribute: 'rank', value: 'apprentice' });
         assert.deepStrictEqual(db.calls[0].params.slice(6), [null, null]);
         assert.match(res.content[0].text, /True: always/);
     });
@@ -33,7 +33,7 @@ describe('character_details scene span (mws-4g8)', () => {
     it('add with start/end stores them and upserts on the span key', async () => {
         const db = recordingDb([{}]);
         const res = await new CharacterDetailHandlers(db).handleAddCharacterDetail({
-            character_id: 1, category: 'background', attribute: 'rank', value: 'rookie',
+            character_id: 1, category: 'background', attribute: 'rank', value: 'apprentice',
             start_scene_id: 27, end_scene_id: 37 });
         assert.deepStrictEqual(db.calls[0].params.slice(6), [27, 37]);
         assert.match(db.calls[0].sql, /ON CONFLICT \(character_id, category, attribute, \(COALESCE\(start_scene_id, 0\)\)\)/);
@@ -41,17 +41,17 @@ describe('character_details scene span (mws-4g8)', () => {
     });
 
     it('get shows the span with scene titles', async () => {
-        const db = recordingDb([{ category: 'background', attribute: 'rank', value: 'rookie', character_name: 'Mal',
+        const db = recordingDb([{ category: 'background', attribute: 'rank', value: 'apprentice', character_name: 'Character A',
             confidence_level: 'established', start_scene_id: 27, end_scene_id: null,
-            start_scene_title: 'The First Call', end_scene_title: null }]);
+            start_scene_title: 'Scene Title A', end_scene_title: null }]);
         const res = await new CharacterDetailHandlers(db).handleGetCharacterDetails({ character_id: 1 });
-        assert.match(res.content[0].text, /True: from scene 27 \(The First Call\) onward/);
+        assert.match(res.content[0].text, /True: from scene 27 \(Scene Title A\) onward/);
     });
 
     it('update can end a span and targets the row by start scene', async () => {
-        const db = recordingDb([{ start_scene_id: 27, end_scene_id: 37, value: 'rookie', confidence_level: 'established' }]);
+        const db = recordingDb([{ start_scene_id: 27, end_scene_id: 37, value: 'apprentice', confidence_level: 'established' }]);
         await new CharacterDetailHandlers(db).handleUpdateCharacterDetail({
-            character_id: 1, category: 'background', attribute: 'rank', value: 'rookie',
+            character_id: 1, category: 'background', attribute: 'rank', value: 'apprentice',
             start_scene_id: 27, end_scene_id: 37 });
         const upd = db.calls[1];
         assert.match(upd.sql, /end_scene_id = \$/);
@@ -60,7 +60,7 @@ describe('character_details scene span (mws-4g8)', () => {
     });
 
     it('delete targets the row by start scene', async () => {
-        const db = recordingDb([{ character_name: 'Mal', value: 'rookie' }]);
+        const db = recordingDb([{ character_name: 'Character A', value: 'apprentice' }]);
         await new CharacterDetailHandlers(db).handleDeleteCharacterDetail({
             character_id: 1, category: 'background', attribute: 'rank', start_scene_id: 27 });
         assert.strictEqual(db.calls[0].params[3], 27);
