@@ -1652,9 +1652,9 @@ CREATE TABLE information_reveals (
     reveal_method VARCHAR(255), -- discovered, confessed, witnessed, deduced
     significance_level VARCHAR(50), -- minor, major, climactic, world_changing
     affects_characters INTEGER[], -- Who learns this information
-    revealed_in_chapter INTEGER,
+    revealed_in_chapter INTEGER, -- DEPRECATED (mws-7oa): superseded by revealed_in_scene_id (migration 062); kept until data migrated
     consequences TEXT,
-    foreshadowing_chapters INTEGER[], -- Where this was hinted at
+    foreshadowing_chapters INTEGER[], -- DEPRECATED (mws-7oa): superseded by foreshadowing_scene_ids (migration 062); kept until data migrated
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -1666,7 +1666,7 @@ CREATE TABLE reveal_evidence (
     evidence_type VARCHAR(50), -- physical, witness, circumstantial, digital, forensic
     evidence_description TEXT NOT NULL,
     discovered_by INTEGER, -- Character ID
-    discovery_chapter INTEGER,
+    discovery_chapter INTEGER, -- DEPRECATED (mws-7oa): superseded by discovery_scene_id (migration 062); kept until data migrated
     significance VARCHAR(50), -- critical, important, supporting, red_herring
     linked_reveals INTEGER[], -- Other related reveals
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1678,7 +1678,7 @@ CREATE TABLE information_flow (
     id SERIAL PRIMARY KEY,
     reveal_id INTEGER REFERENCES information_reveals(id) ON DELETE CASCADE,
     learned_by_character_id INTEGER NOT NULL, 
-    learned_in_chapter INTEGER,
+    learned_in_chapter INTEGER, -- DEPRECATED (mws-7oa): superseded by learned_in_scene_id (migration 062); kept until data migrated
     learned_from_character_id INTEGER, -- Who told them
     knowledge_level VARCHAR(50) DEFAULT 'complete', -- complete, partial, misunderstood, suspected
     learning_context TEXT, -- Circumstances of learning

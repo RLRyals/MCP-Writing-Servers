@@ -171,6 +171,16 @@ export class PlotValidators {
             errors.push('revealed_in_scene_id must be a positive number');
         }
         
+        // DEPRECATED aliases (mws-7oa), still stored in the kept legacy columns
+        if (args.revealed_in_chapter !== undefined && (typeof args.revealed_in_chapter !== 'number' || args.revealed_in_chapter < 1)) {
+            errors.push('revealed_in_chapter must be a positive number');
+        }
+        if (args.foreshadowing_chapters !== undefined) {
+            if (!Array.isArray(args.foreshadowing_chapters) || !args.foreshadowing_chapters.every(id => typeof id === 'number' && id > 0)) {
+                errors.push('foreshadowing_chapters must be an array of positive numbers');
+            }
+        }
+
         if (args.foreshadowing_scene_ids !== undefined) {
             if (!Array.isArray(args.foreshadowing_scene_ids)) {
                 errors.push('foreshadowing_scene_ids must be an array');
@@ -279,6 +289,10 @@ export class PlotValidators {
             errors.push('discovered_by must be a positive number');
         }
         
+        if (args.discovery_chapter !== undefined && (typeof args.discovery_chapter !== 'number' || args.discovery_chapter < 1)) {
+            errors.push('discovery_chapter must be a positive number');
+        }
+
         if (args.discovery_scene_id !== undefined && (typeof args.discovery_scene_id !== 'number' || args.discovery_scene_id < 1)) {
             errors.push('discovery_scene_id must be a positive number');
         }

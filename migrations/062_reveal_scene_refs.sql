@@ -4,7 +4,10 @@
 -- outline-scene ref (outline_works.id); book/chapter are derived from the
 -- scene, never stored. information_flow can also name the READER as learner
 -- (reader reveal = a reveal whose information_flow has learned_by_reader).
--- The chapter-number columns were never populated (0 rows) so they are dropped.
+-- DATA SAFETY: the legacy chapter-number columns are NOT dropped. A chapter
+-- number cannot be mapped to a scene id automatically, so any existing values
+-- are left untouched; the columns are marked DEPRECATED and kept until their
+-- data is migrated or confirmed empty, then dropped in a later migration.
 
 DO $$
 BEGIN
@@ -18,22 +21,23 @@ BEGIN
     -- Array of scene ids (no FK possible on array elements; handlers validate).
     ALTER TABLE information_reveals
         ADD COLUMN IF NOT EXISTS foreshadowing_scene_ids INTEGER[];
-    ALTER TABLE information_reveals DROP COLUMN IF EXISTS revealed_in_chapter;
-    ALTER TABLE information_reveals DROP COLUMN IF EXISTS foreshadowing_chapters;
 
     ALTER TABLE reveal_evidence
         ADD COLUMN IF NOT EXISTS discovery_scene_id INTEGER REFERENCES outline_works(id) ON DELETE SET NULL;
-    ALTER TABLE reveal_evidence DROP COLUMN IF EXISTS discovery_chapter;
 
     ALTER TABLE information_flow
         ADD COLUMN IF NOT EXISTS learned_in_scene_id INTEGER REFERENCES outline_works(id) ON DELETE SET NULL;
     ALTER TABLE information_flow
         ADD COLUMN IF NOT EXISTS learned_by_reader BOOLEAN NOT NULL DEFAULT FALSE;
-    ALTER TABLE information_flow DROP COLUMN IF EXISTS learned_in_chapter;
     ALTER TABLE information_flow ALTER COLUMN learned_by_character_id DROP NOT NULL;
     ALTER TABLE information_flow DROP CONSTRAINT IF EXISTS chk_information_flow_learner;
     ALTER TABLE information_flow ADD CONSTRAINT chk_information_flow_learner
         CHECK (learned_by_reader OR learned_by_character_id IS NOT NULL);
+
+    COMMENT ON COLUMN information_reveals.revealed_in_chapter IS 'DEPRECATED 2026-10-27 (mws-7oa): superseded by revealed_in_scene_id; kept until its data is migrated or confirmed empty, then dropped in a later migration';
+    COMMENT ON COLUMN information_reveals.foreshadowing_chapters IS 'DEPRECATED 2026-10-27 (mws-7oa): superseded by foreshadowing_scene_ids; kept until its data is migrated or confirmed empty, then dropped in a later migration';
+    COMMENT ON COLUMN reveal_evidence.discovery_chapter IS 'DEPRECATED 2026-10-27 (mws-7oa): superseded by discovery_scene_id; kept until its data is migrated or confirmed empty, then dropped in a later migration';
+    COMMENT ON COLUMN information_flow.learned_in_chapter IS 'DEPRECATED 2026-10-27 (mws-7oa): superseded by learned_in_scene_id; kept until its data is migrated or confirmed empty, then dropped in a later migration';
 
     CREATE INDEX IF NOT EXISTS idx_information_reveals_scene ON information_reveals(revealed_in_scene_id);
     CREATE INDEX IF NOT EXISTS idx_reveal_evidence_scene ON reveal_evidence(discovery_scene_id);

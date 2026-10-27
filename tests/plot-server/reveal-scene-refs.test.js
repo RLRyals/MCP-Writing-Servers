@@ -30,14 +30,14 @@ const mockDb = (existingScenes = []) => {
 const insertCall = (db, table) => db.calls.find(c => c.sql.includes(`INSERT INTO ${table}`));
 
 describe('reveal scene refs (mws-7oa)', () => {
-    it('tool schemas expose scene fields and no chapter fields', () => {
+    it('tool schemas expose scene fields; chapter fields remain only as DEPRECATED aliases', () => {
         const byName = Object.fromEntries(genreExtensionToolsSchema.map(t => [t.name, t.inputSchema.properties]));
         assert.ok(byName.create_information_reveal.revealed_in_scene_id);
         assert.ok(byName.create_information_reveal.foreshadowing_scene_ids);
-        assert.ok(!byName.create_information_reveal.revealed_in_chapter);
-        assert.ok(!byName.create_information_reveal.foreshadowing_chapters);
+        assert.match(byName.create_information_reveal.revealed_in_chapter.description, /DEPRECATED/);
+        assert.match(byName.create_information_reveal.foreshadowing_chapters.description, /DEPRECATED/);
         assert.ok(byName.add_reveal_evidence.discovery_scene_id);
-        assert.ok(!byName.add_reveal_evidence.discovery_chapter);
+        assert.match(byName.add_reveal_evidence.discovery_chapter.description, /DEPRECATED/);
         assert.ok(byName.add_information_flow.learned_in_scene_id);
         assert.ok(byName.add_information_flow.learned_by_reader);
     });
@@ -51,7 +51,6 @@ describe('reveal scene refs (mws-7oa)', () => {
         const call = insertCall(db, 'information_reveals');
         assert.match(call.sql, /revealed_in_scene_id/);
         assert.match(call.sql, /foreshadowing_scene_ids/);
-        assert.ok(!/_chapter/.test(call.sql));
         assert.strictEqual(call.params[6], 12);
         assert.deepStrictEqual(call.params[8], [10, 11]);
     });
@@ -103,5 +102,36 @@ describe('reveal scene refs (mws-7oa)', () => {
         assert.ok(PlotValidators.validateInformationReveal({ ...base, revealed_in_scene_id: 3, foreshadowing_scene_ids: [1] }).valid);
         assert.ok(!PlotValidators.validateInformationReveal({ ...base, revealed_in_scene_id: 0 }).valid);
         assert.ok(!PlotValidators.validateInformationReveal({ ...base, foreshadowing_scene_ids: 'x' }).valid);
+    });
+
+    it('deprecated chapter params are still stored in the kept legacy columns', async () => {
+        const db = mockDb([]);
+        const g = new GenreExtensions(db);
+        await g.handleCreateInformationReveal({
+            plot_thread_id: 1, reveal_type: 'secret', information_content: 'c',
+            reveal_method: 'confessed', significance_level: 'major',
+            revealed_in_chapter: 4, foreshadowing_chapters: [1, 2] });
+        let call = insertCall(db, 'information_reveals');
+        assert.match(call.sql, /revealed_in_chapter, foreshadowing_chapters/);
+        assert.strictEqual(call.params[9], 4);
+        assert.deepStrictEqual(call.params[10], [1, 2]);
+
+        await g.handleAddRevealEvidence({ reveal_id: 5, evidence_type: 'physical', evidence_description: 'd', discovery_chapter: 8 });
+        call = insertCall(db, 'reveal_evidence');
+        assert.match(call.sql, /discovery_chapter/);
+        assert.strictEqual(call.params[6], 8);
+
+        await g.handleAddInformationFlow({ reveal_id: 5, learned_by_character_id: 3, learned_in_chapter: 9 });
+        call = insertCall(db, 'information_flow');
+        assert.match(call.sql, /learned_in_chapter/);
+        assert.strictEqual(call.params[7], 9);
+    });
+
+    it('validators accept and check the deprecated aliases', () => {
+        const base = { plot_thread_id: 1, reveal_type: 'secret', information_content: 'c',
+            reveal_method: 'm', significance_level: 'major' };
+        assert.ok(PlotValidators.validateInformationReveal({ ...base, revealed_in_chapter: 3, foreshadowing_chapters: [1] }).valid);
+        assert.ok(!PlotValidators.validateInformationReveal({ ...base, revealed_in_chapter: 0 }).valid);
+        assert.ok(!PlotValidators.validateInformationReveal({ ...base, foreshadowing_chapters: 'x' }).valid);
     });
 });

@@ -56,6 +56,15 @@ export class GenreExtensions {
                             type: 'array',
                             items: { type: 'integer' },
                             description: 'Outline scene ids where this was hinted at (optional)'
+                        },
+                        revealed_in_chapter: {
+                            type: 'integer',
+                            description: 'DEPRECATED (mws-7oa): use revealed_in_scene_id. Still stored in the kept legacy column.'
+                        },
+                        foreshadowing_chapters: {
+                            type: 'array',
+                            items: { type: 'integer' },
+                            description: 'DEPRECATED (mws-7oa): use foreshadowing_scene_ids. Still stored in the kept legacy column.'
                         }
                     },
                     required: ['plot_thread_id', 'reveal_type', 'information_content', 'reveal_method', 'significance_level']
@@ -138,6 +147,10 @@ export class GenreExtensions {
                             type: 'integer',
                             description: 'Outline scene (outline_works id) where discovered (optional)'
                         },
+                        discovery_chapter: {
+                            type: 'integer',
+                            description: 'DEPRECATED (mws-7oa): use discovery_scene_id. Still stored in the kept legacy column.'
+                        },
                         significance: {
                             type: 'string',
                             enum: ['critical', 'important', 'supporting', 'red_herring'],
@@ -157,6 +170,7 @@ export class GenreExtensions {
                         learned_by_character_id: { type: 'integer', description: 'Character who learns it (omit when the learner is the reader)' },
                         learned_by_reader: { type: 'boolean', description: 'True when the reader learns it (default false)' },
                         learned_in_scene_id: { type: 'integer', description: 'Outline scene (outline_works id) where learned (optional)' },
+                        learned_in_chapter: { type: 'integer', description: 'DEPRECATED (mws-7oa): use learned_in_scene_id. Still stored in the kept legacy column.' },
                         learned_from_character_id: { type: 'integer', description: 'Character who told them (optional)' },
                         knowledge_level: {
                             type: 'string',
@@ -246,8 +260,9 @@ export class GenreExtensions {
                 INSERT INTO information_reveals (
                     plot_thread_id, reveal_type, information_content, reveal_method,
                     significance_level, affects_characters, revealed_in_scene_id,
-                    consequences, foreshadowing_scene_ids
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    consequences, foreshadowing_scene_ids,
+                    revealed_in_chapter, foreshadowing_chapters
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 RETURNING id, created_at
             `;
             
@@ -260,7 +275,10 @@ export class GenreExtensions {
                 args.affects_characters || null,
                 args.revealed_in_scene_id || null,
                 args.consequences || null,
-                args.foreshadowing_scene_ids || null
+                args.foreshadowing_scene_ids || null,
+                // DEPRECATED aliases (mws-7oa): stored in the kept legacy columns
+                args.revealed_in_chapter || null,
+                args.foreshadowing_chapters || null
             ]);
             
             const thread = threadCheck.rows[0];
@@ -278,6 +296,7 @@ export class GenreExtensions {
                               `**Associated Thread:** "${thread.title}"\n` +
                               `${args.affects_characters?.length ? `**Affects ${args.affects_characters.length} character(s)**\n` : ''}` +
                               `${args.revealed_in_scene_id ? `**Revealed in Scene:** ${args.revealed_in_scene_id}\n` : ''}` +
+                              `${args.revealed_in_chapter ? `**Revealed in Chapter (deprecated, use revealed_in_scene_id):** ${args.revealed_in_chapter}\n` : ''}` +
                               `*This works for any genre: evidence (mystery), secrets (romance), world rules (fantasy), backstory (literary)*`
                     }
                 ]
@@ -467,8 +486,8 @@ export class GenreExtensions {
             const result = await this.db.query(`
                 INSERT INTO information_flow (
                     reveal_id, learned_by_character_id, learned_by_reader, learned_in_scene_id,
-                    learned_from_character_id, knowledge_level, learning_context
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    learned_from_character_id, knowledge_level, learning_context, learned_in_chapter
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING id
             `, [
                 args.reveal_id,
@@ -477,7 +496,8 @@ export class GenreExtensions {
                 args.learned_in_scene_id || null,
                 args.learned_from_character_id || null,
                 args.knowledge_level || 'complete',
-                args.learning_context || null
+                args.learning_context || null,
+                args.learned_in_chapter || null // DEPRECATED alias (mws-7oa): stored in the kept legacy column
             ]);
 
             return {
@@ -488,7 +508,8 @@ export class GenreExtensions {
                           `**Reveal:** ${args.reveal_id}\n` +
                           `**Learner:** ${byReader ? 'the reader' : `character ${args.learned_by_character_id}`}\n` +
                           `**Knowledge level:** ${args.knowledge_level || 'complete'}\n` +
-                          `${args.learned_in_scene_id ? `**Learned in Scene:** ${args.learned_in_scene_id}\n` : ''}`
+                          `${args.learned_in_scene_id ? `**Learned in Scene:** ${args.learned_in_scene_id}\n` : ''}` +
+                          `${args.learned_in_chapter ? `**Learned in Chapter (deprecated, use learned_in_scene_id):** ${args.learned_in_chapter}\n` : ''}`
                 }]
             };
         } catch (error) {
@@ -514,8 +535,8 @@ export class GenreExtensions {
             const insertQuery = `
                 INSERT INTO reveal_evidence (
                     reveal_id, evidence_type, evidence_description,
-                    discovered_by, discovery_scene_id, significance
-                ) VALUES ($1, $2, $3, $4, $5, $6)
+                    discovered_by, discovery_scene_id, significance, discovery_chapter
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING id, created_at
             `;
             
@@ -525,7 +546,8 @@ export class GenreExtensions {
                 args.evidence_description,
                 args.discovered_by || null,
                 args.discovery_scene_id || null,
-                args.significance || 'supporting'
+                args.significance || 'supporting',
+                args.discovery_chapter || null // DEPRECATED alias (mws-7oa): stored in the kept legacy column
             ]);
             
             return {
@@ -537,7 +559,8 @@ export class GenreExtensions {
                               `**Type:** ${args.evidence_type}\n` +
                               `**Description:** ${args.evidence_description}\n` +
                               `**Significance:** ${args.significance || 'supporting'}\n` +
-                              `${args.discovery_scene_id ? `**Discovered in Scene:** ${args.discovery_scene_id}\n` : ''}` 
+                              `${args.discovery_scene_id ? `**Discovered in Scene:** ${args.discovery_scene_id}\n` : ''}` +
+                              `${args.discovery_chapter ? `**Discovered in Chapter (deprecated, use discovery_scene_id):** ${args.discovery_chapter}\n` : ''}` 
                     }
                 ]
             };

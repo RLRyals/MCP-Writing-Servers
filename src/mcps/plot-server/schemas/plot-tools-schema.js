@@ -175,6 +175,15 @@ export const genreExtensionToolsSchema = [
                     type: 'array',
                     items: { type: 'integer' },
                     description: 'Foreshadowing outline scene IDs?'
+                },
+                revealed_in_chapter: {
+                    type: 'integer',
+                    description: 'DEPRECATED: use revealed_in_scene_id (still stored in legacy column)'
+                },
+                foreshadowing_chapters: {
+                    type: 'array',
+                    items: { type: 'integer' },
+                    description: 'DEPRECATED: use foreshadowing_scene_ids (still stored in legacy column)'
                 }
             },
             required: ['plot_thread_id', 'reveal_type', 'information_content', 'reveal_method', 'significance_level']
@@ -273,6 +282,10 @@ export const genreExtensionToolsSchema = [
                     type: 'integer',
                     description: 'Discovery outline scene ID?'
                 },
+                discovery_chapter: {
+                    type: 'integer',
+                    description: 'DEPRECATED: use discovery_scene_id (still stored in legacy column)'
+                },
                 significance: {
                     type: 'string',
                     enum: ['critical', 'important', 'supporting', 'red_herring'],
@@ -292,6 +305,7 @@ export const genreExtensionToolsSchema = [
                 learned_by_character_id: { type: 'integer', description: 'Learner character ID (omit for reader)' },
                 learned_by_reader: { type: 'boolean', description: 'Reader learns it?' },
                 learned_in_scene_id: { type: 'integer', description: 'Outline scene ID where learned?' },
+                learned_in_chapter: { type: 'integer', description: 'DEPRECATED: use learned_in_scene_id (still stored in legacy column)' },
                 learned_from_character_id: { type: 'integer', description: 'Teller character ID?' },
                 knowledge_level: {
                     type: 'string',
