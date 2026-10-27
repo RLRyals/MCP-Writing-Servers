@@ -4,6 +4,34 @@
 
 import { characterKnowledgeToolsSchema } from '../schemas/character-tools-schema.js';
 
+const KNOWN_FROM = ['scene', 'before_series', 'off_page'];
+
+// Anchor rule: scene / off_page need the scene (learned there / known by then);
+// before_series has none. Mirrors chk_character_knowledge_anchor_scene.
+export function validateKnowledgeAnchor(known_from, known_scene_id) {
+    if (known_from === undefined || known_from === null) {
+        if (known_scene_id) throw new Error('known_scene_id requires known_from');
+        return;
+    }
+    if (!KNOWN_FROM.includes(known_from)) {
+        throw new Error(`known_from must be one of: ${KNOWN_FROM.join(', ')}`);
+    }
+    if (known_from === 'before_series' && known_scene_id) {
+        throw new Error('known_from=before_series must not have a known_scene_id');
+    }
+    if (known_from !== 'before_series' && !known_scene_id) {
+        throw new Error(`known_from=${known_from} requires known_scene_id`);
+    }
+}
+
+function describeAnchor(known_from, known_scene_id) {
+    if (!known_from) return 'not specified';
+    if (known_from === 'before_series') return 'before the series';
+    return known_from === 'off_page'
+        ? `off-page, known by scene ${known_scene_id}`
+        : `scene ${known_scene_id}`;
+}
+
 export class CharacterKnowledgeHandlers {
     constructor(db) {
         this.db = db;
@@ -23,15 +51,20 @@ export class CharacterKnowledgeHandlers {
     async handleAddCharacterKnowledge(args) {
         try {
             const { character_id, knowledge_category, knowledge_item, knowledge_level = 'knows',
-                    learned_book_id, learned_context } = args;
+                    learned_book_id, learned_context,
+                    known_from, known_scene_id, fact_id, reveal_id } = args;
+
+            validateKnowledgeAnchor(known_from, known_scene_id);
 
             const result = await this.db.query(
                 `INSERT INTO character_knowledge (character_id, knowledge_category, knowledge_item,
-                                                knowledge_level, learned_book_id, learned_context)
-                 VALUES ($1, $2, $3, $4, $5, $6)
+                                                knowledge_level, learned_book_id, learned_context,
+                                                known_from, known_scene_id, fact_id, reveal_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                  RETURNING *`,
                 [character_id, knowledge_category, knowledge_item, knowledge_level,
-                 learned_book_id || null, learned_context || null]
+                 learned_book_id || null, learned_context || null,
+                 known_from || null, known_scene_id || null, fact_id || null, reveal_id || null]
             );
 
             return {
@@ -43,6 +76,7 @@ export class CharacterKnowledgeHandlers {
                               `Knowledge: ${knowledge_item}\n` +
                               `Category: ${knowledge_category}\n` +
                               `Level: ${knowledge_level}\n` +
+                              `Known from: ${describeAnchor(known_from, known_scene_id)}\n` +
                               `Context: ${learned_context || 'Not specified'}`
                     }
                 ]
@@ -143,6 +177,7 @@ export class CharacterKnowledgeHandlers {
                                   `${knowledge.knowledge_category}: ${knowledge.knowledge_item}\n` +
                                   `  Level: ${knowledge.knowledge_level}\n` +
                                   `  Learned: ${knowledge.learned_book_title || 'Unknown'}\n` +
+                                  `  Known from: ${describeAnchor(knowledge.known_from, knowledge.known_scene_id)}\n` +
                                   `  Context: ${knowledge.learned_context || 'Not specified'}\n`
                               ).join('\n')
                     }
@@ -155,7 +190,8 @@ export class CharacterKnowledgeHandlers {
 
     async handleUpdateCharacterKnowledge(args) {
         try {
-            const { id, knowledge_level, knowledge_item, learned_context, learned_book_id } = args;
+            const { id, knowledge_level, knowledge_item, learned_context, learned_book_id,
+                    known_from, known_scene_id, fact_id, reveal_id } = args;
 
             if (!id) {
                 throw new Error('id is required to identify the knowledge entry to update');
@@ -178,6 +214,14 @@ export class CharacterKnowledgeHandlers {
                 };
             }
 
+            // Validate the anchor as it will stand after the update
+            if (known_from !== undefined || known_scene_id !== undefined) {
+                const cur = checkResult.rows[0];
+                validateKnowledgeAnchor(
+                    known_from !== undefined ? known_from : cur.known_from,
+                    known_scene_id !== undefined ? known_scene_id : cur.known_scene_id);
+            }
+
             // Build dynamic update query - only provided fields are changed
             const updates = [];
             const params = [];
@@ -194,6 +238,10 @@ export class CharacterKnowledgeHandlers {
             setField('knowledge_item', knowledge_item);
             setField('learned_context', learned_context);
             setField('learned_book_id', learned_book_id);
+            setField('known_from', known_from);
+            setField('known_scene_id', known_scene_id);
+            setField('fact_id', fact_id);
+            setField('reveal_id', reveal_id);
 
             if (updates.length === 0) {
                 return {
@@ -225,6 +273,7 @@ export class CharacterKnowledgeHandlers {
                               `Category: ${knowledge.knowledge_category}\n` +
                               `Knowledge: ${knowledge.knowledge_item}\n` +
                               `Level: ${knowledge.knowledge_level}\n` +
+                              `Known from: ${describeAnchor(knowledge.known_from, knowledge.known_scene_id)}\n` +
                               `Context: ${knowledge.learned_context || 'Not specified'}`
                     }
                 ]
