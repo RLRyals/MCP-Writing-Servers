@@ -77,6 +77,7 @@ class PlotMCPServer extends BaseMCPServer {
             this.handleDefineWorldSystem = this.genreExtensions.handleDefineWorldSystem.bind(this.genreExtensions);
             this.handleGetWorldSystems = this.genreExtensions.handleGetWorldSystems.bind(this.genreExtensions);
             this.handleAddRevealEvidence = this.genreExtensions.handleAddRevealEvidence.bind(this.genreExtensions);
+            this.handleAddInformationFlow = this.genreExtensions.handleAddInformationFlow.bind(this.genreExtensions);
             this.handleTrackSystemProgression = this.genreExtensions.handleTrackSystemProgression.bind(this.genreExtensions);
 
             console.error('[PLOT-SERVER] All handler methods bound successfully');
@@ -148,6 +149,7 @@ class PlotMCPServer extends BaseMCPServer {
             'define_world_system': this.handleDefineWorldSystem,
             'get_world_systems': this.handleGetWorldSystems,
             'add_reveal_evidence': this.handleAddRevealEvidence,
+            'add_information_flow': this.handleAddInformationFlow,
             'track_system_progression': this.handleTrackSystemProgression
         };
 

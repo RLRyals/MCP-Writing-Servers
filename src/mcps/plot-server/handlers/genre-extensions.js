@@ -44,18 +44,18 @@ export class GenreExtensions {
                             items: { type: 'integer' },
                             description: 'Character IDs who learn this information'
                         },
-                        revealed_in_chapter: {
+                        revealed_in_scene_id: {
                             type: 'integer',
-                            description: 'Chapter where revealed (optional)'
+                            description: 'Outline scene (outline_works id) where revealed (optional; book/chapter derived from it)'
                         },
                         consequences: {
                             type: 'string',
                             description: 'What happens as a result of this reveal (optional)'
                         },
-                        foreshadowing_chapters: {
+                        foreshadowing_scene_ids: {
                             type: 'array',
                             items: { type: 'integer' },
-                            description: 'Chapters where this was hinted at (optional)'
+                            description: 'Outline scene ids where this was hinted at (optional)'
                         }
                     },
                     required: ['plot_thread_id', 'reveal_type', 'information_content', 'reveal_method', 'significance_level']
@@ -134,9 +134,9 @@ export class GenreExtensions {
                             type: 'integer',
                             description: 'Character ID who discovered this (optional)'
                         },
-                        discovery_chapter: {
+                        discovery_scene_id: {
                             type: 'integer',
-                            description: 'Chapter where discovered (optional)'
+                            description: 'Outline scene (outline_works id) where discovered (optional)'
                         },
                         significance: {
                             type: 'string',
@@ -145,6 +145,27 @@ export class GenreExtensions {
                         }
                     },
                     required: ['reveal_id', 'evidence_type', 'evidence_description']
+                }
+            },
+            {
+                name: 'add_information_flow',
+                description: 'Record who learns an information reveal, and in which outline scene. Set learned_by_reader=true for the reader (a reader reveal is a reveal with a reader information_flow row)',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        reveal_id: { type: 'integer', description: 'Information reveal ID' },
+                        learned_by_character_id: { type: 'integer', description: 'Character who learns it (omit when the learner is the reader)' },
+                        learned_by_reader: { type: 'boolean', description: 'True when the reader learns it (default false)' },
+                        learned_in_scene_id: { type: 'integer', description: 'Outline scene (outline_works id) where learned (optional)' },
+                        learned_from_character_id: { type: 'integer', description: 'Character who told them (optional)' },
+                        knowledge_level: {
+                            type: 'string',
+                            enum: ['complete', 'partial', 'misunderstood', 'suspected'],
+                            description: 'How much they learn (default complete)'
+                        },
+                        learning_context: { type: 'string', description: 'Circumstances of learning (optional)' }
+                    },
+                    required: ['reveal_id']
                 }
             },
             {
@@ -218,12 +239,14 @@ export class GenreExtensions {
                 }
             }
             
+            await this.assertScenesExist([args.revealed_in_scene_id, ...(args.foreshadowing_scene_ids || [])]);
+
             // Create the information reveal
             const insertQuery = `
                 INSERT INTO information_reveals (
                     plot_thread_id, reveal_type, information_content, reveal_method,
-                    significance_level, affects_characters, revealed_in_chapter,
-                    consequences, foreshadowing_chapters
+                    significance_level, affects_characters, revealed_in_scene_id,
+                    consequences, foreshadowing_scene_ids
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 RETURNING id, created_at
             `;
@@ -235,9 +258,9 @@ export class GenreExtensions {
                 args.reveal_method,
                 args.significance_level,
                 args.affects_characters || null,
-                args.revealed_in_chapter || null,
+                args.revealed_in_scene_id || null,
                 args.consequences || null,
-                args.foreshadowing_chapters || null
+                args.foreshadowing_scene_ids || null
             ]);
             
             const thread = threadCheck.rows[0];
@@ -254,7 +277,7 @@ export class GenreExtensions {
                               `**Significance:** ${args.significance_level}\n` +
                               `**Associated Thread:** "${thread.title}"\n` +
                               `${args.affects_characters?.length ? `**Affects ${args.affects_characters.length} character(s)**\n` : ''}` +
-                              `${args.revealed_in_chapter ? `**Revealed in Chapter:** ${args.revealed_in_chapter}\n` : ''}` +
+                              `${args.revealed_in_scene_id ? `**Revealed in Scene:** ${args.revealed_in_scene_id}\n` : ''}` +
                               `*This works for any genre: evidence (mystery), secrets (romance), world rules (fantasy), backstory (literary)*`
                     }
                 ]
@@ -416,6 +439,63 @@ export class GenreExtensions {
     // EVIDENCE AND RELATIONSHIP TRACKING
     // =============================================
 
+    // Scene refs are outline_works ids; book/chapter are derived, never stored.
+    async assertScenesExist(ids) {
+        const wanted = [...new Set(ids.filter(id => id !== undefined && id !== null))];
+        if (wanted.length === 0) return;
+        const found = await this.db.query('SELECT id FROM outline_works WHERE id = ANY($1)', [wanted]);
+        const have = new Set(found.rows.map(r => r.id));
+        const missing = wanted.filter(id => !have.has(id));
+        if (missing.length > 0) {
+            throw new Error(`Outline scene(s) not found: ${missing.join(', ')}`);
+        }
+    }
+
+    async handleAddInformationFlow(args) {
+        try {
+            const byReader = args.learned_by_reader === true;
+            if (!byReader && !args.learned_by_character_id) {
+                throw new Error('Provide learned_by_character_id, or set learned_by_reader=true');
+            }
+            const revealCheck = await this.db.query(
+                'SELECT id FROM information_reveals WHERE id = $1', [args.reveal_id]);
+            if (revealCheck.rows.length === 0) {
+                throw new Error(`Information reveal with ID ${args.reveal_id} not found`);
+            }
+            await this.assertScenesExist([args.learned_in_scene_id]);
+
+            const result = await this.db.query(`
+                INSERT INTO information_flow (
+                    reveal_id, learned_by_character_id, learned_by_reader, learned_in_scene_id,
+                    learned_from_character_id, knowledge_level, learning_context
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id
+            `, [
+                args.reveal_id,
+                byReader ? null : args.learned_by_character_id,
+                byReader,
+                args.learned_in_scene_id || null,
+                args.learned_from_character_id || null,
+                args.knowledge_level || 'complete',
+                args.learning_context || null
+            ]);
+
+            return {
+                content: [{
+                    type: 'text',
+                    text: `Information flow recorded!\n\n` +
+                          `**Flow ID:** ${result.rows[0].id}\n` +
+                          `**Reveal:** ${args.reveal_id}\n` +
+                          `**Learner:** ${byReader ? 'the reader' : `character ${args.learned_by_character_id}`}\n` +
+                          `**Knowledge level:** ${args.knowledge_level || 'complete'}\n` +
+                          `${args.learned_in_scene_id ? `**Learned in Scene:** ${args.learned_in_scene_id}\n` : ''}`
+                }]
+            };
+        } catch (error) {
+            throw new Error(`Failed to add information flow: ${error.message}`);
+        }
+    }
+
     async handleAddRevealEvidence(args) {
         try {
             // Validate reveal exists
@@ -428,11 +508,13 @@ export class GenreExtensions {
                 throw new Error(`Information reveal with ID ${args.reveal_id} not found`);
             }
             
+            await this.assertScenesExist([args.discovery_scene_id]);
+
             // Create the evidence
             const insertQuery = `
                 INSERT INTO reveal_evidence (
                     reveal_id, evidence_type, evidence_description,
-                    discovered_by, discovery_chapter, significance
+                    discovered_by, discovery_scene_id, significance
                 ) VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING id, created_at
             `;
@@ -442,7 +524,7 @@ export class GenreExtensions {
                 args.evidence_type,
                 args.evidence_description,
                 args.discovered_by || null,
-                args.discovery_chapter || null,
+                args.discovery_scene_id || null,
                 args.significance || 'supporting'
             ]);
             
@@ -455,7 +537,7 @@ export class GenreExtensions {
                               `**Type:** ${args.evidence_type}\n` +
                               `**Description:** ${args.evidence_description}\n` +
                               `**Significance:** ${args.significance || 'supporting'}\n` +
-                              `${args.discovery_chapter ? `**Discovered in Chapter:** ${args.discovery_chapter}\n` : ''}` 
+                              `${args.discovery_scene_id ? `**Discovered in Scene:** ${args.discovery_scene_id}\n` : ''}` 
                     }
                 ]
             };
