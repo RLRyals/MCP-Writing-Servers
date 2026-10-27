@@ -1,4 +1,4 @@
--- Migration: 062_canon_scene_pointers
+-- Migration: 064_canon_scene_pointers
 -- Description: Canon Over Time (mws-ntf, design mws-44u). outline_scene_events
 -- POINT at the reveal / knowledge / detail / promise row (never copy it) and can
 -- start or end a truth. Plot threads become the parent of promises. The
@@ -8,8 +8,8 @@
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM migrations WHERE filename = '062_canon_scene_pointers.sql') THEN
-        RAISE NOTICE 'Migration 062_canon_scene_pointers.sql already applied, skipping.';
+    IF EXISTS (SELECT 1 FROM migrations WHERE filename = '064_canon_scene_pointers.sql') THEN
+        RAISE NOTICE 'Migration 064_canon_scene_pointers.sql already applied, skipping.';
         RETURN;
     END IF;
 
@@ -44,8 +44,8 @@ BEGIN
     ALTER TABLE character_chapter_presence DROP COLUMN IF EXISTS reveals_this_chapter;
     ALTER TABLE character_chapter_presence DROP COLUMN IF EXISTS suspects_this_chapter;
 
-    INSERT INTO migrations (filename) VALUES ('062_canon_scene_pointers.sql')
+    INSERT INTO migrations (filename) VALUES ('064_canon_scene_pointers.sql')
     ON CONFLICT (filename) DO NOTHING;
 
-    RAISE NOTICE 'Migration 062_canon_scene_pointers.sql completed successfully.';
+    RAISE NOTICE 'Migration 064_canon_scene_pointers.sql completed successfully.';
 END $$;
