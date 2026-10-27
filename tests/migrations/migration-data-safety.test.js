@@ -26,7 +26,7 @@ const FORBIDDEN = [
 ];
 
 function stripComments(sql) {
-    return sql.split('\n').map(l => l.replace(/--.*$/, ''));
+    return sql.split(/\r?\n/).map(l => l.replace(/--.*$/, ''));
 }
 
 describe('migration data-safety guard (>= 062)', () => {
@@ -38,7 +38,7 @@ describe('migration data-safety guard (>= 062)', () => {
 
     for (const f of files) {
         it(`${f} does not destroy existing data`, () => {
-            const raw = fs.readFileSync(path.join(dir, f), 'utf8').split('\n');
+            const raw = fs.readFileSync(path.join(dir, f), 'utf8').split(/\r?\n/);
             const code = stripComments(raw.join('\n'));
             const problems = [];
             code.forEach((line, i) => {

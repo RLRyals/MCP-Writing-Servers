@@ -54,3 +54,12 @@ export async function createThrowawayDb(beforeNumber) {
         }
     };
 }
+
+// Minimal fixture rows (neutral names) so tests can seed dependent tables.
+export async function seedBasics(client) {
+    const a = await client.query(`INSERT INTO authors (name) VALUES ('Fixture Author') RETURNING id`);
+    const s = await client.query(`INSERT INTO series (author_id, title) VALUES ($1, 'Fixture Series') RETURNING id`, [a.rows[0].id]);
+    const b = await client.query(`INSERT INTO books (series_id, title, book_number) VALUES ($1, 'Fixture Book', 1) RETURNING id`, [s.rows[0].id]);
+    const c = await client.query(`INSERT INTO characters (series_id, name) VALUES ($1, 'Fixture Character') RETURNING id`, [s.rows[0].id]);
+    return { seriesId: s.rows[0].id, bookId: b.rows[0].id, characterId: c.rows[0].id };
+}
