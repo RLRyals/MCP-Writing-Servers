@@ -406,9 +406,9 @@ CREATE TABLE IF NOT EXISTS character_chapter_presence (
     allies_with INTEGER[], -- character_ids they work with
     
     -- Knowledge and secrets
-    learns_this_chapter TEXT[], -- new information gained
-    reveals_this_chapter TEXT[], -- secrets they reveal
-    suspects_this_chapter TEXT[], -- new suspicions formed
+    learns_this_chapter TEXT[], -- DEPRECATED (mws-ntf): copied to character_knowledge by migration 064; kept until data confirmed migrated
+    reveals_this_chapter TEXT[], -- DEPRECATED (mws-ntf): no replacement table yet (see information_reveals); kept, never dropped without migrating
+    suspects_this_chapter TEXT[], -- DEPRECATED (mws-ntf): copied to character_knowledge (level 'suspects') by migration 064; kept until data confirmed migrated
     
     -- Character development
     character_growth TEXT, -- how they change in this chapter

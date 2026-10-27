@@ -76,9 +76,10 @@ describe('plot thread parents promises (mws-ntf)', () => {
     });
 });
 
-describe('character_presence knowledge fields retired (mws-ntf)', () => {
-    it('track_character_presence no longer takes learns/reveals', () => {
+describe('character_presence knowledge fields deprecated, not removed (mws-ntf)', () => {
+    it('track_character_presence still accepts learns/reveals as DEPRECATED params', () => {
         const props = characterTimelineToolsSchema.find(t => t.name === 'track_character_presence').inputSchema.properties;
-        assert.ok(!props.learns_this_chapter && !props.reveals_this_chapter);
+        assert.match(props.learns_this_chapter.description, /DEPRECATED/);
+        assert.match(props.reveals_this_chapter.description, /DEPRECATED/);
     });
 });

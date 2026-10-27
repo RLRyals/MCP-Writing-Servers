@@ -66,6 +66,14 @@ export class CharacterKnowledgeHandlers {
                 [character_id, knowledge_category, knowledge_item, knowledge_level, learned_context || null]
             );
 
+            // Also update the character's presence in the chapter to track what they learned
+            await this.db.query(
+                `UPDATE character_chapter_presence
+                 SET learns_this_chapter = COALESCE(learns_this_chapter, '{}') || $3::text[]
+                 WHERE character_id = $1 AND chapter_id = $2`,
+                [character_id, learned_chapter_id, [knowledge_item]]
+            );
+
             return {
                 content: [
                     {

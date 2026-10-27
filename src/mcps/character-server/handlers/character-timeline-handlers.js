@@ -24,14 +24,14 @@ export class CharacterTimelineHandlers {
         try {
             const { character_id, chapter_id, scene_id, presence_type, importance_level,
                     physical_state, emotional_state, enters_at_scene, exits_at_scene,
-                    character_growth } = args;
+                    learns_this_chapter, reveals_this_chapter, character_growth } = args;
 
             const result = await this.db.query(
                 `INSERT INTO character_chapter_presence
                  (character_id, chapter_id, scene_id, presence_type, importance_level, physical_state,
-                  emotional_state, enters_at_scene, exits_at_scene,
-                  character_growth)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                  emotional_state, enters_at_scene, exits_at_scene, learns_this_chapter,
+                  reveals_this_chapter, character_growth)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                  ON CONFLICT (character_id, chapter_id)
                  DO UPDATE SET
                    scene_id = EXCLUDED.scene_id,
@@ -41,12 +41,14 @@ export class CharacterTimelineHandlers {
                    emotional_state = EXCLUDED.emotional_state,
                    enters_at_scene = EXCLUDED.enters_at_scene,
                    exits_at_scene = EXCLUDED.exits_at_scene,
+                   learns_this_chapter = EXCLUDED.learns_this_chapter,
+                   reveals_this_chapter = EXCLUDED.reveals_this_chapter,
                    character_growth = EXCLUDED.character_growth,
                    updated_at = CURRENT_TIMESTAMP
                  RETURNING *`,
                 [character_id, chapter_id, scene_id || null, presence_type, importance_level || null,
                  physical_state || null, emotional_state || null, enters_at_scene || null,
-                 exits_at_scene || null,
+                 exits_at_scene || null, learns_this_chapter || [], reveals_this_chapter || [],
                  character_growth || null]
             );
 
@@ -83,7 +85,9 @@ export class CharacterTimelineHandlers {
                     ccp.presence_type,
                     ccp.physical_state,
                     ccp.emotional_state,
-                    ccp.character_growth
+                    ccp.character_growth,
+                    ccp.learns_this_chapter,
+                    ccp.reveals_this_chapter
                 FROM character_chapter_presence ccp
                 JOIN chapters c ON ccp.chapter_id = c.id
                 JOIN books b ON c.book_id = b.id
@@ -121,6 +125,12 @@ export class CharacterTimelineHandlers {
                 if (row.physical_state) timelineText += `  Physical: ${row.physical_state}\n`;
                 if (row.emotional_state) timelineText += `  Emotional: ${row.emotional_state}\n`;
                 if (row.character_growth) timelineText += `  Growth: ${row.character_growth}\n`;
+                if (row.learns_this_chapter && row.learns_this_chapter.length > 0) {
+                    timelineText += `  Learns: ${row.learns_this_chapter.join(', ')}\n`;
+                }
+                if (row.reveals_this_chapter && row.reveals_this_chapter.length > 0) {
+                    timelineText += `  Reveals: ${row.reveals_this_chapter.join(', ')}\n`;
+                }
                 timelineText += `\n`;
             });
 
@@ -190,6 +200,13 @@ export class CharacterTimelineHandlers {
             if (check_type === 'emotional_state' || check_type === 'all') {
                 if (fromState.emotional_state && toState.emotional_state) {
                     continuityChecks.push(`Emotional state: "${fromState.emotional_state}" to "${toState.emotional_state}"`);
+                }
+            }
+
+            // Check knowledge continuity
+            if (check_type === 'knowledge' || check_type === 'all') {
+                if (fromState.learns_this_chapter && fromState.learns_this_chapter.length > 0) {
+                    continuityChecks.push(`Knowledge gained in chapter ${fromState.from_chapter}: ${fromState.learns_this_chapter.join(', ')}`);
                 }
             }
 
