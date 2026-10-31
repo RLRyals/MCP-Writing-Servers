@@ -212,10 +212,21 @@ export const characterKnowledgeToolsSchema = [
                 },
                 knowledge_level: {
                     type: 'string',
-                    enum: ['knows', 'suspects', 'unaware', 'forgot'],
+                    enum: ['knows', 'suspects', 'unaware', 'forgot', 'locked'],
                     description: 'Knowledge level?'
                 },
                 learned_book_id: { type: 'integer', description: 'Book learned in?' },
+                known_from: {
+                    type: 'string',
+                    enum: ['scene', 'before_series', 'off_page'],
+                    description: 'Where the knowledge comes from: learned in a scene, before the series, or off-page (known by scene X)?'
+                },
+                known_scene_id: {
+                    type: 'integer',
+                    description: 'Outline scene (outline_works id): where learned (scene) or by when known (off_page). Omit for before_series'
+                },
+                fact_id: { type: 'integer', description: 'outline_facts id this knowledge is about?' },
+                reveal_id: { type: 'integer', description: 'information_reveals id this knowledge is about?' },
                 learned_context: {
                     type: 'string',
                     description: 'How/when learned?'
@@ -241,7 +252,7 @@ export const characterKnowledgeToolsSchema = [
                 },
                 knowledge_level: {
                     type: 'string',
-                    enum: ['knows', 'suspects', 'unaware', 'forgot'],
+                    enum: ['knows', 'suspects', 'unaware', 'forgot', 'locked'],
                     description: 'Knowledge level?',
                     default: 'knows'
                 },
@@ -264,7 +275,7 @@ export const characterKnowledgeToolsSchema = [
                 id: { type: 'integer', description: 'character_knowledge row id (required)' },
                 knowledge_level: {
                     type: 'string',
-                    enum: ['knows', 'suspects', 'unaware', 'forgot'],
+                    enum: ['knows', 'suspects', 'unaware', 'forgot', 'locked'],
                     description: 'Corrected knowledge level?'
                 },
                 knowledge_item: {
@@ -275,7 +286,18 @@ export const characterKnowledgeToolsSchema = [
                     type: 'string',
                     description: 'Corrected how/when learned?'
                 },
-                learned_book_id: { type: 'integer', description: 'Corrected book learned in?' }
+                learned_book_id: { type: 'integer', description: 'Corrected book learned in?' },
+                known_from: {
+                    type: 'string',
+                    enum: ['scene', 'before_series', 'off_page'],
+                    description: 'Where the knowledge comes from: learned in a scene, before the series, or off-page (known by scene X)?'
+                },
+                known_scene_id: {
+                    type: 'integer',
+                    description: 'Outline scene (outline_works id): where learned (scene) or by when known (off_page). Omit for before_series'
+                },
+                fact_id: { type: 'integer', description: 'outline_facts id this knowledge is about?' },
+                reveal_id: { type: 'integer', description: 'information_reveals id this knowledge is about?' }
             },
             required: ['id']
         }
@@ -323,7 +345,7 @@ export const characterKnowledgeToolsSchema = [
                 },
                 knowledge_level: {
                     type: 'string',
-                    enum: ['knows', 'suspects', 'unaware', 'forgot'],
+                    enum: ['knows', 'suspects', 'unaware', 'forgot', 'locked'],
                     description: 'Level filter?'
                 }
             },
