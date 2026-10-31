@@ -9,6 +9,7 @@
 
 import { briefToolsSchema } from '../schemas/outline-tools-schema.js';
 import { WEIGHT_ORDER_SQL } from './promises-handlers.js';
+import { renderSceneState } from './scene-state-handlers.js';
 
 export class BriefHandlers {
     constructor(db) {
@@ -155,6 +156,34 @@ export class BriefHandlers {
                 knowledgeByChar.push({ id: cid, name, facts: k.rows });
             }
 
+            // 7. State note of the nearest earlier scene that has one (Canon Over Time):
+            //    the next scene's plan gets this instead of rereading prose.
+            const prevState = await this.db.query(
+                `WITH RECURSIVE
+                 ancestors AS (
+                     SELECT id, parent_id FROM outline_works WHERE id = $1
+                     UNION ALL
+                     SELECT w.id, w.parent_id FROM outline_works w
+                       JOIN ancestors a ON w.id = a.parent_id
+                 ),
+                 root AS (SELECT id FROM ancestors WHERE parent_id IS NULL LIMIT 1),
+                 tree AS (
+                     SELECT w.id, w.parent_id, w.title, ARRAY[w.sequence]::int[] AS path
+                       FROM outline_works w, root WHERE w.id = root.id
+                     UNION ALL
+                     SELECT w.id, w.parent_id, w.title, t.path || w.sequence
+                       FROM outline_works w JOIN tree t ON w.parent_id = t.id
+                 ),
+                 tp AS (SELECT path FROM tree WHERE id = $1)
+                 SELECT n.*, t.title AS scene_title
+                   FROM outline_scene_state_notes n
+                   JOIN tree t ON t.id = n.work_id, tp
+                  WHERE t.path < tp.path AND n.work_id <> $1
+                  ORDER BY t.path DESC
+                  LIMIT 1`,
+                [work_id]
+            );
+
             // Render.
             const lines = [];
             lines.push(`# Scene Brief — [${self.work_type}#${self.id}] ${self.title ?? '(untitled)'} (${self.status})`);
@@ -194,6 +223,13 @@ export class BriefHandlers {
                 }
             }
             lines.push('');
+
+            if (prevState.rows.length > 0) {
+                const ps = prevState.rows[0];
+                lines.push(`## State carried from the previous scene — [scene#${ps.work_id}] ${ps.scene_title ?? '(untitled)'}`);
+                lines.push(...renderSceneState(ps));
+                lines.push('');
+            }
 
             lines.push(`## Open promises connected to this work (${openPromises.rows.length})`);
             lines.push('_(planted on this work or an ancestor, or referenced in this scene\'s events. Use list_open_promises for series-wide scope.)_');

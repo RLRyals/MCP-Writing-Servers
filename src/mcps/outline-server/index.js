@@ -16,6 +16,7 @@ import { EvidenceHandlers } from './handlers/evidence-handlers.js';
 import { SceneEventsHandlers } from './handlers/scene-events-handlers.js';
 import { BriefHandlers } from './handlers/brief-handlers.js';
 import { StagingHandlers } from './handlers/staging-handlers.js';
+import { SceneStateHandlers } from './handlers/scene-state-handlers.js';
 
 class OutlineMCPServer extends BaseMCPServer {
     constructor() {
@@ -28,6 +29,7 @@ class OutlineMCPServer extends BaseMCPServer {
         this.sceneEventsHandlers = new SceneEventsHandlers(this.db);
         this.briefHandlers = new BriefHandlers(this.db);
         this.stagingHandlers = new StagingHandlers(this.db);
+        this.sceneStateHandlers = new SceneStateHandlers(this.db);
 
         this.tools = this.getTools();
 
@@ -49,7 +51,8 @@ class OutlineMCPServer extends BaseMCPServer {
             ...this.evidenceHandlers.getEvidenceTools(),
             ...this.sceneEventsHandlers.getSceneEventsTools(),
             ...this.briefHandlers.getBriefTools(),
-            ...this.stagingHandlers.getStagingTools()
+            ...this.stagingHandlers.getStagingTools(),
+            ...this.sceneStateHandlers.getSceneStateTools()
         ];
     }
 
@@ -96,7 +99,10 @@ class OutlineMCPServer extends BaseMCPServer {
             'list_trackers': this.stagingHandlers.handleListTrackers.bind(this.stagingHandlers),
             'record_tracker_change': this.stagingHandlers.handleRecordTrackerChange.bind(this.stagingHandlers),
             'get_tracker_values_at': this.stagingHandlers.handleGetTrackerValuesAt.bind(this.stagingHandlers),
-            'get_staged_scene': this.stagingHandlers.handleGetStagedScene.bind(this.stagingHandlers)
+            'get_staged_scene': this.stagingHandlers.handleGetStagedScene.bind(this.stagingHandlers),
+            // scene state notes
+            'record_scene_state': this.sceneStateHandlers.handleRecordSceneState.bind(this.sceneStateHandlers),
+            'get_scene_state': this.sceneStateHandlers.handleGetSceneState.bind(this.sceneStateHandlers)
         };
         return handlers[toolName];
     }
