@@ -428,7 +428,7 @@ export const sceneEventsToolsSchema = [
 export const briefToolsSchema = [
     {
         name: 'get_scene_brief',
-        description: 'One-call drafting brief: scene\'s outline + ancestry summaries (chapter/act/book/series) + scene_events + open promises connected to this work, ordered by weight (planted on this work or an ancestor, or already referenced in this scene\'s events) + unconverted evidence connected to this work + each present character\'s knowledge state. Use at the start of a drafting session to load context. For series-wide open-promise lookups, call list_open_promises separately.',
+        description: 'One-call drafting brief: scene\'s outline + ancestry summaries (chapter/act/book/series) + scene_events + open promises connected to this work, ordered by weight (planted on this work or an ancestor, or already referenced in this scene\'s events) + unconverted evidence connected to this work + each present character\'s knowledge state + the state note of the previous scene (what carries forward). Use at the start of a drafting session to load context. For series-wide open-promise lookups, call list_open_promises separately.',
         inputSchema: {
             type: 'object',
             properties: {
@@ -451,4 +451,53 @@ export const outlineToolsSchema = [
     ...sceneEventsToolsSchema,
     ...briefToolsSchema,
     ...stagingToolsSchema
+];
+
+// =============================================
+// SCENE STATE NOTE TOOLS (Canon Over Time, mws-wm4)
+// =============================================
+export const sceneStateToolsSchema = [
+    {
+        name: 'record_scene_state',
+        description: 'Call when a scene is approved. Records the scene\'s state note in plain words (no scores): knowledge changes, what stops being true, decisions (+ alternatives turned down), emotion carried forward, open pressures. Upserts one note per scene; only the fields you send are changed. Optional knowledge[] also writes character_knowledge rows with this scene as the known-from anchor. The next scene\'s get_scene_brief carries this note instead of the prose.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                work_id: { type: 'integer', description: 'The approved scene (outline_works.id)' },
+                knowledge_changes: { type: 'string', description: 'Who now knows / suspects / no longer knows what, in plain words' },
+                stops_being_true: { type: 'string', description: 'What is no longer true after this scene' },
+                decisions: { type: 'string', description: 'Choices the characters made' },
+                alternatives_turned_down: { type: 'string', description: 'Options they considered and rejected' },
+                emotion_carried_forward: { type: 'string', description: 'Feeling the next scene starts from' },
+                open_pressures: { type: 'string', description: 'Unresolved pressures still pushing on the characters' },
+                knowledge: {
+                    type: 'array',
+                    description: 'character_knowledge rows to add, anchored to this scene (known_from=scene)',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            character_id: { type: 'integer' },
+                            knowledge_item: { type: 'string' },
+                            knowledge_category: { type: 'string', description: 'Default: uncategorized' },
+                            knowledge_level: { type: 'string', enum: ['knows','suspects','unaware','forgot','locked'], description: 'Default: knows' },
+                            learned_context: { type: 'string' },
+                            fact_id: { type: 'integer' },
+                            reveal_id: { type: 'integer' }
+                        },
+                        required: ['character_id','knowledge_item']
+                    }
+                }
+            },
+            required: ['work_id']
+        }
+    },
+    {
+        name: 'get_scene_state',
+        description: 'Read the state note recorded for one scene (see record_scene_state).',
+        inputSchema: {
+            type: 'object',
+            properties: { work_id: { type: 'integer', description: 'The scene (outline_works.id)' } },
+            required: ['work_id']
+        }
+    }
 ];
