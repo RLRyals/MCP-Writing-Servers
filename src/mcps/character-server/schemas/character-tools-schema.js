@@ -384,12 +384,12 @@ export const characterTimelineToolsSchema = [
                 learns_this_chapter: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Info learned?'
+                    description: 'DEPRECATED (mws-ntf): use character_knowledge / information_reveals. Still stored in the kept legacy column.'
                 },
                 reveals_this_chapter: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Secrets revealed?'
+                    description: 'DEPRECATED (mws-ntf): use information_reveals. Still stored in the kept legacy column.'
                 },
                 character_growth: { type: 'string', description: 'Character changes?' }
             },

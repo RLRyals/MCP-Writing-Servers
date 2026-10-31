@@ -262,6 +262,7 @@ export const promisesToolsSchema = [
                 planted_work_id: { type: 'integer', description: 'Where it is planted (often a scene work_id)' },
                 carries_to_series: { type: 'boolean', description: 'Pays off in a future series?' },
                 weight: { type: 'string', enum: ['low','medium','high','critical'], description: 'How much the promise weighs on the reader (optional)' },
+                plot_thread_id: { type: 'integer', description: 'plot_threads.id this promise belongs to (a plot thread is the parent of its promises)' },
                 notes: { type: 'string' }
             },
             required: ['label']
@@ -281,6 +282,7 @@ export const promisesToolsSchema = [
                 status: { type: 'string', enum: ['open','progressing','paid','carried','abandoned'] },
                 carries_to_series: { type: 'boolean' },
                 weight: { type: 'string', enum: ['low','medium','high','critical'], description: 'How much the promise weighs on the reader (optional)' },
+                plot_thread_id: { type: 'integer', description: 'plot_threads.id this promise belongs to (a plot thread is the parent of its promises)' },
                 notes: { type: 'string' }
             },
             required: ['promise_id']
@@ -309,7 +311,8 @@ export const promisesToolsSchema = [
                 series_root_id: { type: 'integer', description: 'Filter to a series' },
                 status: { type: 'string', enum: ['open','progressing','paid','carried','abandoned'], description: 'Filter to one status (default: all)' },
                 scope_work_id: { type: 'integer', description: 'Limit to promises planted within this subtree' },
-                promise_type: { type: 'string' }
+                promise_type: { type: 'string' },
+                plot_thread_id: { type: 'integer', description: 'Only promises under this plot thread' }
             },
             required: []
         }
@@ -383,10 +386,13 @@ export const sceneEventsToolsSchema = [
                     items: {
                         type: 'object',
                         properties: {
-                            event_type: { type: 'string', enum: ['reveals_fact','plants_promise','pays_promise','character_choice','consequence','evidence_produced','evidence_converted','action','position','line','display','sound','prop_state','dressing'], description: 'Story-fact types plus staging types: action (what visibly happens), position (where someone/something ends up), line (fixed dialogue: speaker in character_id, exact words in note, channel), display (what is on a screen/overlay), sound, prop_state (an object changes state), dressing (an item in the place as found: element_id + location_id, evidence_id when the position is a clue)' },
+                            event_type: { type: 'string', enum: ['reveals_fact','plants_promise','pays_promise','character_choice','consequence','evidence_produced','evidence_converted','action','position','line','display','sound','prop_state','dressing','reveals','learns','starts_truth','ends_truth'], description: 'Story-fact types plus staging types (and Canon Over Time types: reveals = scene shows a reveal_id, learns = character gains knowledge_id, starts_truth / ends_truth = the pointed-at fact_id, detail_id or knowledge_id starts or stops being true at this scene): action (what visibly happens), position (where someone/something ends up), line (fixed dialogue: speaker in character_id, exact words in note, channel), display (what is on a screen/overlay), sound, prop_state (an object changes state), dressing (an item in the place as found: element_id + location_id, evidence_id when the position is a clue)' },
                             fact_id: { type: 'integer' },
                             promise_id: { type: 'integer' },
                             evidence_id: { type: 'integer' },
+                            reveal_id: { type: 'integer', description: 'information_reveals.id this scene shows (pointer, never a copy)' },
+                            knowledge_id: { type: 'integer', description: 'character_knowledge.id this scene creates or changes' },
+                            detail_id: { type: 'integer', description: 'character_details.id that starts/ends being true here' },
                             character_id: { type: 'integer', description: 'Who the event is about (for a line, the speaker)' },
                             location_id: { type: 'integer', description: 'locations.id the event happens at or refers to' },
                             element_id: { type: 'integer', description: 'world_elements.id of the prop/equipment/vehicle involved' },

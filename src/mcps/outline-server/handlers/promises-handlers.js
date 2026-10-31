@@ -34,16 +34,16 @@ export class PromisesHandlers {
     async handleCreatePromise(args) {
         try {
             const { series_root_id, promise_type, label, description,
-                    planted_work_id, carries_to_series, notes, weight } = args;
+                    planted_work_id, carries_to_series, notes, weight, plot_thread_id } = args;
             checkWeight(weight);
             const result = await this.db.query(
                 `INSERT INTO outline_promises
                     (series_root_id, promise_type, label, description, planted_work_id,
-                     carries_to_series, notes, weight)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+                     carries_to_series, notes, weight, plot_thread_id)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
                 [series_root_id || null, promise_type || null, label,
                  description || null, planted_work_id || null,
-                 !!carries_to_series, notes || null, weight || null]
+                 !!carries_to_series, notes || null, weight || null, plot_thread_id || null]
             );
             const pr = result.rows[0];
             return { content: [{ type: 'text', text:
@@ -52,6 +52,7 @@ export class PromisesHandlers {
                 `Type: ${pr.promise_type ?? '(untyped)'}\n` +
                 `Weight: ${pr.weight ?? '(unweighted)'}\n` +
                 `Planted at work: ${pr.planted_work_id ?? '(unplanted)'}\n` +
+                `Plot thread: ${pr.plot_thread_id ?? '(none)'}\n` +
                 `Status: ${pr.status}\n` +
                 `Carries to series: ${pr.carries_to_series}` +
                 formatNotes(pr.notes)
@@ -64,7 +65,7 @@ export class PromisesHandlers {
     async handleUpdatePromise(args) {
         try {
             const { promise_id, label, description, planted_work_id, payoff_work_id,
-                    status, carries_to_series, notes, weight } = args;
+                    status, carries_to_series, notes, weight, plot_thread_id } = args;
             checkWeight(weight);
 
             const updates = [];
@@ -78,6 +79,7 @@ export class PromisesHandlers {
             if (carries_to_series !== undefined) { updates.push(`carries_to_series = $${p++}`);  values.push(!!carries_to_series); }
             if (notes !== undefined)             { updates.push(`notes = $${p++}`);              values.push(notes); }
             if (weight !== undefined)            { updates.push(`weight = $${p++}`);             values.push(weight); }
+            if (plot_thread_id !== undefined)    { updates.push(`plot_thread_id = $${p++}`);     values.push(plot_thread_id); }
 
             if (updates.length === 0) {
                 return { content: [{ type: 'text', text: 'No fields to update.' }] };
@@ -165,7 +167,7 @@ export class PromisesHandlers {
 
     async handleListPromises(args) {
         try {
-            const { series_root_id, status, scope_work_id, promise_type } = args;
+            const { series_root_id, status, scope_work_id, promise_type, plot_thread_id } = args;
             if (status !== undefined && status !== null && !PROMISE_STATUSES.includes(status)) {
                 throw new Error(`status must be one of ${PROMISE_STATUSES.join(', ')}`);
             }
@@ -176,6 +178,7 @@ export class PromisesHandlers {
             if (status)         { where.push(`p.status = $${i++}`);           values.push(status); }
             if (series_root_id) { where.push(`p.series_root_id = $${i++}`);   values.push(series_root_id); }
             if (promise_type)   { where.push(`p.promise_type = $${i++}`);     values.push(promise_type); }
+            if (plot_thread_id) { where.push(`p.plot_thread_id = $${i++}`);   values.push(plot_thread_id); }
 
             const cols = `p.*, w.title AS planted_title, w.work_type AS planted_type,
                                  pw.title AS payoff_title, pw.work_type AS payoff_type`;

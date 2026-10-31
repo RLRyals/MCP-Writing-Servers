@@ -8,8 +8,16 @@ import { sceneEventsToolsSchema } from '../schemas/outline-tools-schema.js';
 const VALID_EVENT_TYPES = new Set([
     'reveals_fact','plants_promise','pays_promise',
     'character_choice','consequence','evidence_produced','evidence_converted',
-    'action','position','line','display','sound','prop_state','dressing'
+    'action','position','line','display','sound','prop_state','dressing',
+    'reveals','learns','starts_truth','ends_truth'
 ]);
+// Canon Over Time event types and the pointer(s) each must carry.
+const TRUTH_POINTERS = {
+    reveals: ['reveal_id'],
+    learns: ['knowledge_id'],
+    starts_truth: ['fact_id', 'detail_id', 'knowledge_id'],
+    ends_truth: ['fact_id', 'detail_id', 'knowledge_id']
+};
 const VALID_CHANNELS = new Set(['in_room','comm','ai','off_screen']);
 
 export class SceneEventsHandlers {
@@ -33,6 +41,11 @@ export class SceneEventsHandlers {
             if (ev.channel != null && !VALID_CHANNELS.has(ev.channel)) {
                 throw new Error(`Invalid channel: ${ev.channel}`);
             }
+            // Pointer events must point at a row (never copy its content).
+            const pointer = TRUTH_POINTERS[ev.event_type];
+            if (pointer && !pointer.some(k => ev[k])) {
+                throw new Error(`${ev.event_type} needs one of: ${pointer.join(', ')}`);
+            }
         }
 
         // Verify work exists.
@@ -55,13 +68,15 @@ export class SceneEventsHandlers {
                     const result = await client.query(
                         `INSERT INTO outline_scene_events
                             (work_id, event_type, fact_id, promise_id, evidence_id,
-                             character_id, ordering, note, location_id, element_id, channel)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+                             character_id, ordering, note, location_id, element_id, channel,
+                             reveal_id, knowledge_id, detail_id)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
                         [work_id, ev.event_type,
                          ev.fact_id || null, ev.promise_id || null,
                          ev.evidence_id || null, ev.character_id || null,
                          ev.ordering ?? idx, ev.note || null,
-                         ev.location_id || null, ev.element_id || null, ev.channel || null]
+                         ev.location_id || null, ev.element_id || null, ev.channel || null,
+                         ev.reveal_id || null, ev.knowledge_id || null, ev.detail_id || null]
                     );
                     ids.push(result.rows[0].id);
                 }
