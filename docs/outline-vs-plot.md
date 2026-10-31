@@ -116,7 +116,7 @@ MCP namespace clash — but the *concept* collides hard enough that an agent
 |---|---|---|
 | Table | `outline_evidence_chain` | `reveal_evidence` |
 | What it models | A finding the **protagonist produces but cannot act on directly** — a forensic-tech agency gap. Forces you to name `who_acts_on_it` and the `action_gap_note` (the cost of converting a finding into plot action: off-books, social capital, etc.). | Corroborating detail attached to an **existing information reveal** (`information_reveals.id`) — one piece of support for something already established as "revealed." |
-| Key fields | `finding` (text), `who_acts_on_it` (text), `action_gap_note` (text), `converted_work_id` (→ `outline_works.id`), `status` enum `unconverted/converted/off_books/lost` | `reveal_id` (**required**, → `information_reveals.id`), `evidence_type` enum `physical/witness/circumstantial/digital/forensic`, `evidence_description`, `discovered_by` (→ `characters.id`), `discovery_chapter`, `significance` enum `critical/important/supporting/red_herring` |
+| Key fields | `finding` (text), `who_acts_on_it` (text), `action_gap_note` (text), `converted_work_id` (→ `outline_works.id`), `status` enum `unconverted/converted/off_books/lost` | `reveal_id` (**required**, → `information_reveals.id`), `evidence_type` enum `physical/witness/circumstantial/digital/forensic`, `evidence_description`, `discovered_by` (→ `characters.id`), `discovery_scene_id` (→ `outline_works.id`; legacy `discovery_chapter` deprecated, still accepted), `significance` enum `critical/important/supporting/red_herring` |
 | Required parent | None — floats free, optionally scoped to `series_root_id` (an `outline_works.id`) | **Must** already have a `reveal_id` — `handleAddRevealEvidence` throws `Information reveal with ID {id} not found` if it doesn't resolve (`src/mcps/plot-server/handlers/genre-extensions.js:341-343`) |
 | Lifecycle | `unconverted → converted` (or `off_books`/`lost`), tracked by `list_unconverted_evidence` | No lifecycle/status field at all — it's a permanent corroborating record, not something that gets "resolved" |
 | Genre framing | Written for the forensic-tech protagonist premise specifically (see file header comment) | Explicitly genre-agnostic — `evidence_type` enum leans mystery/forensic but the parent `reveal_type` enum also covers `secret`, `backstory`, `world_rule`, `relationship`, `skill` for non-mystery genres |
@@ -227,9 +227,9 @@ adjacent-sounding things:
 1. **Reveals.** Outline's `record_scene_events(event_type='reveals_fact')`
    logs a fact becoming known to a character at a specific tree node. Plot's
    `create_information_reveal` logs an information reveal against a
-   `plot_thread_id` and (optionally) a `revealed_in_chapter`. Both answer
+   `plot_thread_id` and (optionally) a `revealed_in_scene_id` (an outline scene; the legacy `revealed_in_chapter` is deprecated but still accepted and stored). Both answer
    "when did X become known," anchored to different spines (tree-node+fact
-   vs. thread+chapter). No cross-reference exists between an
+   vs. thread+scene). No cross-reference exists between an
    `outline_facts.id` and an `information_reveals.id`.
 2. **Setup/payoff vs. thread lifecycle.** Outline's `outline_promises`
    (single clue/foreshadow/setup planted at one node, paid off at another,

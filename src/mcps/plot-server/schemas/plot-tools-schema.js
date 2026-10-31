@@ -163,18 +163,27 @@ export const genreExtensionToolsSchema = [
                     items: { type: 'integer' },
                     description: 'Character IDs who learn this?'
                 },
-                revealed_in_chapter: {
+                revealed_in_scene_id: {
                     type: 'integer',
-                    description: 'Reveal chapter ID?'
+                    description: 'Reveal outline scene ID?'
                 },
                 consequences: {
                     type: 'string',
                     description: 'Consequences?'
                 },
+                foreshadowing_scene_ids: {
+                    type: 'array',
+                    items: { type: 'integer' },
+                    description: 'Foreshadowing outline scene IDs?'
+                },
+                revealed_in_chapter: {
+                    type: 'integer',
+                    description: 'DEPRECATED: use revealed_in_scene_id (still stored in legacy column)'
+                },
                 foreshadowing_chapters: {
                     type: 'array',
                     items: { type: 'integer' },
-                    description: 'Foreshadowing chapter IDs?'
+                    description: 'DEPRECATED: use foreshadowing_scene_ids (still stored in legacy column)'
                 }
             },
             required: ['plot_thread_id', 'reveal_type', 'information_content', 'reveal_method', 'significance_level']
@@ -269,9 +278,13 @@ export const genreExtensionToolsSchema = [
                     type: 'integer',
                     description: 'Discoverer character ID?'
                 },
+                discovery_scene_id: {
+                    type: 'integer',
+                    description: 'Discovery outline scene ID?'
+                },
                 discovery_chapter: {
                     type: 'integer',
-                    description: 'Discovery chapter ID?'
+                    description: 'DEPRECATED: use discovery_scene_id (still stored in legacy column)'
                 },
                 significance: {
                     type: 'string',
@@ -280,6 +293,28 @@ export const genreExtensionToolsSchema = [
                 }
             },
             required: ['reveal_id', 'evidence_type', 'evidence_description']
+        }
+    },
+    {
+        name: 'add_information_flow',
+        description: 'Record who learns a reveal and in which scene (learned_by_reader for the reader)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                reveal_id: { type: 'integer', description: 'Reveal ID' },
+                learned_by_character_id: { type: 'integer', description: 'Learner character ID (omit for reader)' },
+                learned_by_reader: { type: 'boolean', description: 'Reader learns it?' },
+                learned_in_scene_id: { type: 'integer', description: 'Outline scene ID where learned?' },
+                learned_in_chapter: { type: 'integer', description: 'DEPRECATED: use learned_in_scene_id (still stored in legacy column)' },
+                learned_from_character_id: { type: 'integer', description: 'Teller character ID?' },
+                knowledge_level: {
+                    type: 'string',
+                    enum: ['complete', 'partial', 'misunderstood', 'suspected'],
+                    description: 'Knowledge level?'
+                },
+                learning_context: { type: 'string', description: 'Context?' }
+            },
+            required: ['reveal_id']
         }
     },
     {
