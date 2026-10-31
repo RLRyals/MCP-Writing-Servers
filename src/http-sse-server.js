@@ -8,6 +8,7 @@ import cors from 'cors';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
+import { handleStreamableHttpPost, methodNotAllowed } from './shared/streamable-http.js';
 
 // Load environment variables
 dotenv.config();
@@ -278,6 +279,15 @@ function createServerEndpoint(serverConfig) {
         next();
     });
 
+    // Streamable HTTP endpoint (stateless, survives container restarts -- bead mws-10c).
+    // Claude Code user-scope entries point here instead of `docker exec ... stdio-adapter.js`.
+    app.post('/mcp', express.json({ limit: '10mb' }), async (req, res) => {
+        const mcpServer = await getServerInstance(serverClass, name);
+        await handleStreamableHttpPost(mcpServer, req, res);
+    });
+    app.get('/mcp', methodNotAllowed);
+    app.delete('/mcp', methodNotAllowed);
+
     // Root SSE endpoint - GET creates SSE stream, POST handles messages
     app.get('/', async (req, res) => {
         const sessionId = randomUUID();
@@ -378,6 +388,7 @@ function createServerEndpoint(serverConfig) {
                 })),
                 endpoints: {
                     sse: `http://localhost:${port}/`,
+                    mcp: `http://localhost:${port}/mcp`,
                     health: `http://localhost:${port}/health`,
                     info: `http://localhost:${port}/info`,
                     tools: `http://localhost:${port}/tools`,
