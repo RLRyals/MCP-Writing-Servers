@@ -373,3 +373,18 @@ ISC
 ## Contributing
 
 Issues and pull requests are welcome at: https://github.com/RLRyals/MCP-Writing-Servers/issues
+
+## Restart-proof alternative: streamable HTTP (`/mcp`)
+
+stdio via `docker exec` dies for good when the container restarts (stdio cannot resume),
+so Claude Code needs `/mcp` reconnect after every update. Every server started by
+`src/http-sse-server.js` also exposes a **stateless streamable-HTTP** endpoint:
+
+```
+POST http://127.0.0.1:<port>/mcp      # kanban 3015, npe 3011, workflow-manager 3012, ...
+claude mcp add --scope user --transport http kanban http://127.0.0.1:3015/mcp
+```
+
+There is no server-side session, so after a restart the client's next request just works
+(an in-flight request is dropped and retried). `GET`/`DELETE /mcp` return 405.
+Test: `node test/streamable-http/stateless-test.js`.
