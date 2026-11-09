@@ -3,6 +3,7 @@
 // Handles guilds, governments, groups, factions, and power structures
 
 import { findDependents, referencedResponse } from '../../../shared/delete-guard.js';
+import { validateStringLengths, ORGANIZATION_LIMITS } from '../../../shared/field-validation.js';
 
 // Rows that still point at an organization; any hit blocks the delete.
 const ORGANIZATION_DEPENDENTS = [
@@ -209,6 +210,7 @@ export class OrganizationHandlers {
     // =============================================
 
     async handleCreateOrganization(args) {
+        validateStringLengths(args, ORGANIZATION_LIMITS);
         try {
             const {
                 series_id, name, organization_type, description, influence_level,
@@ -436,6 +438,7 @@ export class OrganizationHandlers {
     }
 
    async handleUpdateOrganization(args) {
+        validateStringLengths(args, ORGANIZATION_LIMITS);
         try {
             const { organization_id, ...updates } = args;
             

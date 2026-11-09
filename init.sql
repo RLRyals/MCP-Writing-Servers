@@ -1191,7 +1191,7 @@ CREATE TABLE organizations (
     -- Power and influence
     influence_level INTEGER CHECK (influence_level BETWEEN 1 AND 10),
     member_count INTEGER,
-    status VARCHAR(50) DEFAULT 'active', -- active, disbanded, dormant, secret
+    status VARCHAR(100) DEFAULT 'active', -- active, disbanded, dormant, secret
     
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -2099,7 +2099,7 @@ BEGIN
 -- Add missing columns that the world server expects
 ALTER TABLE world_elements
 ADD COLUMN IF NOT EXISTS power_source TEXT,
-ADD COLUMN IF NOT EXISTS rarity VARCHAR(50) DEFAULT 'common',
+ADD COLUMN IF NOT EXISTS rarity VARCHAR(100) DEFAULT 'common',
 ADD COLUMN IF NOT EXISTS cultural_impact TEXT,
 ADD COLUMN IF NOT EXISTS access_method TEXT;
 
