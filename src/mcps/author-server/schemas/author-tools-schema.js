@@ -48,8 +48,20 @@ export const authorToolsSchema = [
             properties: {
                 author_id: { type: 'integer', description: 'Author ID' },
                 name: { type: 'string', description: 'Author name?' },
+                email: { type: 'string', description: 'Email?' },
                 bio: { type: 'string', description: 'Bio?' },
                 birth_year: { type: 'integer', description: 'Birth year?' }
+            },
+            required: ['author_id']
+        }
+    },
+    {
+        name: 'delete_author',
+        description: 'Delete an author. Refuses (deletes nothing) while any series still belongs to the author; never cascades.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                author_id: { type: 'integer', description: 'Author ID' }
             },
             required: ['author_id']
         }

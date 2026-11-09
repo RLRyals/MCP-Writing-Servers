@@ -19,7 +19,8 @@ Verified against `getToolHandler()` in `index.js`:
 - `list_authors` — list author records
 - `get_author` — get a single author by id
 - `create_author` — create an author record
-- `update_author` — update an author record
+- `update_author` — update an author record (name, email, bio, birth_year)
+- `delete_author` — delete an author; refuses with `has_series` while any series references it (never cascades)
 
 ## Running it
 

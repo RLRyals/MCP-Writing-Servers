@@ -108,7 +108,7 @@ export class AuthorHandlers {
 
     async handleUpdateAuthor(args) {
         try {
-            const { author_id, name, bio, birth_year } = args;
+            const { author_id, name, email, bio, birth_year } = args;
 
             // Build dynamic update query
             const updates = [];
@@ -118,6 +118,10 @@ export class AuthorHandlers {
             if (name !== undefined) {
                 updates.push(`name = $${paramCount++}`);
                 values.push(name);
+            }
+            if (email !== undefined) {
+                updates.push(`email = $${paramCount++}`);
+                values.push(email);
             }
             if (bio !== undefined) {
                 updates.push(`bio = $${paramCount++}`);
@@ -167,6 +171,43 @@ export class AuthorHandlers {
             };
         } catch (error) {
             throw new Error(`Failed to update author: ${error.message}`);
+        }
+    }
+
+    async handleDeleteAuthor(args) {
+        try {
+            const { author_id } = args;
+
+            // Never cascade: refuse while any series still belongs to this author.
+            const owned = await this.db.query(
+                'SELECT id, title FROM series WHERE author_id = $1',
+                [author_id]
+            );
+            if (owned.rows.length > 0) {
+                const series = owned.rows.map(r => ({ id: r.id, title: r.title }));
+                return {
+                    error: 'has_series',
+                    message: `Author ${author_id} still owns series: ` +
+                        `${series.map(r => `${r.id}: ${r.title}`).join(', ')}. ` +
+                        `Move or delete those first.`,
+                    series
+                };
+            }
+
+            const result = await this.db.query(
+                'DELETE FROM authors WHERE id = $1 RETURNING *',
+                [author_id]
+            );
+            if (result.rows.length === 0) {
+                return {
+                    error: 'not_found',
+                    author_id,
+                    message: `No author found with ID: ${author_id}`
+                };
+            }
+            return { deleted: result.rows[0] };
+        } catch (error) {
+            throw new Error(`Failed to delete author: ${error.message}`);
         }
     }
 }
