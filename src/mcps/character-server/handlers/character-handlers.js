@@ -3,6 +3,30 @@
 // Designed for AI Writing Teams to manage character information
 
 import { characterToolsSchema } from '../schemas/character-tools-schema.js';
+import { findDependents, referencedResponse } from '../../../shared/delete-guard.js';
+
+// Rows that still point at a character; any hit blocks the delete.
+const CHARACTER_DEPENDENTS = [
+    { table: 'character_details', column: 'character_id', label: 'character details' },
+    { table: 'character_knowledge', column: 'character_id', label: 'character knowledge' },
+    { table: 'character_arcs', column: 'character_id', label: 'character arcs' },
+    { table: 'character_chapter_presence', column: 'character_id', label: 'chapter presence records' },
+    { table: 'character_throughlines', column: 'character_id', label: 'throughlines' },
+    { table: 'event_participants', column: 'character_id', label: 'event participants' },
+    { table: 'chapters', column: 'pov_character_id', label: 'chapters with this POV' },
+    { table: 'chapter_scenes', column: 'pov_character_id', label: 'chapter scenes with this POV' },
+    { table: 'event_chapter_mappings', column: 'pov_character_id', label: 'event chapter mappings (POV)' },
+    { table: 'outline_scene_events', column: 'character_id', label: 'outline scene events' },
+    { table: 'outline_works', column: 'pov_character_id', label: 'outline works with this POV' },
+    { table: 'reveal_evidence', column: 'spotted_by_character_id', label: 'reveal evidence (spotted by)' },
+    { table: 'tracker_changes', column: 'character_id', label: 'tracker changes' },
+    { table: 'npe_causality_chains', column: 'initiating_character_id', label: 'NPE causality chains' },
+    { table: 'npe_character_decisions', column: 'character_id', label: 'NPE character decisions' },
+    { table: 'npe_information_economy', column: 'character_affected_id', label: 'NPE information economy rows' },
+    { table: 'npe_relationship_tension', column: 'character_a_id', label: 'NPE relationship tension (character A)' },
+    { table: 'npe_relationship_tension', column: 'character_b_id', label: 'NPE relationship tension (character B)' },
+    { table: 'npe_scene_validation', column: 'pov_character_id', label: 'NPE scene validations (POV)' }
+];
 
 export class CharacterHandlers {
     constructor(db) {
@@ -241,4 +265,35 @@ export class CharacterHandlers {
             throw new Error(`Failed to get character by ID: ${error.message}`);
         }
     }
+
+    async handleDeleteCharacter(args) {
+        try {
+            const { character_id, confirm } = args;
+            if (confirm !== true) {
+                throw new Error('confirm must be true to delete.');
+            }
+
+            // Never cascade: refuse while anything still references this character.
+            const dependents = await findDependents(this.db, CHARACTER_DEPENDENTS, character_id);
+            if (dependents.length > 0) {
+                return referencedResponse('Character', character_id, dependents);
+            }
+
+            const result = await this.db.query(
+                'DELETE FROM characters WHERE id = $1 RETURNING *',
+                [character_id]
+            );
+            if (result.rows.length === 0) {
+                return {
+                    error: 'not_found',
+                    character_id,
+                    message: `No character found with ID: ${character_id}`
+                };
+            }
+            return { deleted: result.rows[0] };
+        } catch (error) {
+            throw new Error(`Failed to delete character: ${error.message}`);
+        }
+    }
+
 }

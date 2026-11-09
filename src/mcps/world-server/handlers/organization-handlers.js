@@ -2,6 +2,14 @@
 // Organization Management Handler - FULLY IMPLEMENTED
 // Handles guilds, governments, groups, factions, and power structures
 
+import { findDependents, referencedResponse } from '../../../shared/delete-guard.js';
+
+// Rows that still point at an organization; any hit blocks the delete.
+const ORGANIZATION_DEPENDENTS = [
+    { table: 'organizations', column: 'parent_organization_id', label: 'child organizations (parent_organization_id)' },
+    { table: 'world_element_usage', column: 'element_id', label: 'usage records', where: "element_type = 'organization'" }
+];
+
 export class OrganizationHandlers {
     constructor(db) {
         this.db = db;
@@ -175,6 +183,18 @@ export class OrganizationHandlers {
                         }
                     },
                     required: ['organization_id', 'book_id', 'activity_type']
+                }
+            },
+            {
+                name: 'delete_organization',
+                description: 'Delete a organization. Requires confirm: true. Refuses (deletes nothing) while other rows still reference it; never cascades.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        organization_id: { type: 'integer', description: 'ID of the organization to delete' },
+                        confirm: { type: 'boolean', description: 'Must be true to delete' }
+                    },
+                    required: ['organization_id', 'confirm']
                 }
             }
         ];
@@ -473,6 +493,36 @@ export class OrganizationHandlers {
             };
         } catch (error) {
             throw new Error(`Failed to update organization: ${error.message}`);
+        }
+    }
+
+    async handleDeleteOrganization(args) {
+        try {
+            const { organization_id, confirm } = args;
+            if (confirm !== true) {
+                throw new Error('confirm must be true to delete.');
+            }
+
+            // Never cascade: refuse while anything still references this organization.
+            const dependents = await findDependents(this.db, ORGANIZATION_DEPENDENTS, organization_id);
+            if (dependents.length > 0) {
+                return referencedResponse('Organization', organization_id, dependents);
+            }
+
+            const result = await this.db.query(
+                'DELETE FROM organizations WHERE id = $1 RETURNING *',
+                [organization_id]
+            );
+            if (result.rows.length === 0) {
+                return {
+                    error: 'not_found',
+                    organization_id,
+                    message: `No organization found with ID: ${organization_id}`
+                };
+            }
+            return { deleted: result.rows[0] };
+        } catch (error) {
+            throw new Error(`Failed to delete organization: ${error.message}`);
         }
     }
 

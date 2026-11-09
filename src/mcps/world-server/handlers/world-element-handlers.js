@@ -2,6 +2,14 @@
 // World Element Management Handler - STUB VERSION
 // TODO: Implement after tutorial recording
 
+import { findDependents, referencedResponse } from '../../../shared/delete-guard.js';
+
+// Rows that still point at a world element; any hit blocks the delete.
+const WORLD_ELEMENT_DEPENDENTS = [
+    { table: 'outline_scene_events', column: 'element_id', label: 'outline scene events' },
+    { table: 'world_element_usage', column: 'element_id', label: 'usage records', where: "element_type = 'world_element'" }
+];
+
 export class WorldElementHandlers {
     constructor(db) {
         this.db = db;
@@ -182,6 +190,18 @@ export class WorldElementHandlers {
                         }
                     },
                     required: ['element_id', 'book_id']
+                }
+            },
+            {
+                name: 'delete_world_element',
+                description: 'Delete a world element. Requires confirm: true. Refuses (deletes nothing) while other rows still reference it; never cascades.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        element_id: { type: 'integer', description: 'ID of the world element to delete' },
+                        confirm: { type: 'boolean', description: 'Must be true to delete' }
+                    },
+                    required: ['element_id', 'confirm']
                 }
             }
         ];
@@ -490,6 +510,36 @@ export class WorldElementHandlers {
                 throw new Error('Invalid book_id or chapter_id');
             }
             throw new Error(`Failed to track element usage: ${error.message}`);
+        }
+    }
+
+    async handleDeleteWorldElement(args) {
+        try {
+            const { element_id, confirm } = args;
+            if (confirm !== true) {
+                throw new Error('confirm must be true to delete.');
+            }
+
+            // Never cascade: refuse while anything still references this world element.
+            const dependents = await findDependents(this.db, WORLD_ELEMENT_DEPENDENTS, element_id);
+            if (dependents.length > 0) {
+                return referencedResponse('World element', element_id, dependents);
+            }
+
+            const result = await this.db.query(
+                'DELETE FROM world_elements WHERE id = $1 RETURNING *',
+                [element_id]
+            );
+            if (result.rows.length === 0) {
+                return {
+                    error: 'not_found',
+                    element_id,
+                    message: `No world element found with ID: ${element_id}`
+                };
+            }
+            return { deleted: result.rows[0] };
+        } catch (error) {
+            throw new Error(`Failed to delete world element: ${error.message}`);
         }
     }
 

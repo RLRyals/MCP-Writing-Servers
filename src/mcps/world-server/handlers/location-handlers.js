@@ -2,6 +2,18 @@
 // Location Management Handler - CRUD operations for world locations
 // Designed for AI Writing Teams to manage fictional world geography
 
+import { findDependents, referencedResponse } from '../../../shared/delete-guard.js';
+
+// Rows that still point at a location; any hit blocks the delete.
+const LOCATION_DEPENDENTS = [
+    { table: 'locations', column: 'parent_location_id', label: 'child locations (parent_location_id)' },
+    { table: 'organizations', column: 'headquarters_location_id', label: 'organizations headquartered here' },
+    { table: 'scene_staging', column: 'location_id', label: 'scene staging rows (location_id)' },
+    { table: 'scene_staging', column: 'shows_location_id', label: 'scene staging rows (shows_location_id)' },
+    { table: 'outline_scene_events', column: 'location_id', label: 'outline scene events' },
+    { table: 'world_element_usage', column: 'element_id', label: 'usage records', where: "element_type = 'location'" }
+];
+
 export class LocationHandlers {
     constructor(db) {
         this.db = db;
@@ -156,6 +168,18 @@ export class LocationHandlers {
                         }
                     },
                     required: ['location_id', 'book_id']
+                }
+            },
+            {
+                name: 'delete_location',
+                description: 'Delete a location. Requires confirm: true. Refuses (deletes nothing) while other rows still reference it; never cascades.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        location_id: { type: 'integer', description: 'ID of the location to delete' },
+                        confirm: { type: 'boolean', description: 'Must be true to delete' }
+                    },
+                    required: ['location_id', 'confirm']
                 }
             }
         ];
@@ -447,4 +471,35 @@ export class LocationHandlers {
             throw new Error(`Failed to track location usage: ${error.message}`);
         }
     }
+
+    async handleDeleteLocation(args) {
+        try {
+            const { location_id, confirm } = args;
+            if (confirm !== true) {
+                throw new Error('confirm must be true to delete.');
+            }
+
+            // Never cascade: refuse while anything still references this location.
+            const dependents = await findDependents(this.db, LOCATION_DEPENDENTS, location_id);
+            if (dependents.length > 0) {
+                return referencedResponse('Location', location_id, dependents);
+            }
+
+            const result = await this.db.query(
+                'DELETE FROM locations WHERE id = $1 RETURNING *',
+                [location_id]
+            );
+            if (result.rows.length === 0) {
+                return {
+                    error: 'not_found',
+                    location_id,
+                    message: `No location found with ID: ${location_id}`
+                };
+            }
+            return { deleted: result.rows[0] };
+        } catch (error) {
+            throw new Error(`Failed to delete location: ${error.message}`);
+        }
+    }
+
 }

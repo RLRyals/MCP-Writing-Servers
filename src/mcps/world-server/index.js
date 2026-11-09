@@ -60,18 +60,21 @@ class WorldMCPServer extends BaseMCPServer {
         this.handleUpdateLocation = this.locationHandlers.handleUpdateLocation.bind(this.locationHandlers);
         this.handleGetLocations = this.locationHandlers.handleGetLocations.bind(this.locationHandlers);
         this.handleTrackLocationUsage = this.locationHandlers.handleTrackLocationUsage.bind(this.locationHandlers);
+        this.handleDeleteLocation = this.locationHandlers.handleDeleteLocation.bind(this.locationHandlers);
         
         // Bind world element handler methods
         this.handleCreateWorldElement = this.worldElementHandlers.handleCreateWorldElement.bind(this.worldElementHandlers);
         this.handleUpdateWorldElement = this.worldElementHandlers.handleUpdateWorldElement.bind(this.worldElementHandlers);
         this.handleGetWorldElements = this.worldElementHandlers.handleGetWorldElements.bind(this.worldElementHandlers);
         this.handleTrackElementUsage = this.worldElementHandlers.handleTrackElementUsage.bind(this.worldElementHandlers);
+        this.handleDeleteWorldElement = this.worldElementHandlers.handleDeleteWorldElement.bind(this.worldElementHandlers);
 
         // Bind organization handler methods
         this.handleCreateOrganization = this.organizationHandlers.handleCreateOrganization.bind(this.organizationHandlers);
         this.handleGetOrganizations = this.organizationHandlers.handleGetOrganizations.bind(this.organizationHandlers);
         this.handleTrackOrganizationActivity = this.organizationHandlers.handleTrackOrganizationActivity.bind(this.organizationHandlers);
         this.handleUpdateOrganization = this.organizationHandlers.handleUpdateOrganization.bind(this.organizationHandlers);
+        this.handleDeleteOrganization = this.organizationHandlers.handleDeleteOrganization.bind(this.organizationHandlers);
 
         // Bind world management handler methods
         this.handleCheckWorldConsistency = this.worldManagementHandlers.handleCheckWorldConsistency.bind(this.worldManagementHandlers);
@@ -132,18 +135,21 @@ class WorldMCPServer extends BaseMCPServer {
             'update_location': this.handleUpdateLocation,
             'get_locations': this.handleGetLocations,
             'track_location_usage': this.handleTrackLocationUsage,
+            'delete_location': this.handleDeleteLocation,
             
             // World Element Management Handlers
             'create_world_element': this.handleCreateWorldElement,
             'update_world_element': this.handleUpdateWorldElement,
             'get_world_elements': this.handleGetWorldElements,
             'track_element_usage': this.handleTrackElementUsage,
+            'delete_world_element': this.handleDeleteWorldElement,
 
             // Organization Management Handlers
             'create_organization': this.handleCreateOrganization,
             'get_organizations': this.handleGetOrganizations,
             'track_organization_activity': this.handleTrackOrganizationActivity,
             'update_organization': this.handleUpdateOrganization,
+            'delete_organization': this.handleDeleteOrganization,
 
             // World Management Handlers
             'check_world_consistency': this.handleCheckWorldConsistency,

@@ -23,6 +23,7 @@ aggregation. One shared DB connection.
 Verified against `getToolHandler()` in `index.js`:
 
 - `list_characters`, `create_character`, `get_character`, `update_character` — character CRUD
+- `delete_character` — delete a character; requires `confirm: true`; refuses with `has_dependents` (listing details, knowledge, arcs, POV links, etc.) instead of cascading
 - `add_character_detail`, `update_character_detail` — book-specific character details
 - `check_character_knowledge` — check what a character knows (read-only guard against plot holes)
 - `create_character_arc`, `update_character_arc`, `delete_character_arc`, `list_character_arcs` — character arc for a book
