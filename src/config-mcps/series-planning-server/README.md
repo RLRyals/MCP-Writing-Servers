@@ -26,6 +26,7 @@ tool names:
 - `list_series`, `create_series`, `get_series`, `update_series` — series CRUD
 - `assign_series_genres` — attach genres to a series
 - `create_location`, `get_locations` — series-scoped locations
+- `delete_location`, `delete_organization`, `delete_world_element` — delete one row; require `confirm: true`; refuse with `has_dependents` (listing the referencing rows) instead of cascading
 - `create_organization`, `get_organizations` — series-scoped organizations
 - `create_world_element`, `get_world_elements` — series-scoped world elements
 - `define_world_system` — define a world system (magic/tech/rules) for the series

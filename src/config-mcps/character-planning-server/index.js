@@ -68,6 +68,15 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             });
         }
 
+        const deleteCharacter = characterTools.find(t => t.name === 'delete_character');
+        if (deleteCharacter) {
+            tools.push({
+                ...deleteCharacter,
+                name: 'delete_character',
+                description: `${deleteCharacter.description}`
+            });
+        }
+
         const createCharacter = characterTools.find(t => t.name === 'create_character');
         if (createCharacter) {
             tools.push({
@@ -250,6 +259,7 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             'create_character': (args) => this.characterHandlers.handleCreateCharacter(args),
             'get_character': (args) => this.characterHandlers.handleGetCharacter(args),
             'update_character': (args) => this.characterHandlers.handleUpdateCharacter(args),
+            'delete_character': (args) => this.characterHandlers.handleDeleteCharacter(args),
             'add_character_detail': (args) => this.characterDetailHandlers.handleAddCharacterDetail(args),
             'update_character_detail': (args) => this.characterDetailHandlers.handleUpdateCharacterDetail(args),
             'delete_character_detail': (args) => this.characterDetailHandlers.handleDeleteCharacterDetail(args),

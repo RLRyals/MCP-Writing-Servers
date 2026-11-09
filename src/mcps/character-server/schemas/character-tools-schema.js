@@ -69,6 +69,18 @@ export const characterToolsSchema = [
         }
     },
     {
+        name: 'delete_character',
+        description: 'Delete a character. Requires confirm: true. Refuses (deletes nothing) while details, knowledge, arcs, chapter/scene links or other rows still reference the character; never cascades.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                character_id: { type: 'integer', description: 'Character ID' },
+                confirm: { type: 'boolean', description: 'Must be true to delete' }
+            },
+            required: ['character_id', 'confirm']
+        }
+    },
+    {
         name: 'update_character',
         description: 'Update core character fields (name, type, status). Prefer this over raw database-admin CRUD so status changes stay consistent with arc and continuity tracking.',
         inputSchema: {

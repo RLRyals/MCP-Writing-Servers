@@ -63,6 +63,7 @@ class CharacterMCPServer extends BaseMCPServer {
         this.handleGetCharacter = this.characterHandlers.handleGetCharacter.bind(this.characterHandlers);
         this.handleCreateCharacter = this.characterHandlers.handleCreateCharacter.bind(this.characterHandlers);
         this.handleUpdateCharacter = this.characterHandlers.handleUpdateCharacter.bind(this.characterHandlers);
+        this.handleDeleteCharacter = this.characterHandlers.handleDeleteCharacter.bind(this.characterHandlers);
 
         // Bind character detail handler methods
         this.handleAddCharacterDetail = this.characterDetailHandlers.handleAddCharacterDetail.bind(this.characterDetailHandlers);
@@ -144,6 +145,7 @@ class CharacterMCPServer extends BaseMCPServer {
             'get_character': this.handleGetCharacter,
             'create_character': this.handleCreateCharacter,
             'update_character': this.handleUpdateCharacter,
+            'delete_character': this.handleDeleteCharacter,
 
             // Character Detail Handlers
             'add_character_detail': this.handleAddCharacterDetail,
