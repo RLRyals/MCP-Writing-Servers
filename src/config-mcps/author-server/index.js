@@ -60,7 +60,8 @@ class AuthorMCPServer extends BaseMCPServer {
             'list_authors': (args) => this.authorHandlers.handleListAuthors(args),
             'get_author': (args) => this.authorHandlers.handleGetAuthor(args),
             'create_author': (args) => this.authorHandlers.handleCreateAuthor(args),
-            'update_author': (args) => this.authorHandlers.handleUpdateAuthor(args)
+            'update_author': (args) => this.authorHandlers.handleUpdateAuthor(args),
+            'delete_author': (args) => this.authorHandlers.handleDeleteAuthor(args)
         };
 
         return handlerMap[toolName] || null;

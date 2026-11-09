@@ -55,6 +55,7 @@ class AuthorMCPServer extends BaseMCPServer {
         this.handleGetAuthor = this.authorHandlers.handleGetAuthor.bind(this.authorHandlers);
         this.handleCreateAuthor = this.authorHandlers.handleCreateAuthor.bind(this.authorHandlers);
         this.handleUpdateAuthor = this.authorHandlers.handleUpdateAuthor.bind(this.authorHandlers);
+        this.handleDeleteAuthor = this.authorHandlers.handleDeleteAuthor.bind(this.authorHandlers);
     }
 
     async testDatabaseConnection() {
@@ -97,7 +98,8 @@ class AuthorMCPServer extends BaseMCPServer {
             'list_authors': this.handleListAuthors,
             'get_author': this.handleGetAuthor,
             'create_author': this.handleCreateAuthor,
-            'update_author': this.handleUpdateAuthor
+            'update_author': this.handleUpdateAuthor,
+            'delete_author': this.handleDeleteAuthor
         };
         return handlers[toolName];
     }
