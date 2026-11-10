@@ -106,6 +106,7 @@ export class CharacterDetailHandlers {
                         type: 'text',
                         text: `Character Details for ${result.rows[0].character_name}:\n\n` +
                               result.rows.map(detail =>
+                                  `id: ${detail.id}\n` +
                                   `${detail.category}/${detail.attribute}: ${detail.value}\n` +
                                   `  Confidence: ${detail.confidence_level}\n` +
                                   `  Source: ${detail.source_book_title || 'Not specified'}\n` +

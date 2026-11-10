@@ -73,7 +73,8 @@ describe('character-planning-server wrapper tool visibility (mws-6)', () => {
         const deleteKnowledge = server.tools.find(t => t.name === 'delete_character_knowledge');
 
         assert.deepStrictEqual(updateKnowledge.inputSchema.required, ['id']);
-        assert.deepStrictEqual(deleteKnowledge.inputSchema.required, ['id']);
+        assert.deepStrictEqual(deleteKnowledge.inputSchema.required, []);
+        assert.ok('id' in deleteKnowledge.inputSchema.properties && 'knowledge_item' in deleteKnowledge.inputSchema.properties);
         assert.ok('knowledge_level' in updateKnowledge.inputSchema.properties);
         assert.ok('knowledge_item' in updateKnowledge.inputSchema.properties);
         assert.ok('learned_context' in updateKnowledge.inputSchema.properties);

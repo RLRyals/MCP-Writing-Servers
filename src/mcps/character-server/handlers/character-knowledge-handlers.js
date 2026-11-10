@@ -174,6 +174,7 @@ export class CharacterKnowledgeHandlers {
                         type: 'text',
                         text: `Knowledge for ${result.rows[0].character_name}:\n\n` +
                               result.rows.map(knowledge =>
+                                  `id: ${knowledge.id}\n` +
                                   `${knowledge.knowledge_category}: ${knowledge.knowledge_item}\n` +
                                   `  Level: ${knowledge.knowledge_level}\n` +
                                   `  Learned: ${knowledge.learned_book_title || 'Unknown'}\n` +
@@ -285,26 +286,42 @@ export class CharacterKnowledgeHandlers {
 
     async handleDeleteCharacterKnowledge(args) {
         try {
-            const { id } = args;
+            const { character_id, knowledge_category, knowledge_item } = args;
+            let { id } = args;
 
-            if (!id) {
-                throw new Error('id is required to identify the knowledge entry to delete');
+            let checkResult;
+            if (id) {
+                checkResult = await this.db.query(
+                    `SELECT ck.*, c.name as character_name
+                     FROM character_knowledge ck
+                     JOIN characters c ON ck.character_id = c.id
+                     WHERE ck.id = $1`,
+                    [id]
+                );
+            } else {
+                if (!character_id || !knowledge_category || !knowledge_item) {
+                    throw new Error('identify the entry by id, or by character_id + knowledge_category + knowledge_item');
+                }
+                const matches = await this.db.query(
+                    `SELECT ck.*, c.name as character_name
+                     FROM character_knowledge ck
+                     JOIN characters c ON ck.character_id = c.id
+                     WHERE ck.character_id = $1 AND ck.knowledge_category = $2 AND ck.knowledge_item = $3`,
+                    [character_id, knowledge_category, knowledge_item]
+                );
+                if (matches.rows.length > 1) {
+                    throw new Error(`${matches.rows.length} knowledge entries match character ${character_id} / ${knowledge_category} / ${knowledge_item} (ids: ${matches.rows.map(r => r.id).join(', ')}); delete by id instead. Nothing was deleted.`);
+                }
+                checkResult = matches;
+                id = matches.rows[0]?.id;
             }
-
-            const checkResult = await this.db.query(
-                `SELECT ck.*, c.name as character_name
-                 FROM character_knowledge ck
-                 JOIN characters c ON ck.character_id = c.id
-                 WHERE ck.id = $1`,
-                [id]
-            );
 
             if (checkResult.rows.length === 0) {
                 return {
                     content: [
                         {
                             type: 'text',
-                            text: `No character knowledge entry found to delete with id: ${id}`
+                            text: id ? `No character knowledge entry found to delete with id: ${id}` : `No character knowledge entry found for character ${character_id} / ${knowledge_category} / ${knowledge_item}`
                         }
                     ]
                 };

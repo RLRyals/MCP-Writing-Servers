@@ -296,6 +296,29 @@ jobs:
       - name: Run field-validation and world-server tests
         run: node --test tests/shared/field-validation.test.js tests/world-server/length-validation.test.js tests/world-server/delete-world-tools.test.js
 
+  character-dependents-tests:
+    name: Character Dependents Tests
+    runs-on: ubuntu-latest
+    # bead mws-e25: DB is fully mocked, no postgres service needed.
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run character-server tests
+        env:
+          DATABASE_URL: postgres://test:test@localhost:5432/test
+        run: node --test tests/character-server/character-dependents.test.js tests/character-server/delete-character.test.js tests/character-server/character-knowledge-handlers.test.js tests/character-server/character-planning-wrapper.test.js
+
   lint:
     name: Lint Code
     runs-on: ubuntu-latest

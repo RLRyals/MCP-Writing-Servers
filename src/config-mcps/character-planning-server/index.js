@@ -59,6 +59,15 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
         // =============================================
         const characterTools = this.characterHandlers.getCharacterTools();
 
+        const getCharacter = characterTools.find(t => t.name === 'get_character');
+        if (getCharacter) {
+            tools.push({
+                ...getCharacter,
+                name: 'get_character',
+                description: 'Get a character with its detail rows (id, category, attribute, value) and knowledge rows (id, category, item, level)'
+            });
+        }
+
         const listCharacters = characterTools.find(t => t.name === 'list_characters');
         if (listCharacters) {
             tools.push({
@@ -92,6 +101,15 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
                 ...updateCharacterSchema,
                 name: 'update_character',
                 description: 'Update character status/development for this book — canonical write path; a raw database-admin update on the characters table bypasses this server\'s arc/continuity wiring.'
+            });
+        }
+
+        const getCharacterDetailsSchema = this.characterDetailHandlers.getCharacterDetailTools().find(t => t.name === 'get_character_details');
+        if (getCharacterDetailsSchema) {
+            tools.push({
+                ...getCharacterDetailsSchema,
+                name: 'get_character_details',
+                description: 'Get character detail rows (each with its row id, category, attribute, value)'
             });
         }
 
@@ -258,6 +276,7 @@ class CharacterPlanningMCPServer extends BaseMCPServer {
             'list_characters': (args) => this.characterHandlers.handleListCharacters(args),
             'create_character': (args) => this.characterHandlers.handleCreateCharacter(args),
             'get_character': (args) => this.characterHandlers.handleGetCharacter(args),
+            'get_character_details': (args) => this.characterDetailHandlers.handleGetCharacterDetails(args),
             'update_character': (args) => this.characterHandlers.handleUpdateCharacter(args),
             'delete_character': (args) => this.characterHandlers.handleDeleteCharacter(args),
             'add_character_detail': (args) => this.characterDetailHandlers.handleAddCharacterDetail(args),
