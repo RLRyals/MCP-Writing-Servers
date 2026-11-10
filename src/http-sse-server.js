@@ -513,6 +513,20 @@ function createServerEndpoint(serverConfig) {
 
         } catch (error) {
             console.error(`[${name}] Error executing tool:`, error);
+            // Argument validation failures (e.g. a string longer than its column)
+            // are the caller's mistake: report them as JSON-RPC "Invalid params"
+            // with the field-level message, not as a bare 500.
+            if (error.name === 'FieldValidationError') {
+                return res.status(400).json({
+                    jsonrpc: '2.0',
+                    error: {
+                        code: error.code,
+                        message: error.message,
+                        data: error.violations
+                    },
+                    id: req.body?.id || null
+                });
+            }
             res.status(500).json({
                 jsonrpc: '2.0',
                 error: {

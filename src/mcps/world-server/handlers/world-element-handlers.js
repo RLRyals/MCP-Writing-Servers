@@ -3,6 +3,7 @@
 // TODO: Implement after tutorial recording
 
 import { findDependents, referencedResponse } from '../../../shared/delete-guard.js';
+import { validateStringLengths, WORLD_ELEMENT_LIMITS } from '../../../shared/field-validation.js';
 
 // Rows that still point at a world element; any hit blocks the delete.
 const WORLD_ELEMENT_DEPENDENTS = [
@@ -211,6 +212,7 @@ export class WorldElementHandlers {
     // =============================================
 
     async handleCreateWorldElement(args) {
+        validateStringLengths(args, WORLD_ELEMENT_LIMITS);
         try {
             const {
                 series_id, name, element_type, description, power_source,
@@ -272,6 +274,7 @@ export class WorldElementHandlers {
     }
 
     async handleUpdateWorldElement(args) {
+        validateStringLengths(args, WORLD_ELEMENT_LIMITS);
         try {
             const { element_id, ...updates } = args;
             

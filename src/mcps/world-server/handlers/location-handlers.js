@@ -3,6 +3,7 @@
 // Designed for AI Writing Teams to manage fictional world geography
 
 import { findDependents, referencedResponse } from '../../../shared/delete-guard.js';
+import { validateStringLengths, LOCATION_LIMITS } from '../../../shared/field-validation.js';
 
 // Rows that still point at a location; any hit blocks the delete.
 const LOCATION_DEPENDENTS = [
@@ -190,6 +191,7 @@ export class LocationHandlers {
     // =============================================
 
     async handleCreateLocation(args) {
+        validateStringLengths(args, LOCATION_LIMITS);
         try {
             const { series_id, name, location_type, description, parent_location_id, 
                     climate, terrain, notable_features, atmosphere } = args;
@@ -247,6 +249,7 @@ export class LocationHandlers {
     }
 
     async handleUpdateLocation(args) {
+        validateStringLengths(args, LOCATION_LIMITS);
         try {
             const { location_id, ...updates } = args;
             

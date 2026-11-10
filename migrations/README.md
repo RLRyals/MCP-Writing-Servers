@@ -44,3 +44,4 @@ psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f migrations/023_npe_tables.sql
 - Migrations check the `migrations` table to avoid duplicate application
 - The `init.sql` file includes all migrations for new database installations
 - These standalone files are for updating existing databases
+- **066_widen_world_text_columns.sql** - (mws-1ut) Widens `world_elements.rarity` and `organizations.status` from VARCHAR(50) to VARCHAR(100). Widen-only, existing rows untouched, idempotent. World-server create/update handlers also reject over-long strings up front with `field: N characters, limit M` (src/shared/field-validation.js).
