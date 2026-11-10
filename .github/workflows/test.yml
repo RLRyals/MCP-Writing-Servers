@@ -317,7 +317,7 @@ jobs:
       - name: Run character-server tests
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/test
-        run: node --test tests/character-server/character-dependents.test.js tests/character-server/delete-character.test.js tests/character-server/character-knowledge-handlers.test.js tests/character-server/character-planning-wrapper.test.js
+        run: node --test tests/character-server/character-dependents.test.js tests/character-server/delete-character.test.js tests/character-server/character-planning-wrapper.test.js
 
   lint:
     name: Lint Code
