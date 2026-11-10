@@ -70,12 +70,17 @@ export const characterToolsSchema = [
     },
     {
         name: 'delete_character',
-        description: 'Delete a character. Requires confirm: true. Refuses (deletes nothing) while details, knowledge, arcs, chapter/scene links or other rows still reference the character; never cascades.',
+        description: 'Delete a character. Requires confirm: true. Refuses (deletes nothing) while details, knowledge, arcs, chapter/scene links or other rows still reference the character; never cascades, except for the opt-in with_dependents (character_details and/or character_knowledge rows owned by this character).',
         inputSchema: {
             type: 'object',
             properties: {
                 character_id: { type: 'integer', description: 'Character ID' },
-                confirm: { type: 'boolean', description: 'Must be true to delete' }
+                confirm: { type: 'boolean', description: 'Must be true to delete' },
+                with_dependents: {
+                    type: 'array',
+                    items: { type: 'string', enum: ['character_details', 'character_knowledge'] },
+                    description: 'Also delete this character\'s own rows in these tables first. Any other dependent still blocks the delete.'
+                }
             },
             required: ['character_id', 'confirm']
         }
@@ -316,13 +321,16 @@ export const characterKnowledgeToolsSchema = [
     },
     {
         name: 'delete_character_knowledge',
-        description: 'Delete a character knowledge entry. Identify by `id`.',
+        description: 'Delete a character knowledge entry. Identify by `id`, or by character_id + knowledge_category + knowledge_item (exactly one row must match).',
         inputSchema: {
             type: 'object',
             properties: {
-                id: { type: 'integer', description: 'character_knowledge row id (required)' }
+                id: { type: 'integer', description: 'character_knowledge row id' },
+                character_id: { type: 'integer', description: 'Character ID (alternative to id)' },
+                knowledge_category: { type: 'string', description: 'Exact category (alternative to id)' },
+                knowledge_item: { type: 'string', description: 'Exact item (alternative to id)' }
             },
-            required: ['id']
+            required: []
         }
     },
     {

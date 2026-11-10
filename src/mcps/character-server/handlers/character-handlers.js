@@ -5,6 +5,9 @@
 import { characterToolsSchema } from '../schemas/character-tools-schema.js';
 import { findDependents, referencedResponse } from '../../../shared/delete-guard.js';
 
+// The only dependents delete_character may remove on request (with_dependents).
+const OWNED_DEPENDENT_TABLES = ['character_details', 'character_knowledge'];
+
 // Rows that still point at a character; any hit blocks the delete.
 const CHARACTER_DEPENDENTS = [
     { table: 'character_details', column: 'character_id', label: 'character details' },
@@ -129,6 +132,23 @@ export class CharacterHandlers {
 
             const character = result.rows[0];
 
+            const details = await this.db.query(
+                `SELECT id, category, attribute, value FROM character_details
+                 WHERE character_id = $1 ORDER BY category, attribute, id`,
+                [character_id]
+            );
+            const knowledge = await this.db.query(
+                `SELECT id, knowledge_category, knowledge_item, knowledge_level FROM character_knowledge
+                 WHERE character_id = $1 ORDER BY knowledge_category, knowledge_item, id`,
+                [character_id]
+            );
+            const detailLines = details.rows.length
+                ? details.rows.map(d => `  id: ${d.id} | ${d.category}/${d.attribute}: ${d.value}`).join('\n')
+                : '  None';
+            const knowledgeLines = knowledge.rows.length
+                ? knowledge.rows.map(k => `  id: ${k.id} | ${k.knowledge_category}: ${k.knowledge_item} (${k.knowledge_level})`).join('\n')
+                : '  None';
+
             return {
                 content: [
                     {
@@ -139,7 +159,9 @@ export class CharacterHandlers {
                               `Series: ${character.series_title}\n` +
                               `Type: ${character.character_type}\n` +
                               `Status: ${character.status}\n` +
-                              `Aliases: ${character.aliases && character.aliases.length > 0 ? character.aliases.join(', ') : 'None'}\n` 
+                              `Aliases: ${character.aliases && character.aliases.length > 0 ? character.aliases.join(', ') : 'None'}\n` +
+                              `Details:\n${detailLines}\n` +
+                              `Knowledge:\n${knowledgeLines}\n` 
                     }
                 ]
             };
@@ -268,15 +290,27 @@ export class CharacterHandlers {
 
     async handleDeleteCharacter(args) {
         try {
-            const { character_id, confirm } = args;
+            const { character_id, confirm, with_dependents } = args;
             if (confirm !== true) {
                 throw new Error('confirm must be true to delete.');
             }
 
-            // Never cascade: refuse while anything still references this character.
-            const dependents = await findDependents(this.db, CHARACTER_DEPENDENTS, character_id);
+            const opted = with_dependents === undefined || with_dependents === null ? [] : with_dependents;
+            if (!Array.isArray(opted) || opted.some(t => !OWNED_DEPENDENT_TABLES.includes(t))) {
+                throw new Error(`with_dependents may only contain: ${OWNED_DEPENDENT_TABLES.join(', ')}`);
+            }
+
+            // Never cascade beyond the opted-in owned tables: refuse while anything else references this character.
+            const all = await findDependents(this.db, CHARACTER_DEPENDENTS, character_id);
+            const dependents = all.filter(d => !opted.includes(d.table));
             if (dependents.length > 0) {
                 return referencedResponse('Character', character_id, dependents);
+            }
+
+            const removed_dependents = {};
+            for (const dep of all) {
+                await this.db.query(`DELETE FROM ${dep.table} WHERE character_id = $1`, [character_id]);
+                removed_dependents[dep.table] = dep.count;
             }
 
             const result = await this.db.query(
@@ -290,7 +324,9 @@ export class CharacterHandlers {
                     message: `No character found with ID: ${character_id}`
                 };
             }
-            return { deleted: result.rows[0] };
+            return opted.length > 0
+                ? { deleted: result.rows[0], removed_dependents }
+                : { deleted: result.rows[0] };
         } catch (error) {
             throw new Error(`Failed to delete character: ${error.message}`);
         }
