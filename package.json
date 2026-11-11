@@ -1,6 +1,6 @@
 {
   "name": "@fictionlab/db",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "FictionLab database layer and MCP writing servers",
   "type": "module",
   "exports": {
