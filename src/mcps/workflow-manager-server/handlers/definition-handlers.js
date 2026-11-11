@@ -1,25 +1,41 @@
 // src/mcps/workflow-manager-server/handlers/definition-handlers.js
 // Workflow Definition Management Handlers - Graph-based workflow system (Migration 032 - FictionLab schema)
 
-// Compares two dotted-numeric version strings (e.g. "1.2.0"). Returns -1, 0, or 1.
-// Falls back to a plain string comparison if either version has a non-numeric
-// segment, so a malformed version never throws -- it just loses precise ordering.
-function compareVersions(a, b) {
-    const partsA = String(a).split('.');
-    const partsB = String(b).split('.');
-    const len = Math.max(partsA.length, partsB.length);
+// Compares two version strings of the form "<dotted numeric core>[-<tag>]"
+// (e.g. "1.2.0", "1.1.10-dev.r8"). Returns -1, 0, or 1.
+// Cores compare segment by segment as integers (missing segments = 0). If the
+// cores are equal, a version with no tag is greater than one with a tag (as in
+// semver), and two tags compare as plain strings. Falls back to a plain string
+// comparison of the whole values only when a core segment is not an integer,
+// so a malformed version never throws -- it just loses precise ordering.
+export function compareVersions(a, b) {
+    const strA = String(a);
+    const strB = String(b);
+    const split = (v) => {
+        const i = v.indexOf('-');
+        return i === -1 ? [v, ''] : [v.slice(0, i), v.slice(i + 1)];
+    };
+    const [coreA, tagA] = split(strA);
+    const [coreB, tagB] = split(strB);
+    const partsA = coreA.split('.');
+    const partsB = coreB.split('.');
+    const isInt = (p) => /^\d+$/.test(p);
+    const plain = () => (strA === strB ? 0 : strA > strB ? 1 : -1);
 
+    if (![...partsA, ...partsB].every(isInt)) return plain();
+
+    const len = Math.max(partsA.length, partsB.length);
     for (let i = 0; i < len; i++) {
         const na = Number(partsA[i] ?? 0);
         const nb = Number(partsB[i] ?? 0);
-
-        if (Number.isNaN(na) || Number.isNaN(nb)) {
-            if (a === b) return 0;
-            return a > b ? 1 : -1;
-        }
         if (na !== nb) return na > nb ? 1 : -1;
     }
-    return 0;
+
+    const hasA = strA.includes('-');
+    const hasB = strB.includes('-');
+    if (hasA !== hasB) return hasA ? -1 : 1;
+    if (tagA === tagB) return 0;
+    return tagA > tagB ? 1 : -1;
 }
 
 function deepEqual(a, b) {
