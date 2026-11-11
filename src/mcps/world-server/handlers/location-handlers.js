@@ -146,6 +146,17 @@ export class LocationHandlers {
                 }
             },
             {
+                name: 'get_location',
+                description: 'Get a single location by ID',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        location_id: { type: 'integer', description: 'ID of the location to fetch' }
+                    },
+                    required: ['location_id']
+                }
+            },
+            {
                 name: 'track_location_usage',
                 description: 'Track where a location appears in the story',
                 inputSchema: {
@@ -307,6 +318,49 @@ export class LocationHandlers {
             };
         } catch (error) {
             throw new Error(`Failed to update location: ${error.message}`);
+        }
+    }
+
+    async handleGetLocation(args) {
+        const { location_id } = args || {};
+        if (!Number.isInteger(location_id)) {
+            throw new Error('location_id is required (integer)');
+        }
+        try {
+            const result = await this.db.query(
+                `SELECT l.id as location_id, l.*, pl.name as parent_location_name,
+                        (SELECT COUNT(*) FROM world_element_usage
+                         WHERE element_type = 'location' AND element_id = l.id) as usage_count
+                 FROM locations l
+                 LEFT JOIN locations pl ON l.parent_location_id = pl.id
+                 WHERE l.id = $1`, [location_id]);
+            if (result.rows.length === 0) {
+                return { error: 'not_found', message: `Location ${location_id} not found` };
+            }
+            const location = result.rows[0];
+            let text = `${location.name}
+   ID: ${location.location_id}
+   Type: ${location.location_type}
+`;
+            if (location.parent_location_name) text += `   Located in: ${location.parent_location_name}
+`;
+            if (location.climate) text += `   Climate: ${location.climate}
+`;
+            if (location.terrain) text += `   Terrain: ${location.terrain}
+`;
+            if (location.atmosphere) text += `   Atmosphere: ${location.atmosphere}
+`;
+            if (location.notable_features && location.notable_features.length > 0) {
+                text += `   Features: ${location.notable_features.join(', ')}
+`;
+            }
+            text += `   Story Usage: ${location.usage_count} times
+`;
+            text += `   Description: ${location.description || 'No description'}
+`;
+            return { content: [{ type: 'text', text }], location };
+        } catch (error) {
+            throw new Error(`Failed to get location: ${error.message}`);
         }
     }
 

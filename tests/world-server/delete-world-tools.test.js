@@ -75,3 +75,18 @@ describe('series_id filters on list tools', () => {
         }
     });
 });
+
+describe('get_location (by id)', () => {
+    it('is in the tool list with required location_id', () => {
+        const tool = new LocationHandlers(fakeDb()).getLocationTools().find(t => t.name === 'get_location');
+        assert.deepStrictEqual(tool.inputSchema.required, ['location_id']);
+    });
+    it('returns not_found for a missing id and the row when present', async () => {
+        const missing = await new LocationHandlers({ async query() { return { rows: [] }; } }).handleGetLocation({ location_id: 9 });
+        assert.strictEqual(missing.error, 'not_found');
+        const row = { location_id: 3, id: 3, name: 'Bridge', location_type: 'bridge', usage_count: 0, description: 'd' };
+        const res = await new LocationHandlers({ async query() { return { rows: [row] }; } }).handleGetLocation({ location_id: 3 });
+        assert.match(res.content[0].text, /Bridge/);
+        assert.strictEqual(res.location.id, 3);
+    });
+});
