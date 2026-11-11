@@ -57,6 +57,7 @@ class WorldMCPServer extends BaseMCPServer {
     bindHandlerMethods() {
         // Bind location handler methods
         this.handleCreateLocation = this.locationHandlers.handleCreateLocation.bind(this.locationHandlers);
+        this.handleGetLocation = this.locationHandlers.handleGetLocation.bind(this.locationHandlers);
         this.handleUpdateLocation = this.locationHandlers.handleUpdateLocation.bind(this.locationHandlers);
         this.handleGetLocations = this.locationHandlers.handleGetLocations.bind(this.locationHandlers);
         this.handleTrackLocationUsage = this.locationHandlers.handleTrackLocationUsage.bind(this.locationHandlers);
@@ -133,6 +134,7 @@ class WorldMCPServer extends BaseMCPServer {
             // Location Management Handlers
             'create_location': this.handleCreateLocation,
             'update_location': this.handleUpdateLocation,
+            'get_location': this.handleGetLocation,
             'get_locations': this.handleGetLocations,
             'track_location_usage': this.handleTrackLocationUsage,
             'delete_location': this.handleDeleteLocation,

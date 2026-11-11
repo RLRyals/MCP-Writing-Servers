@@ -84,7 +84,7 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
             });
 
         // World building tools - locations
-        const neededLocationTools = ['create_location', 'get_locations', 'delete_location'];
+        const neededLocationTools = ['create_location', 'update_location', 'get_location', 'get_locations', 'delete_location'];
         this.locationHandlers.getLocationTools()
             .filter(tool => neededLocationTools.includes(tool.name))
             .forEach(tool => {
@@ -96,7 +96,7 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
             });
 
         // World building tools - organizations
-        const neededOrgTools = ['create_organization', 'get_organizations', 'delete_organization'];
+        const neededOrgTools = ['create_organization', 'update_organization', 'get_organizations', 'delete_organization'];
         this.organizationHandlers.getOrganizationTools()
             .filter(tool => neededOrgTools.includes(tool.name))
             .forEach(tool => {
@@ -108,7 +108,7 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
             });
 
         // World building tools - world elements
-        const neededElementTools = ['create_world_element', 'get_world_elements', 'delete_world_element'];
+        const neededElementTools = ['create_world_element', 'update_world_element', 'get_world_elements', 'delete_world_element'];
         this.worldElementHandlers.getWorldElementTools()
             .filter(tool => neededElementTools.includes(tool.name))
             .forEach(tool => {
@@ -164,16 +164,20 @@ class SeriesPlanningMCPServer extends BaseMCPServer {
 
             // World building handlers - locations
             'create_location': this.locationHandlers.handleCreateLocation.bind(this.locationHandlers),
+            'update_location': this.locationHandlers.handleUpdateLocation.bind(this.locationHandlers),
+            'get_location': this.locationHandlers.handleGetLocation.bind(this.locationHandlers),
             'get_locations': this.locationHandlers.handleGetLocations.bind(this.locationHandlers),
             'delete_location': this.locationHandlers.handleDeleteLocation.bind(this.locationHandlers),
 
             // World building handlers - organizations
             'create_organization': this.organizationHandlers.handleCreateOrganization.bind(this.organizationHandlers),
+            'update_organization': this.organizationHandlers.handleUpdateOrganization.bind(this.organizationHandlers),
             'get_organizations': this.organizationHandlers.handleGetOrganizations.bind(this.organizationHandlers),
             'delete_organization': this.organizationHandlers.handleDeleteOrganization.bind(this.organizationHandlers),
 
             // World building handlers - world elements
             'create_world_element': this.worldElementHandlers.handleCreateWorldElement.bind(this.worldElementHandlers),
+            'update_world_element': this.worldElementHandlers.handleUpdateWorldElement.bind(this.worldElementHandlers),
             'get_world_elements': this.worldElementHandlers.handleGetWorldElements.bind(this.worldElementHandlers),
             'delete_world_element': this.worldElementHandlers.handleDeleteWorldElement.bind(this.worldElementHandlers),
 
