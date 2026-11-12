@@ -393,7 +393,7 @@ export const sceneEventsToolsSchema = [
                             reveal_id: { type: 'integer', description: 'information_reveals.id this scene shows (pointer, never a copy)' },
                             knowledge_id: { type: 'integer', description: 'character_knowledge.id this scene creates or changes' },
                             detail_id: { type: 'integer', description: 'character_details.id that starts/ends being true here' },
-                            character_id: { type: 'integer', description: 'Who the event is about (for a line, the speaker)' },
+                            character_id: { type: ['integer', 'string'], description: 'Who the event is about (for a line, the speaker): a characters.id or an exact character name (resolved server-side)' },
                             location_id: { type: 'integer', description: 'locations.id the event happens at or refers to' },
                             element_id: { type: 'integer', description: 'world_elements.id of the prop/equipment/vehicle involved' },
                             channel: { type: 'string', enum: ['in_room','comm','ai','off_screen'], description: 'How a line or sound reaches the scene' },
