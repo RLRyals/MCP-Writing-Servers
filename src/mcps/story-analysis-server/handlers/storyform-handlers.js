@@ -11,6 +11,13 @@
 
 import { storyformToolsSchema } from '../schemas/storyform-tools-schema.js';
 
+
+const LOOKUPS = [
+    { arg: 'story_outcome_id', table: 'story_outcomes', col: 'outcome_name', label: 'story outcome' },
+    { arg: 'story_judgment_id', table: 'story_judgments', col: 'judgment_name', label: 'story judgment' },
+    { arg: 'story_concern_id', table: 'story_concerns', col: 'concern_name', label: 'story concern' }
+];
+
 function scopeLabel(bookId) {
     return bookId === null || bookId === undefined ? 'series master' : `book ${bookId}`;
 }
@@ -123,8 +130,36 @@ ${JSON.stringify(parsed, null, 2)}
         return output;
     }
 
-    async handleCreateStoryform(args) {
+    // Accept an integer id, a numeric string, or a name (case-insensitive) for
+    // outcome/judgment/concern; return args with the three *_id fields as integers.
+    // A miss throws a validation error listing the valid names (mws-k79).
+    async resolveLookups(args) {
+        const resolved = { ...args };
+        for (const { arg, table, col, label } of LOOKUPS) {
+            const value = args[arg];
+            if (value === undefined || value === null || value === '') {
+                resolved[arg] = null;
+                continue;
+            }
+            if (typeof value === 'number' || /^\d+$/.test(String(value).trim())) {
+                resolved[arg] = Number(value);
+                continue;
+            }
+            const rows = (await this.db.query(`SELECT id, ${col} AS name FROM ${table} ORDER BY id`)).rows;
+            const wanted = String(value).trim().toLowerCase();
+            const match = rows.find(r => String(r.name).toLowerCase() === wanted);
+            if (!match) {
+                const valid = rows.map(r => `${r.name} (${r.id})`).join(', ');
+                throw new Error(`Validation failed: ${arg}: unknown ${label} "${value}". Valid values: ${valid}`);
+            }
+            resolved[arg] = match.id;
+        }
+        return resolved;
+    }
+
+    async handleCreateStoryform(rawArgs) {
         try {
+            const args = await this.resolveLookups(rawArgs);
             const { seriesTitle, bookId } = await this.resolveScope(args);
 
             const existing = bookId === null
@@ -180,8 +215,9 @@ ${JSON.stringify(parsed, null, 2)}
         }
     }
 
-    async handleUpdateStoryform(args) {
+    async handleUpdateStoryform(rawArgs) {
         try {
+            const args = await this.resolveLookups(rawArgs);
             const { seriesTitle, bookId } = await this.resolveScope(args);
 
             const existing = bookId === null
