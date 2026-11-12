@@ -29,6 +29,26 @@ export class SceneEventsHandlers {
         return sceneEventsToolsSchema;
     }
 
+    // character_id may be an integer, a numeric string, or a character name
+    // (case-insensitive). A miss or ambiguous name is a clear validation error.
+    async resolveCharacterId(value, cache) {
+        if (value === undefined || value === null || value === '') return null;
+        if (typeof value === 'number' || /^\d+$/.test(String(value).trim())) return Number(value);
+        const wanted = String(value).trim().toLowerCase();
+        if (cache.has(wanted)) return cache.get(wanted);
+        const rows = (await this.db.query(
+            `SELECT id, name FROM characters WHERE LOWER(name) = $1 ORDER BY id`, [wanted]
+        )).rows;
+        if (rows.length === 0) {
+            throw new Error(`Validation failed: character_id: no character named "${value}". Pass a characters.id or an exact character name.`);
+        }
+        if (rows.length > 1) {
+            throw new Error(`Validation failed: character_id: name "${value}" is ambiguous (ids ${rows.map(r => r.id).join(', ')}). Pass the characters.id.`);
+        }
+        cache.set(wanted, rows[0].id);
+        return rows[0].id;
+    }
+
     async handleRecordSceneEvents(args) {
         const { work_id, events, replace = false } = args;
         if (!Array.isArray(events) || events.length === 0) {
@@ -55,6 +75,12 @@ export class SceneEventsHandlers {
         );
         if (w.rows.length === 0) {
             throw new Error(`Work ${work_id} not found.`);
+        }
+
+        // Accept a character name as well as an id (mws-wqy): resolve to characters.id.
+        const nameCache = new Map();
+        for (const ev of events) {
+            ev.character_id = await this.resolveCharacterId(ev.character_id, nameCache);
         }
 
         try {
