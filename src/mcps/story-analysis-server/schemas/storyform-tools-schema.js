@@ -16,16 +16,16 @@ const storyformCoreProperties = {
     story_driver: { type: 'string', description: 'Story Driver (Action or Decision)' },
     story_limit: { type: 'string', description: 'Story Limit (Optionlock or Timelock)' },
     story_outcome_id: {
-        type: 'integer',
-        description: 'FK to story_outcomes (use metadata-server get_available_options w/ option_type="story_outcomes")'
+        type: ['integer', 'string'],
+        description: 'Story outcome: lookup id OR name (case-insensitive, e.g. \"Success\"); resolved against story_outcomes. An unknown name returns an error listing valid values.'
     },
     story_judgment_id: {
-        type: 'integer',
-        description: 'FK to story_judgments (use metadata-server get_available_options w/ option_type="story_judgments")'
+        type: ['integer', 'string'],
+        description: 'Story judgment: lookup id OR name (case-insensitive, e.g. \"Success\"); resolved against story_judgments. An unknown name returns an error listing valid values.'
     },
     story_concern_id: {
-        type: 'integer',
-        description: 'FK to story_concerns (use metadata-server get_available_options w/ option_type="story_concerns")'
+        type: ['integer', 'string'],
+        description: 'Story concern: lookup id OR name (case-insensitive, e.g. \"Success\"); resolved against story_concerns. An unknown name returns an error listing valid values.'
     },
     mc_resolve: { type: 'string', description: 'Main Character Resolve (Change or Steadfast)' },
     mc_growth: { type: 'string', description: 'Main Character Growth (Start or Stop)' },

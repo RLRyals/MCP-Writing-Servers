@@ -213,3 +213,49 @@ describe('StoryformHandlers.handleGetStoryform', () => {
         assert.ok(text.includes('signpost_1'));
     });
 });
+
+describe('StoryformHandlers lookup names (mws-k79)', () => {
+    function lookupDb() {
+        const db = seededDb();
+        db.setQueryResult('FROM story_outcomes', [{ id: 1, name: 'Success' }, { id: 2, name: 'Failure' }]);
+        db.setQueryResult('FROM story_judgments', [{ id: 1, name: 'Good' }, { id: 2, name: 'Bad' }]);
+        db.setQueryResult('FROM story_concerns', [{ id: 5, name: 'Doing' }]);
+        db.setQueryResult('INSERT INTO storyforms', [{ id: 10, series_id: 1, book_id: null }]);
+        db.setQueryResult('UPDATE storyforms', [{ id: 10, series_id: 1, book_id: null }]);
+        return db;
+    }
+
+    it('create resolves names case-insensitively to ids', async () => {
+        const db = lookupDb();
+        await new StoryformHandlers(db).handleCreateStoryform({
+            series_id: 1, story_outcome_id: 'Success', story_judgment_id: 'good', story_concern_id: 'DOING'
+        });
+        const p = db.queries.find(q => q.text.includes('INSERT INTO storyforms')).params;
+        assert.deepStrictEqual([p[8], p[9], p[10]], [1, 1, 5]);
+    });
+
+    it('still accepts integer ids and numeric strings', async () => {
+        const db = lookupDb();
+        await new StoryformHandlers(db).handleCreateStoryform({
+            series_id: 1, story_outcome_id: 2, story_judgment_id: '2'
+        });
+        const p = db.queries.find(q => q.text.includes('INSERT INTO storyforms')).params;
+        assert.deepStrictEqual([p[8], p[9], p[10]], [2, 2, null]);
+    });
+
+    it('rejects an unknown name listing valid values', async () => {
+        const db = lookupDb();
+        await assert.rejects(
+            new StoryformHandlers(db).handleCreateStoryform({ series_id: 1, story_outcome_id: 'Maybe' }),
+            /unknown story outcome "Maybe".*Success \(1\), Failure \(2\)/
+        );
+    });
+
+    it('update resolves names too', async () => {
+        const db = lookupDb();
+        db.setQueryResult('WHERE series_id = $1 AND book_id IS NULL', [{ id: 10 }]);
+        await new StoryformHandlers(db).handleUpdateStoryform({ series_id: 1, story_concern_id: 'doing' });
+        const p = db.queries.find(q => q.text.includes('UPDATE storyforms')).params;
+        assert.strictEqual(p[8], 5);
+    });
+});
