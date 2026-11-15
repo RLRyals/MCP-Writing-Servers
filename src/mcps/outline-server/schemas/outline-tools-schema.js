@@ -194,13 +194,13 @@ export const factsToolsSchema = [
         inputSchema: {
             type: 'object',
             properties: {
-                series_root_id: { type: 'integer', description: 'The series root outline_works.id' },
+                series_root_id: { type: 'integer', description: 'The series root outline_works.id (required; facts with no root are orphaned canon)' },
                 statement: { type: 'string', description: 'Canonical wording of the fact' },
                 fact_type: { type: 'string', description: 'world, case, conspiracy, character, etc. (free-form)' },
                 canonical_source: { type: 'string', description: 'Why this is true / where it becomes true' },
                 notes: { type: 'string' }
             },
-            required: ['statement']
+            required: ['series_root_id', 'statement']
         }
     },
     {

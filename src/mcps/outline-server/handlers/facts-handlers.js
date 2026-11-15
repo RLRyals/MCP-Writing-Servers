@@ -15,10 +15,13 @@ export class FactsHandlers {
     async handleCreateFact(args) {
         try {
             const { series_root_id, statement, fact_type, canonical_source, notes } = args;
+            if (series_root_id === undefined || series_root_id === null || series_root_id === '') {
+                throw new Error('series_root_id is required: a fact with no series root is orphaned canon.');
+            }
             const result = await this.db.query(
                 `INSERT INTO outline_facts (series_root_id, statement, fact_type, canonical_source, notes)
                  VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-                [series_root_id || null, statement, fact_type || null, canonical_source || null, notes || null]
+                [series_root_id, statement, fact_type || null, canonical_source || null, notes || null]
             );
             const f = result.rows[0];
             return { content: [{ type: 'text', text:
@@ -98,7 +101,7 @@ export class FactsHandlers {
                 return { content: [{ type: 'text', text: 'No facts found.' }] };
             }
             const lines = result.rows.map(f =>
-                `#${f.id} [${f.fact_type ?? 'untyped'}] ${f.statement}` +
+                `#${f.id} [${f.fact_type ?? 'untyped'}] (series_root_id: ${f.series_root_id ?? 'NONE'}) ${f.statement}` +
                 (f.canonical_source ? `\n    source: ${f.canonical_source}` : '')
             );
             return { content: [{ type: 'text', text: `Found ${result.rows.length} fact(s):\n\n${lines.join('\n\n')}` }] };
